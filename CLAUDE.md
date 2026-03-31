@@ -1,43 +1,118 @@
-# CLAUDE.md
+# Project: Spa management app for Tel Aviv spa
 
-## Project Overview
+## Product goal
+Replace Biz-Online with a custom web app focused on:
+1. Scheduling & calendar
+2. AI chatbot for customers (WhatsApp + website)
+3. Payment processing via hosted payment links/pages
+4. Therapist and room management
 
-**SpaMe2** is a spa management and booking system. The project is in early development.
+## Required stack
+- Next.js (App Router) on Vercel
+- TypeScript
+- Supabase Postgres
+- Supabase Auth
+- Tailwind CSS
+- shadcn/ui where useful
+- Zod for validation
+- Route Handlers / Server Actions for backend flows
+- WhatsApp Business Cloud API
+- Hosted Israeli payment provider with webhook support
 
-## Repository Structure
+## Non-negotiable architecture rules
+- All scheduling logic must run on the server
+- AI must never write arbitrary data directly to the database
+- AI may only call approved server actions
+- Never store raw credit card data
+- Payment webhook is the source of truth for payment success
+- WhatsApp is used for conversation, reminders, confirmations, and payment-link sending only
+- Default timezone: Asia/Jerusalem
+- Default currency: ILS
 
-```
-SpaMe2/
-├── README.md          # Project description
-└── CLAUDE.md          # This file - AI assistant guidelines
-```
+## Core entities
+- Customer
+- Therapist
+- Room
+- Service
+- TherapistService
+- RoomService
+- TherapistAvailabilityRule
+- TherapistTimeOff
+- RoomBlock
+- Booking
+- Payment
+- ConversationThread
+- ConversationMessage
+- AuditLog
 
-## Development Guidelines
+## Business rules
+- Prevent overlapping therapist bookings
+- Prevent overlapping room bookings
+- Only allow therapists qualified for the selected service
+- Only allow rooms compatible with the selected service
+- Booking statuses:
+  - pending_payment
+  - confirmed
+  - cancelled
+  - completed
+  - no_show
+- If payment is required, booking remains pending_payment until webhook confirmation
+- Never fabricate availability
+- Never fabricate payment confirmation
 
-### Git Workflow
+## AI allowed actions only
+- find_available_slots
+- create_tentative_booking
+- create_payment_link
+- reschedule_booking
+- cancel_booking
+- handoff_to_staff
 
-- **Main branch:** `main`
-- Use feature branches for all changes
-- Write clear, descriptive commit messages
-- Keep commits focused and atomic
+## V1 scope only
+Build only:
+- admin auth
+- calendar
+- bookings
+- therapists
+- rooms
+- services
+- customers
+- hosted payment flow
+- WhatsApp/web chat foundation
+- staff inbox
+- audit logs
 
-### Code Conventions
+Do not build in V1:
+- payroll
+- inventory
+- loyalty
+- deep accounting
+- complex memberships
+- multi-branch logic
+- advanced BI dashboards
 
-- Follow consistent naming conventions across the codebase
-- Write self-documenting code; add comments only where logic is non-obvious
-- Keep functions small and single-purpose
+## Engineering rules
+- Keep business logic in services/lib modules, not UI components
+- Validate all inputs with Zod
+- Use environment variables for all secrets
+- Add mock adapters when external credentials are missing
+- Prefer simple, production-sane solutions
+- Keep files modular and readable
+- Add README with setup, migrations, seed, env vars, deploy, webhook config
 
-### When Contributing
+## Current implementation order
+1. Foundations
+2. Admin CRUD
+3. Scheduling core
+4. Payments
+5. Customer booking flow
+6. Chatbot foundation
+7. Staff inbox and polish
 
-1. Create a feature branch from `main`
-2. Make changes and test locally
-3. Commit with a clear message describing the "why"
-4. Push and open a pull request
-
-## Notes for AI Assistants
-
-- This project is in early development - the tech stack and structure are still being established
-- When suggesting implementations, prefer simple and maintainable solutions
-- Do not add unnecessary abstractions or over-engineer for hypothetical future needs
-- Read existing code before modifying it
-- Do not create documentation files unless explicitly requested
+## Definition of done per phase
+A phase is done only when:
+- code compiles
+- schema/migrations are valid
+- key flows work locally
+- edge cases for that phase are handled
+- README is updated if setup changes
