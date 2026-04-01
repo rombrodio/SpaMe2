@@ -1,7 +1,17 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar, Users, BookOpen, MessageSquare } from "lucide-react";
+import { createClient } from "@/lib/supabase/server";
 
-export default function AdminDashboard() {
+export default async function AdminDashboard() {
+  const supabase = await createClient();
+
+  const [therapists, customers, services, rooms] = await Promise.all([
+    supabase.from("therapists").select("id", { count: "exact", head: true }).eq("is_active", true),
+    supabase.from("customers").select("id", { count: "exact", head: true }),
+    supabase.from("services").select("id", { count: "exact", head: true }).eq("is_active", true),
+    supabase.from("rooms").select("id", { count: "exact", head: true }).eq("is_active", true),
+  ]);
+
   return (
     <div>
       <h1 className="text-2xl font-bold">Dashboard</h1>
@@ -11,23 +21,23 @@ export default function AdminDashboard() {
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <DashboardCard
-          title="Today's Bookings"
-          value="--"
-          icon={<Calendar className="h-5 w-5 text-muted-foreground" />}
-        />
-        <DashboardCard
           title="Active Therapists"
-          value="--"
+          value={String(therapists.count ?? 0)}
           icon={<Users className="h-5 w-5 text-muted-foreground" />}
         />
         <DashboardCard
-          title="Pending Payments"
-          value="--"
+          title="Customers"
+          value={String(customers.count ?? 0)}
           icon={<BookOpen className="h-5 w-5 text-muted-foreground" />}
         />
         <DashboardCard
-          title="Open Threads"
-          value="--"
+          title="Active Services"
+          value={String(services.count ?? 0)}
+          icon={<Calendar className="h-5 w-5 text-muted-foreground" />}
+        />
+        <DashboardCard
+          title="Active Rooms"
+          value={String(rooms.count ?? 0)}
           icon={<MessageSquare className="h-5 w-5 text-muted-foreground" />}
         />
       </div>
