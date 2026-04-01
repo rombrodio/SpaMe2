@@ -1,6 +1,8 @@
 "use client";
 
-import { format, parseISO, differenceInMinutes, startOfDay } from "date-fns";
+import { format, differenceInMinutes } from "date-fns";
+import { toZonedTime, formatInTimeZone } from "date-fns-tz";
+import { TZ } from "@/lib/constants";
 import { BookingCard } from "./booking-card";
 
 interface Booking {
@@ -29,11 +31,10 @@ export function DayView({ date, bookings }: DayViewProps) {
     (_, i) => HOUR_START + i
   );
 
-  const dayBookings = bookings.filter((b) => {
-    const bDate = format(new Date(b.start_at), "yyyy-MM-dd");
-    const targetDate = format(date, "yyyy-MM-dd");
-    return bDate === targetDate;
-  });
+  const targetDate = formatInTimeZone(date, TZ, "yyyy-MM-dd");
+  const dayBookings = bookings.filter(
+    (b) => formatInTimeZone(new Date(b.start_at), TZ, "yyyy-MM-dd") === targetDate
+  );
 
   return (
     <div className="relative mt-4 overflow-auto rounded-lg border border-border bg-card">
@@ -54,13 +55,13 @@ export function DayView({ date, bookings }: DayViewProps) {
         {/* Bookings */}
         <div className="absolute left-16 right-2 top-0">
           {dayBookings.map((booking) => {
-            const start = new Date(booking.start_at);
-            const end = new Date(booking.end_at);
+            const startZoned = toZonedTime(new Date(booking.start_at), TZ);
+            const endZoned = toZonedTime(new Date(booking.end_at), TZ);
             const startMinutes =
-              start.getHours() * 60 +
-              start.getMinutes() -
+              startZoned.getHours() * 60 +
+              startZoned.getMinutes() -
               HOUR_START * 60;
-            const durationMinutes = differenceInMinutes(end, start);
+            const durationMinutes = differenceInMinutes(endZoned, startZoned);
             const top = (startMinutes / 60) * HOUR_HEIGHT;
             const height = (durationMinutes / 60) * HOUR_HEIGHT;
 
@@ -96,9 +97,15 @@ function NowIndicator({
   hourHeight: number;
 }) {
   const now = new Date();
-  if (format(now, "yyyy-MM-dd") !== format(date, "yyyy-MM-dd")) return null;
+  const nowZoned = toZonedTime(now, TZ);
+  const dateZoned = toZonedTime(date, TZ);
+  if (
+    formatInTimeZone(now, TZ, "yyyy-MM-dd") !==
+    formatInTimeZone(date, TZ, "yyyy-MM-dd")
+  )
+    return null;
 
-  const minutes = now.getHours() * 60 + now.getMinutes() - hourStart * 60;
+  const minutes = nowZoned.getHours() * 60 + nowZoned.getMinutes() - hourStart * 60;
   const top = (minutes / 60) * hourHeight;
 
   return (

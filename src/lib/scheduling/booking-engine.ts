@@ -7,20 +7,17 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { addMinutes, parseISO, startOfDay, endOfDay } from "date-fns";
 import { validateBookingSlot, findAvailableSlots } from "./availability";
+import { writeAuditLog } from "@/lib/audit";
 import type {
-  BookingConflict,
   AvailableSlot,
   ServiceInfo,
   ExistingBooking,
 } from "./types";
-
-type ActionResult =
-  | { success: true; data: Record<string, unknown> }
-  | { error: Record<string, string[]> };
+import type { ActionResult } from "@/lib/constants";
 
 /**
- * Fetch all data needed to validate a booking at a given time range
- * for a specific therapist/room/service combo.
+ * Fetch all data needed to validate a booking at a given time range.
+ * If `service` is already known, pass it to skip a redundant fetch.
  */
 async function fetchValidationData(
   supabase: SupabaseClient,
@@ -28,10 +25,9 @@ async function fetchValidationData(
   roomId: string,
   serviceId: string,
   rangeStart: Date,
-  rangeEnd: Date
+  rangeEnd: Date,
+  knownService?: { duration_minutes: number; buffer_minutes: number; price_ils: number }
 ) {
-  const dateStr = rangeStart.toISOString().slice(0, 10);
-
   const [
     serviceRes,
     therapistServicesRes,
@@ -41,7 +37,9 @@ async function fetchValidationData(
     roomBlocksRes,
     bookingsRes,
   ] = await Promise.all([
-    supabase.from("services").select("*").eq("id", serviceId).single(),
+    knownService
+      ? Promise.resolve({ data: knownService, error: null })
+      : supabase.from("services").select("*").eq("id", serviceId).single(),
     supabase
       .from("therapist_services")
       .select("service_id")
@@ -73,7 +71,7 @@ async function fetchValidationData(
       .or(
         `and(therapist_id.eq.${therapistId},start_at.lt.${rangeEnd.toISOString()},end_at.gt.${rangeStart.toISOString()}),and(room_id.eq.${roomId},start_at.lt.${rangeEnd.toISOString()},end_at.gt.${rangeStart.toISOString()})`
       ),
-  ]);
+  ] as any);
 
   if (serviceRes.error) throw new Error(serviceRes.error.message);
 
@@ -92,6 +90,8 @@ async function fetchValidationData(
   };
 }
 
+const TERMINAL_STATUSES = ["cancelled", "completed", "no_show"];
+
 /**
  * Create a new booking with full validation.
  */
@@ -109,28 +109,70 @@ export async function createBooking(
   }
 ): Promise<ActionResult> {
   const startDate = parseISO(input.start_at);
+  if (isNaN(startDate.getTime())) {
+    return { error: { start_at: ["Invalid date/time format"] } };
+  }
 
   // Fetch service to compute end time
   const { data: service, error: svcErr } = await supabase
     .from("services")
-    .select("duration_minutes, buffer_minutes, price_ils")
+    .select("duration_minutes, buffer_minutes, price_ils, is_active")
     .eq("id", input.service_id)
     .single();
   if (svcErr || !service) {
     return { error: { service_id: ["Service not found"] } };
   }
+  if (!service.is_active) {
+    return { error: { service_id: ["Service is not active"] } };
+  }
+
+  // Validate therapist is active, room is active, customer exists — in parallel
+  const [therapistRes, roomRes, customerRes] = await Promise.all([
+    supabase
+      .from("therapists")
+      .select("id, is_active")
+      .eq("id", input.therapist_id)
+      .single(),
+    supabase
+      .from("rooms")
+      .select("id, is_active")
+      .eq("id", input.room_id)
+      .single(),
+    supabase
+      .from("customers")
+      .select("id")
+      .eq("id", input.customer_id)
+      .single(),
+  ]);
+
+  if (therapistRes.error || !therapistRes.data) {
+    return { error: { therapist_id: ["Therapist not found"] } };
+  }
+  if (!therapistRes.data.is_active) {
+    return { error: { therapist_id: ["Therapist is not active"] } };
+  }
+  if (roomRes.error || !roomRes.data) {
+    return { error: { room_id: ["Room not found"] } };
+  }
+  if (!roomRes.data.is_active) {
+    return { error: { room_id: ["Room is not active"] } };
+  }
+  if (customerRes.error || !customerRes.data) {
+    return { error: { customer_id: ["Customer not found"] } };
+  }
 
   const totalMinutes = service.duration_minutes + service.buffer_minutes;
   const endDate = addMinutes(startDate, totalMinutes);
 
-  // Fetch all validation data
+  // Fetch validation data, reusing the already-fetched service
   const valData = await fetchValidationData(
     supabase,
     input.therapist_id,
     input.room_id,
     input.service_id,
     startDate,
-    endDate
+    endDate,
+    service
   );
 
   // Run conflict checks
@@ -173,7 +215,7 @@ export async function createBooking(
     .single();
 
   if (insertErr) {
-    // The DB exclusion constraints are our safety net
+    // The DB exclusion constraints are our safety net for concurrent writes
     if (insertErr.message.includes("no_therapist_overlap")) {
       return { error: { _form: ["Therapist already has a booking at this time (concurrent conflict)"] } };
     }
@@ -182,6 +224,14 @@ export async function createBooking(
     }
     return { error: { _form: [insertErr.message] } };
   }
+
+  writeAuditLog({
+    userId: input.created_by,
+    action: "create",
+    entityType: "booking",
+    entityId: booking.id,
+    newData: booking,
+  });
 
   return { success: true, data: booking };
 }
@@ -209,16 +259,16 @@ export async function rescheduleBooking(
     return { error: { _form: ["Booking not found"] } };
   }
 
-  if (existing.status === "cancelled") {
-    return { error: { _form: ["Cannot reschedule a cancelled booking"] } };
-  }
-  if (existing.status === "completed") {
-    return { error: { _form: ["Cannot reschedule a completed booking"] } };
+  if (TERMINAL_STATUSES.includes(existing.status)) {
+    return { error: { _form: [`Cannot reschedule a ${existing.status.replace("_", " ")} booking`] } };
   }
 
   const therapistId = input.new_therapist_id || existing.therapist_id;
   const roomId = input.new_room_id || existing.room_id;
   const startDate = parseISO(input.new_start_at);
+  if (isNaN(startDate.getTime())) {
+    return { error: { new_start_at: ["Invalid date/time format"] } };
+  }
 
   // Get service info for duration
   const { data: service, error: svcErr } = await supabase
@@ -240,7 +290,8 @@ export async function rescheduleBooking(
     roomId,
     existing.service_id,
     startDate,
-    endDate
+    endDate,
+    service
   );
 
   const conflicts = validateBookingSlot({
@@ -287,6 +338,15 @@ export async function rescheduleBooking(
     return { error: { _form: [updateErr.message] } };
   }
 
+  writeAuditLog({
+    userId: null,
+    action: "update",
+    entityType: "booking",
+    entityId: input.booking_id,
+    oldData: { start_at: existing.start_at, end_at: existing.end_at, therapist_id: existing.therapist_id, room_id: existing.room_id },
+    newData: { start_at: updated.start_at, end_at: updated.end_at, therapist_id: updated.therapist_id, room_id: updated.room_id },
+  });
+
   return { success: true, data: updated };
 }
 
@@ -296,7 +356,8 @@ export async function rescheduleBooking(
 export async function cancelBooking(
   supabase: SupabaseClient,
   bookingId: string,
-  cancelReason?: string
+  cancelReason?: string,
+  userId?: string | null
 ): Promise<ActionResult> {
   const { data: existing, error: fetchErr } = await supabase
     .from("bookings")
@@ -308,11 +369,8 @@ export async function cancelBooking(
     return { error: { _form: ["Booking not found"] } };
   }
 
-  if (existing.status === "cancelled") {
-    return { error: { _form: ["Booking is already cancelled"] } };
-  }
-  if (existing.status === "completed") {
-    return { error: { _form: ["Cannot cancel a completed booking"] } };
+  if (TERMINAL_STATUSES.includes(existing.status)) {
+    return { error: { _form: [`Cannot cancel a ${existing.status.replace("_", " ")} booking`] } };
   }
 
   const { data: updated, error: updateErr } = await supabase
@@ -330,6 +388,15 @@ export async function cancelBooking(
     return { error: { _form: [updateErr.message] } };
   }
 
+  writeAuditLog({
+    userId,
+    action: "status_change",
+    entityType: "booking",
+    entityId: bookingId,
+    oldData: { status: existing.status },
+    newData: { status: "cancelled", cancel_reason: cancelReason || null },
+  });
+
   return { success: true, data: updated };
 }
 
@@ -339,7 +406,8 @@ export async function cancelBooking(
 export async function updateBookingStatus(
   supabase: SupabaseClient,
   bookingId: string,
-  newStatus: string
+  newStatus: string,
+  userId?: string | null
 ): Promise<ActionResult> {
   const validTransitions: Record<string, string[]> = {
     pending_payment: ["confirmed", "cancelled"],
@@ -382,6 +450,15 @@ export async function updateBookingStatus(
   if (updateErr) {
     return { error: { _form: [updateErr.message] } };
   }
+
+  writeAuditLog({
+    userId,
+    action: "status_change",
+    entityType: "booking",
+    entityId: bookingId,
+    oldData: { status: existing.status },
+    newData: { status: newStatus },
+  });
 
   return { success: true, data: updated };
 }
@@ -444,12 +521,13 @@ export async function findSlots(
       supabase.from("room_blocks").select("*")
         .lte("start_at", dayEnd.toISOString())
         .gte("end_at", dayStart.toISOString()),
+      // Use overlap logic: start_at < dayEnd AND end_at > dayStart
       supabase
         .from("bookings")
         .select("id, therapist_id, room_id, service_id, start_at, end_at, status")
         .neq("status", "cancelled")
-        .gte("start_at", dayStart.toISOString())
-        .lte("start_at", dayEnd.toISOString()),
+        .lt("start_at", dayEnd.toISOString())
+        .gt("end_at", dayStart.toISOString()),
     ]);
 
   // Build therapist data

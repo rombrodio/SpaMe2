@@ -9,7 +9,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { StatusBadge } from "@/components/admin/calendar/booking-card";
-import { format } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
+import { TZ } from "@/lib/constants";
 import { Plus } from "lucide-react";
 
 export default async function BookingsPage() {
@@ -52,10 +53,10 @@ export default async function BookingsPage() {
                   {bookings.map((booking: any) => (
                     <tr key={booking.id} className="border-b last:border-0">
                       <td className="py-3">
-                        <div>{format(new Date(booking.start_at), "MMM d, yyyy")}</div>
+                        <div>{formatInTimeZone(new Date(booking.start_at), TZ, "MMM d, yyyy")}</div>
                         <div className="text-muted-foreground">
-                          {format(new Date(booking.start_at), "HH:mm")}–
-                          {format(new Date(booking.end_at), "HH:mm")}
+                          {formatInTimeZone(new Date(booking.start_at), TZ, "HH:mm")}–
+                          {formatInTimeZone(new Date(booking.end_at), TZ, "HH:mm")}
                         </div>
                       </td>
                       <td className="py-3">{booking.customers?.full_name || "-"}</td>

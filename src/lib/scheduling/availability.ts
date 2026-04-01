@@ -11,10 +11,10 @@ import {
   isAfter,
   isEqual,
   format,
-  parseISO,
   areIntervalsOverlapping,
 } from "date-fns";
-import { toZonedTime } from "date-fns-tz";
+import { toZonedTime, fromZonedTime } from "date-fns-tz";
+import { TZ } from "@/lib/constants";
 import type {
   AvailabilityRule,
   TimeOff,
@@ -25,7 +25,6 @@ import type {
   BookingConflict,
 } from "./types";
 
-const TZ = "Asia/Jerusalem";
 const SLOT_INCREMENT_MINUTES = 15;
 
 const DAY_MAP: Record<string, number> = {
@@ -48,19 +47,45 @@ function getJerusalemDayName(date: Date): string {
 }
 
 /**
- * Build Date objects from a date + HH:MM time string in Jerusalem timezone.
- * We construct an ISO string with the Jerusalem offset and parse it.
+ * Build a UTC Date from a date + HH:MM time string interpreted in Jerusalem timezone.
+ * e.g. date=2025-01-01 (Wed), timeStr="09:00" → UTC Date for 09:00 Jerusalem on that day.
  */
 function timeToDate(date: Date, timeStr: string): Date {
   const zoned = toZonedTime(date, TZ);
   const dateStr = format(zoned, "yyyy-MM-dd");
-  // Parse as an ISO string with the time portion
-  return parseISO(`${dateStr}T${timeStr}:00`);
+  return fromZonedTime(`${dateStr}T${timeStr}:00`, TZ);
+}
+
+/**
+ * Merge overlapping or adjacent time windows into a minimal set.
+ * Input must be sorted by start or this function sorts it.
+ */
+function mergeWindows(
+  windows: Array<{ start: Date; end: Date }>
+): Array<{ start: Date; end: Date }> {
+  if (windows.length <= 1) return windows;
+
+  const sorted = [...windows].sort(
+    (a, b) => a.start.getTime() - b.start.getTime()
+  );
+  const merged: Array<{ start: Date; end: Date }> = [sorted[0]];
+
+  for (let i = 1; i < sorted.length; i++) {
+    const last = merged[merged.length - 1];
+    const curr = sorted[i];
+    // Overlapping or adjacent: curr.start <= last.end
+    if (curr.start.getTime() <= last.end.getTime()) {
+      last.end = isAfter(curr.end, last.end) ? curr.end : last.end;
+    } else {
+      merged.push(curr);
+    }
+  }
+  return merged;
 }
 
 /**
  * Get availability windows for a therapist on a given date.
- * Returns intervals [start, end] in UTC-equivalent dates.
+ * Returns merged intervals [start, end] as UTC Dates.
  */
 export function getTherapistWindows(
   date: Date,
@@ -78,11 +103,13 @@ export function getTherapistWindows(
     return true;
   });
 
-  // Convert rules to time windows
-  let windows = dayRules.map((r) => ({
-    start: timeToDate(date, r.start_time),
-    end: timeToDate(date, r.end_time),
-  }));
+  // Convert rules to time windows, then merge overlapping
+  let windows = mergeWindows(
+    dayRules.map((r) => ({
+      start: timeToDate(date, r.start_time),
+      end: timeToDate(date, r.end_time),
+    }))
+  );
 
   // Subtract time-off periods
   for (const off of timeOffs) {
@@ -316,8 +343,6 @@ export function findAvailableSlots(params: {
   const { date, service, therapists, rooms, existingBookings, filterTherapistId } = params;
   const totalMinutes = service.duration_minutes + service.buffer_minutes;
   const slots: AvailableSlot[] = [];
-  const dayStart = startOfDay(toZonedTime(date, TZ));
-  const dayEnd = endOfDay(toZonedTime(date, TZ));
 
   // Filter therapists who can perform this service
   const qualifiedTherapists = therapists.filter((t) => {

@@ -1,6 +1,8 @@
 "use client";
 
-import { format, addDays, startOfWeek, isSameDay } from "date-fns";
+import { addDays, startOfWeek, isSameDay } from "date-fns";
+import { toZonedTime, formatInTimeZone } from "date-fns-tz";
+import { TZ } from "@/lib/constants";
 import { BookingCard } from "./booking-card";
 
 interface Booking {
@@ -46,12 +48,12 @@ export function WeekView({ date, bookings }: WeekViewProps) {
               className={`border-r border-border px-2 py-2 text-center text-sm last:border-r-0 ${isToday ? "bg-primary/5" : ""}`}
             >
               <div className="text-muted-foreground">
-                {format(day, "EEE")}
+                {formatInTimeZone(day, TZ, "EEE")}
               </div>
               <div
                 className={`text-lg font-semibold ${isToday ? "text-primary" : ""}`}
               >
-                {format(day, "d")}
+                {formatInTimeZone(day, TZ, "d")}
               </div>
             </div>
           );
@@ -80,9 +82,10 @@ export function WeekView({ date, bookings }: WeekViewProps) {
 
         {/* Day columns */}
         {days.map((day) => {
-          const dayStr = format(day, "yyyy-MM-dd");
+          const dayStr = formatInTimeZone(day, TZ, "yyyy-MM-dd");
           const dayBookings = bookings.filter(
-            (b) => format(new Date(b.start_at), "yyyy-MM-dd") === dayStr
+            (b) =>
+              formatInTimeZone(new Date(b.start_at), TZ, "yyyy-MM-dd") === dayStr
           );
 
           return (
@@ -98,14 +101,14 @@ export function WeekView({ date, bookings }: WeekViewProps) {
 
               {/* Bookings */}
               {dayBookings.map((booking) => {
-                const start = new Date(booking.start_at);
-                const end = new Date(booking.end_at);
+                const startZoned = toZonedTime(new Date(booking.start_at), TZ);
+                const endZoned = toZonedTime(new Date(booking.end_at), TZ);
                 const startMinutes =
-                  start.getHours() * 60 +
-                  start.getMinutes() -
+                  startZoned.getHours() * 60 +
+                  startZoned.getMinutes() -
                   HOUR_START * 60;
                 const durationMinutes =
-                  (end.getTime() - start.getTime()) / 60000;
+                  (endZoned.getTime() - startZoned.getTime()) / 60000;
                 const top = (startMinutes / 60) * HOUR_HEIGHT;
                 const height = (durationMinutes / 60) * HOUR_HEIGHT;
 

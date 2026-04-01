@@ -1,7 +1,8 @@
 "use client";
 
-import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
+import { formatInTimeZone } from "date-fns-tz";
+import { TZ } from "@/lib/constants";
 import Link from "next/link";
 
 interface BookingCardProps {
@@ -28,7 +29,13 @@ const statusColors: Record<string, string> = {
 
 export function BookingCard({ booking, compact }: BookingCardProps) {
   const therapistColor = booking.therapists?.color || "#6366f1";
-  const timeStr = `${format(new Date(booking.start_at), "HH:mm")}–${format(new Date(booking.end_at), "HH:mm")}`;
+  const startTime = formatInTimeZone(new Date(booking.start_at), TZ, "HH:mm");
+  // Display service end time (start + duration), not the DB end_at which includes buffer
+  const serviceEndMs =
+    new Date(booking.start_at).getTime() +
+    (booking.services?.duration_minutes ?? 0) * 60000;
+  const endTime = formatInTimeZone(new Date(serviceEndMs), TZ, "HH:mm");
+  const timeStr = `${startTime}\u2013${endTime}`;
 
   return (
     <Link

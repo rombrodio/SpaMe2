@@ -15,7 +15,9 @@ import {
   rescheduleBookingAction,
   updateBookingStatusAction,
 } from "@/lib/actions/bookings";
-import { format } from "date-fns";
+import { addMinutes } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
+import { TZ } from "@/lib/constants";
 
 interface BookingDetailProps {
   booking: {
@@ -49,7 +51,7 @@ export function BookingDetail({ booking }: BookingDetailProps) {
   const [showReschedule, setShowReschedule] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [newStartAt, setNewStartAt] = useState(
-    format(new Date(booking.start_at), "yyyy-MM-dd'T'HH:mm")
+    formatInTimeZone(new Date(booking.start_at), TZ, "yyyy-MM-dd'T'HH:mm")
   );
 
   const isCancellable =
@@ -148,11 +150,15 @@ export function BookingDetail({ booking }: BookingDetailProps) {
             <div>
               <dt className="text-sm text-muted-foreground">Date & Time</dt>
               <dd className="font-medium">
-                {format(new Date(booking.start_at), "EEEE, MMM d, yyyy")}
+                {formatInTimeZone(new Date(booking.start_at), TZ, "EEEE, MMM d, yyyy")}
               </dd>
               <dd className="text-sm text-muted-foreground">
-                {format(new Date(booking.start_at), "HH:mm")}–
-                {format(new Date(booking.end_at), "HH:mm")}
+                {formatInTimeZone(new Date(booking.start_at), TZ, "HH:mm")}–
+                {formatInTimeZone(
+                  addMinutes(new Date(booking.start_at), booking.services?.duration_minutes ?? 0),
+                  TZ,
+                  "HH:mm"
+                )}
               </dd>
             </div>
             <div>
@@ -178,7 +184,7 @@ export function BookingDetail({ booking }: BookingDetailProps) {
             <div>
               <dt className="text-sm text-muted-foreground">Created</dt>
               <dd className="text-sm">
-                {format(new Date(booking.created_at), "MMM d, yyyy HH:mm")}
+                {formatInTimeZone(new Date(booking.created_at), TZ, "MMM d, yyyy HH:mm")}
               </dd>
             </div>
           </dl>

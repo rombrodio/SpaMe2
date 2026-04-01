@@ -2,10 +2,13 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 import {
   createBookingSchema,
   cancelBookingSchema,
   rescheduleBookingSchema,
+  updateBookingStatusSchema,
+  findSlotsSchema,
 } from "@/lib/schemas/booking";
 import {
   createBooking as engineCreate,
@@ -14,7 +17,7 @@ import {
   updateBookingStatus as engineUpdateStatus,
   findSlots as engineFindSlots,
 } from "@/lib/scheduling/booking-engine";
-import { parseISO, startOfDay, endOfDay } from "date-fns";
+import { parseISO } from "date-fns";
 
 // ── Booking Queries ──
 
@@ -134,10 +137,15 @@ export async function cancelBookingAction(formData: FormData) {
   }
 
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   const result = await engineCancel(
     supabase,
     parsed.data.booking_id,
-    parsed.data.cancel_reason || undefined
+    parsed.data.cancel_reason || undefined,
+    user?.id
   );
 
   if ("error" in result) return result;
@@ -151,8 +159,26 @@ export async function updateBookingStatusAction(
   bookingId: string,
   newStatus: string
 ) {
+  const parsed = updateBookingStatusSchema.safeParse({
+    booking_id: bookingId,
+    new_status: newStatus,
+  });
+
+  if (!parsed.success) {
+    return { error: parsed.error.flatten().fieldErrors };
+  }
+
   const supabase = await createClient();
-  const result = await engineUpdateStatus(supabase, bookingId, newStatus);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const result = await engineUpdateStatus(
+    supabase,
+    parsed.data.booking_id,
+    parsed.data.new_status,
+    user?.id
+  );
 
   if ("error" in result) return result;
 
@@ -166,9 +192,24 @@ export async function findAvailableSlotsAction(
   dateStr: string,
   therapistId?: string
 ) {
+  const parsed = findSlotsSchema.safeParse({
+    service_id: serviceId,
+    date: dateStr,
+    therapist_id: therapistId,
+  });
+
+  if (!parsed.success) {
+    return [];
+  }
+
   const supabase = await createClient();
-  const date = parseISO(dateStr);
-  const slots = await engineFindSlots(supabase, serviceId, date, therapistId);
+  const date = parseISO(parsed.data.date);
+  const slots = await engineFindSlots(
+    supabase,
+    parsed.data.service_id,
+    date,
+    parsed.data.therapist_id
+  );
 
   // Serialize dates for client
   return slots.map((s) => ({
@@ -213,6 +254,11 @@ export async function getBookingFormData() {
  * Get therapists qualified for a service and rooms compatible with it.
  */
 export async function getServiceConstraints(serviceId: string) {
+  const uuidResult = z.string().uuid().safeParse(serviceId);
+  if (!uuidResult.success) {
+    return { therapistIds: [], roomIds: [] };
+  }
+
   const supabase = await createClient();
   const [therapistSvc, roomSvc] = await Promise.all([
     supabase
