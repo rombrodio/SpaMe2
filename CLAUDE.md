@@ -109,6 +109,37 @@ Do not build in V1:
 6. Chatbot foundation
 7. Staff inbox and polish
 
+## Plan Management
+
+- The project plan lives in `docs/plans/`. At the START of every session, read all
+  plan files in that directory before doing anything else.
+- The plan is the single source of truth for architecture decisions, phased
+  implementation order, schema design, and module structure.
+- Do not deviate from the plan without explicitly discussing the change with the
+  user and getting approval first.
+- If the plan needs to be updated (e.g. scope change, new tradeoff discovered),
+  update the plan file itself so it stays current for future sessions. do that after confirming with the user
+
+## Session Workflow
+
+- At the start of each session, identify which phase/branch you are on by
+  reading the current git branch name and cross-referencing it with the plan.
+- Summarize what was completed in prior phases (by reading the plan's status
+  markers or checking merged branches) and what remains for the current phase.
+
+## End-of-Session Checklist (MANDATORY before any push or PR)
+
+Before pushing code or creating a pull request, you MUST walk through this
+checklist with the user and get explicit approval for each item:
+
+1. List every task/deliverable in the current phase from the plan. Include a non short non technical explanation and outcome.
+2. For each task, confirm: was it implemented? was it tested? Show evidence
+   (test output, manual verification, etc.).
+3. Flag anything that was skipped, deferred, or partially done.
+4. Ask the user: "All phase objectives are accounted for above. Do you approve
+   pushing and opening a PR?" Wait for explicit "yes" before proceeding.
+5. Do NOT push or create a PR without this approval.
+
 ## Definition of done per phase
 A phase is done only when:
 - code compiles
