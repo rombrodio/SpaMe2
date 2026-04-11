@@ -70,6 +70,12 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  if (pathname === "/set-password" && !authedUser && isGet) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    return NextResponse.redirect(url);
+  }
+
   if (pathname === "/login" && authedUser && isGet) {
     const { data: profile } = await supabase
       .from("profiles")
@@ -86,5 +92,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/therapist/:path*", "/login"],
+  matcher: ["/admin/:path*", "/therapist/:path*", "/login", "/set-password"],
 };

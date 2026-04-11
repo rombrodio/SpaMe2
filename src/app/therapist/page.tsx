@@ -2,6 +2,7 @@ import { getBookings } from "@/lib/actions/bookings";
 import { getCurrentTherapistId } from "@/lib/auth/current-therapist";
 import { StatusBadge } from "@/components/admin/calendar/booking-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ChangePasswordCard } from "@/components/therapist/change-password-card";
 import { formatInTimeZone } from "date-fns-tz";
 import { TZ } from "@/lib/constants";
 
@@ -104,6 +105,10 @@ export default async function TherapistDashboard() {
           )}
         </CardContent>
       </Card>
+
+      <div className="mt-8">
+        <ChangePasswordCard />
+      </div>
     </div>
   );
 }

@@ -56,9 +56,11 @@ async function sendTherapistInvite(
       return { ok: true };
     }
 
+    const siteUrl = process.env.APP_URL || "http://localhost:3000";
     const { data: inviteData, error: inviteError } =
       await admin.auth.admin.inviteUserByEmail(email, {
         data: { therapist_id: therapistId },
+        redirectTo: `${siteUrl}/callback?next=/set-password`,
       });
 
     if (inviteError || !inviteData?.user) {
@@ -148,10 +150,12 @@ export async function createTherapist(formData: FormData) {
 }
 
 /**
- * Re-send an invite email for an existing therapist that doesn't yet have
- * a linked Supabase Auth user. Safe to call even if an invite was sent
- * previously but the user never accepted — Supabase will send a new magic
- * link.
+ * Re-send an invite / password-setup email for a therapist.
+ *
+ * If the therapist already has a confirmed auth user (they clicked the
+ * original invite but never set a password), we send a password-recovery
+ * email instead of a new invite — Supabase won't re-invite a confirmed
+ * user, but recovery works and lands them on /set-password.
  */
 export async function resendInvite(therapistId: string) {
   const supabase = await createClient();
@@ -174,9 +178,32 @@ export async function resendInvite(therapistId: string) {
     };
   }
 
-  const result = await sendTherapistInvite(therapistId, therapist.email);
-  if (!result.ok) {
-    return { error: { _form: [result.message] } };
+  const admin = createAdminClient();
+
+  // Check if the therapist already has a linked & confirmed auth user.
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("id")
+    .eq("therapist_id", therapistId)
+    .maybeSingle();
+
+  if (profile) {
+    // User already confirmed their email (clicked original invite).
+    // Server-side recovery emails don't work with Supabase PKCE because
+    // the code_verifier must live in the therapist's browser cookies.
+    // Return a message telling the admin to direct them to "Forgot password?".
+    return {
+      success: true,
+      warning:
+        "This therapist already accepted their invite. " +
+        'Ask them to use "Forgot password?" on the login page to set their password.',
+    };
+  } else {
+    // No auth user yet — send the original invite flow.
+    const result = await sendTherapistInvite(therapistId, therapist.email);
+    if (!result.ok) {
+      return { error: { _form: [result.message] } };
+    }
   }
 
   writeAuditLog({
