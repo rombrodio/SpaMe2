@@ -1,6 +1,6 @@
 "use client";
 
-import { format, differenceInMinutes } from "date-fns";
+import { differenceInMinutes } from "date-fns";
 import { toZonedTime, formatInTimeZone } from "date-fns-tz";
 import { TZ } from "@/lib/constants";
 import { BookingCard } from "./booking-card";
@@ -24,6 +24,80 @@ interface DayViewProps {
 const HOUR_START = 7;
 const HOUR_END = 22;
 const HOUR_HEIGHT = 64; // px per hour
+const COL_PAD = 2;
+
+interface LayoutInfo {
+  booking: Booking;
+  top: number;
+  height: number;
+  startMin: number;
+  endMin: number;
+  col: number;
+  totalCols: number;
+}
+
+function layoutOverlappingBookings(
+  dayBookings: Booking[]
+): LayoutInfo[] {
+  const items: LayoutInfo[] = dayBookings.map((booking) => {
+    const startZoned = toZonedTime(new Date(booking.start_at), TZ);
+    const endZoned = toZonedTime(new Date(booking.end_at), TZ);
+    const startMin =
+      startZoned.getHours() * 60 + startZoned.getMinutes() - HOUR_START * 60;
+    const durationMin = differenceInMinutes(endZoned, startZoned);
+    return {
+      booking,
+      top: Math.max(0, (startMin / 60) * HOUR_HEIGHT),
+      height: Math.max(24, (durationMin / 60) * HOUR_HEIGHT),
+      startMin,
+      endMin: startMin + durationMin,
+      col: 0,
+      totalCols: 1,
+    };
+  });
+
+  items.sort((a, b) => a.startMin - b.startMin || a.endMin - b.endMin);
+
+  const clusters: LayoutInfo[][] = [];
+  for (const item of items) {
+    let placed = false;
+    for (const cluster of clusters) {
+      if (cluster.some((c) => c.startMin < item.endMin && c.endMin > item.startMin)) {
+        cluster.push(item);
+        placed = true;
+        break;
+      }
+    }
+    if (!placed) {
+      clusters.push([item]);
+    }
+  }
+
+  for (const cluster of clusters) {
+    const columns: LayoutInfo[][] = [];
+    for (const item of cluster) {
+      let placed = false;
+      for (let c = 0; c < columns.length; c++) {
+        const last = columns[c][columns[c].length - 1];
+        if (last.endMin <= item.startMin) {
+          columns[c].push(item);
+          item.col = c;
+          placed = true;
+          break;
+        }
+      }
+      if (!placed) {
+        item.col = columns.length;
+        columns.push([item]);
+      }
+    }
+    for (const item of cluster) {
+      item.totalCols = columns.length;
+    }
+  }
+
+  return items;
+}
 
 export function DayView({ date, bookings }: DayViewProps) {
   const hours = Array.from(
@@ -35,6 +109,7 @@ export function DayView({ date, bookings }: DayViewProps) {
   const dayBookings = bookings.filter(
     (b) => formatInTimeZone(new Date(b.start_at), TZ, "yyyy-MM-dd") === targetDate
   );
+  const layout = layoutOverlappingBookings(dayBookings);
 
   return (
     <div className="relative mt-4 overflow-auto rounded-lg border border-border bg-card">
@@ -54,24 +129,19 @@ export function DayView({ date, bookings }: DayViewProps) {
 
         {/* Bookings */}
         <div className="absolute left-16 right-2 top-0">
-          {dayBookings.map((booking) => {
-            const startZoned = toZonedTime(new Date(booking.start_at), TZ);
-            const endZoned = toZonedTime(new Date(booking.end_at), TZ);
-            const startMinutes =
-              startZoned.getHours() * 60 +
-              startZoned.getMinutes() -
-              HOUR_START * 60;
-            const durationMinutes = differenceInMinutes(endZoned, startZoned);
-            const top = (startMinutes / 60) * HOUR_HEIGHT;
-            const height = (durationMinutes / 60) * HOUR_HEIGHT;
+          {layout.map(({ booking, top, height, col, totalCols }) => {
+            const widthPct = 100 / totalCols;
+            const leftPct = col * widthPct;
 
             return (
               <div
                 key={booking.id}
-                className="absolute left-0 right-0"
+                className="absolute overflow-hidden"
                 style={{
-                  top: Math.max(0, top),
-                  height: Math.max(24, height),
+                  top,
+                  height,
+                  left: `calc(${leftPct}% + ${COL_PAD}px)`,
+                  width: `calc(${widthPct}% - ${COL_PAD * 2}px)`,
                 }}
               >
                 <BookingCard booking={booking} />

@@ -254,7 +254,7 @@ export async function getBookingFormData() {
  * Get therapists qualified for a service and rooms compatible with it.
  */
 export async function getServiceConstraints(serviceId: string) {
-  const uuidResult = z.string().uuid().safeParse(serviceId);
+  const uuidResult = z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i).safeParse(serviceId);
   if (!uuidResult.success) {
     return { therapistIds: [], roomIds: [] };
   }

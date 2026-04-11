@@ -24,9 +24,82 @@ interface WeekViewProps {
 const HOUR_START = 7;
 const HOUR_END = 22;
 const HOUR_HEIGHT = 48;
+const COL_PAD = 2; // px padding between cards
+
+interface LayoutInfo {
+  booking: Booking;
+  top: number;
+  height: number;
+  startMin: number;
+  endMin: number;
+  col: number;
+  totalCols: number;
+}
+
+function layoutOverlappingBookings(
+  dayBookings: Booking[]
+): LayoutInfo[] {
+  const items: LayoutInfo[] = dayBookings.map((booking) => {
+    const startZoned = toZonedTime(new Date(booking.start_at), TZ);
+    const endZoned = toZonedTime(new Date(booking.end_at), TZ);
+    const startMin =
+      startZoned.getHours() * 60 + startZoned.getMinutes() - HOUR_START * 60;
+    const durationMin = (endZoned.getTime() - startZoned.getTime()) / 60000;
+    return {
+      booking,
+      top: Math.max(0, (startMin / 60) * HOUR_HEIGHT),
+      height: Math.max(20, (durationMin / 60) * HOUR_HEIGHT),
+      startMin,
+      endMin: startMin + durationMin,
+      col: 0,
+      totalCols: 1,
+    };
+  });
+
+  items.sort((a, b) => a.startMin - b.startMin || a.endMin - b.endMin);
+
+  const clusters: LayoutInfo[][] = [];
+  for (const item of items) {
+    let placed = false;
+    for (const cluster of clusters) {
+      if (cluster.some((c) => c.startMin < item.endMin && c.endMin > item.startMin)) {
+        cluster.push(item);
+        placed = true;
+        break;
+      }
+    }
+    if (!placed) {
+      clusters.push([item]);
+    }
+  }
+
+  for (const cluster of clusters) {
+    const columns: LayoutInfo[][] = [];
+    for (const item of cluster) {
+      let placed = false;
+      for (let c = 0; c < columns.length; c++) {
+        const last = columns[c][columns[c].length - 1];
+        if (last.endMin <= item.startMin) {
+          columns[c].push(item);
+          item.col = c;
+          placed = true;
+          break;
+        }
+      }
+      if (!placed) {
+        item.col = columns.length;
+        columns.push([item]);
+      }
+    }
+    for (const item of cluster) {
+      item.totalCols = columns.length;
+    }
+  }
+
+  return items;
+}
 
 export function WeekView({ date, bookings }: WeekViewProps) {
-  // Week starts on Sunday for Israel
   const weekStart = startOfWeek(date, { weekStartsOn: 0 });
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
   const hours = Array.from(
@@ -87,6 +160,7 @@ export function WeekView({ date, bookings }: WeekViewProps) {
             (b) =>
               formatInTimeZone(new Date(b.start_at), TZ, "yyyy-MM-dd") === dayStr
           );
+          const layout = layoutOverlappingBookings(dayBookings);
 
           return (
             <div key={dayStr} className="relative border-r border-border last:border-r-0">
@@ -100,25 +174,19 @@ export function WeekView({ date, bookings }: WeekViewProps) {
               ))}
 
               {/* Bookings */}
-              {dayBookings.map((booking) => {
-                const startZoned = toZonedTime(new Date(booking.start_at), TZ);
-                const endZoned = toZonedTime(new Date(booking.end_at), TZ);
-                const startMinutes =
-                  startZoned.getHours() * 60 +
-                  startZoned.getMinutes() -
-                  HOUR_START * 60;
-                const durationMinutes =
-                  (endZoned.getTime() - startZoned.getTime()) / 60000;
-                const top = (startMinutes / 60) * HOUR_HEIGHT;
-                const height = (durationMinutes / 60) * HOUR_HEIGHT;
+              {layout.map(({ booking, top, height, col, totalCols }) => {
+                const widthPct = 100 / totalCols;
+                const leftPct = col * widthPct;
 
                 return (
                   <div
                     key={booking.id}
-                    className="absolute left-0.5 right-0.5"
+                    className="absolute overflow-hidden"
                     style={{
-                      top: Math.max(0, top),
-                      height: Math.max(20, height),
+                      top,
+                      height,
+                      left: `calc(${leftPct}% + ${COL_PAD}px)`,
+                      width: `calc(${widthPct}% - ${COL_PAD * 2}px)`,
                     }}
                   >
                     <BookingCard booking={booking} compact />

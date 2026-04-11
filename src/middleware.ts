@@ -14,7 +14,7 @@ export async function middleware(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) =>
+          cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
           );
           supabaseResponse = NextResponse.next({ request });
@@ -26,65 +26,56 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
   const pathname = request.nextUrl.pathname;
-
-  // Protected routes require authentication
   const isProtected =
     pathname.startsWith("/admin") || pathname.startsWith("/therapist");
+  const isGet = request.method === "GET";
 
-  if (isProtected && !user) {
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  const authedUser = userError ? null : user;
+
+  if (isProtected && !authedUser) {
+    if (!isGet) return supabaseResponse;
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("next", pathname);
     return NextResponse.redirect(url);
   }
 
-  // Role-based routing: fetch profile and check role
-  if (isProtected && user) {
-    const { data: profile } = await supabase
+  if (isProtected && authedUser) {
+    const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("role")
-      .eq("id", user.id)
-      .single();
+      .eq("id", authedUser.id)
+      .maybeSingle();
 
-    const role = profile?.role;
+    const role = profileError ? null : profile?.role;
 
-    // /admin requires super_admin
     if (pathname.startsWith("/admin") && role !== "super_admin") {
-      if (role === "therapist") {
-        const url = request.nextUrl.clone();
-        url.pathname = "/therapist";
-        return NextResponse.redirect(url);
-      }
+      if (!isGet) return supabaseResponse;
       const url = request.nextUrl.clone();
-      url.pathname = "/login";
+      url.pathname = role === "therapist" ? "/therapist" : "/login";
       return NextResponse.redirect(url);
     }
 
-    // /therapist requires therapist role
     if (pathname.startsWith("/therapist") && role !== "therapist") {
-      if (role === "super_admin") {
-        const url = request.nextUrl.clone();
-        url.pathname = "/admin";
-        return NextResponse.redirect(url);
-      }
+      if (!isGet) return supabaseResponse;
       const url = request.nextUrl.clone();
-      url.pathname = "/login";
+      url.pathname = role === "super_admin" ? "/admin" : "/login";
       return NextResponse.redirect(url);
     }
   }
 
-  // Redirect authenticated users away from login
-  if (pathname === "/login" && user) {
+  if (pathname === "/login" && authedUser && isGet) {
     const { data: profile } = await supabase
       .from("profiles")
       .select("role")
-      .eq("id", user.id)
-      .single();
+      .eq("id", authedUser.id)
+      .maybeSingle();
 
     const url = request.nextUrl.clone();
     url.pathname = profile?.role === "super_admin" ? "/admin" : "/therapist";

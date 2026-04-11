@@ -47,13 +47,14 @@ function getJerusalemDayName(date: Date): string {
 }
 
 /**
- * Build a UTC Date from a date + HH:MM time string interpreted in Jerusalem timezone.
- * e.g. date=2025-01-01 (Wed), timeStr="09:00" → UTC Date for 09:00 Jerusalem on that day.
+ * Build a UTC Date from a date + time string interpreted in Jerusalem timezone.
+ * Accepts both HH:MM and HH:MM:SS formats from the database.
  */
 function timeToDate(date: Date, timeStr: string): Date {
   const zoned = toZonedTime(date, TZ);
   const dateStr = format(zoned, "yyyy-MM-dd");
-  return fromZonedTime(`${dateStr}T${timeStr}:00`, TZ);
+  const normalizedTime = timeStr.length === 5 ? `${timeStr}:00` : timeStr;
+  return fromZonedTime(`${dateStr}T${normalizedTime}`, TZ);
 }
 
 /**

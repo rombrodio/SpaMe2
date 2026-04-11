@@ -40,7 +40,7 @@ export function BookingCard({ booking, compact }: BookingCardProps) {
   return (
     <Link
       href={`/admin/bookings/${booking.id}`}
-      className="block rounded border-l-4 px-2 py-1 text-xs hover:opacity-80 transition-opacity"
+      className="block h-full rounded border-l-4 px-1.5 py-0.5 text-xs hover:opacity-80 transition-opacity overflow-hidden"
       style={{
         borderLeftColor: therapistColor,
         backgroundColor: `${therapistColor}15`,

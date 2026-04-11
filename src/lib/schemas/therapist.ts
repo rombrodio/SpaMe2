@@ -1,5 +1,12 @@
 import { z } from "zod";
 
+const uuidFormat = z
+  .string()
+  .regex(
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+    "Invalid UUID"
+  );
+
 export const therapistSchema = z.object({
   full_name: z.string().min(1, "Name is required").max(100),
   phone: z.string().max(20).optional().default(""),
@@ -26,7 +33,7 @@ const dayOfWeekEnum = z.enum([
 
 export const availabilityRuleSchema = z
   .object({
-    therapist_id: z.string().uuid(),
+    therapist_id: uuidFormat,
     day_of_week: dayOfWeekEnum,
     start_time: z.string().regex(/^\d{2}:\d{2}$/, "Must be HH:MM format"),
     end_time: z.string().regex(/^\d{2}:\d{2}$/, "Must be HH:MM format"),
@@ -42,7 +49,7 @@ export type AvailabilityRuleFormData = z.infer<typeof availabilityRuleSchema>;
 
 export const timeOffSchema = z
   .object({
-    therapist_id: z.string().uuid(),
+    therapist_id: uuidFormat,
     start_at: z.string().min(1, "Start date/time is required"),
     end_at: z.string().min(1, "End date/time is required"),
     reason: z.string().max(500).optional().default(""),
