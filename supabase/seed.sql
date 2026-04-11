@@ -1,67 +1,71 @@
 -- Seed data for local development
 -- Note: Auth users must be created via Supabase Auth (dashboard or API).
 -- This seeds the application tables only.
+--
+-- All UUIDs below are real RFC 4122 v4 UUIDs (generated via crypto.randomUUID).
+-- Do NOT replace with synthetic / pattern-based UUIDs — schema validation
+-- uses z.string().uuid() which enforces the variant-bit check.
 
 -- Therapists
 INSERT INTO therapists (id, full_name, phone, email, color) VALUES
-  ('a1111111-1111-1111-1111-111111111111', 'Dana Cohen',    '+972501234501', 'dana@example.com',  '#3B82F6'),
-  ('a2222222-2222-2222-2222-222222222222', 'Yael Levy',     '+972501234502', 'yael@example.com',  '#10B981'),
-  ('a3333333-3333-3333-3333-333333333333', 'Noam Shapira',  '+972501234503', 'noam@example.com',  '#F59E0B');
+  ('838c1ccb-9a92-4990-9cd4-1c0a80d48859', 'Dana Cohen',    '+972501234501', 'dana@example.com',  '#3B82F6'),
+  ('48301779-5394-48c1-a82a-83de9b2e2126', 'Yael Levy',     '+972501234502', 'yael@example.com',  '#10B981'),
+  ('62936e33-3b8c-44dd-a969-833b87b97378', 'Noam Shapira',  '+972501234503', 'noam@example.com',  '#F59E0B');
 
 -- Rooms
 INSERT INTO rooms (id, name, description) VALUES
-  ('b1111111-1111-1111-1111-111111111111', 'Lotus Room',   'Ground floor, couples massage'),
-  ('b2222222-2222-2222-2222-222222222222', 'Zen Room',     'Second floor, single treatments'),
-  ('b3333333-3333-3333-3333-333333333333', 'Ocean Room',   'Ground floor, facial & body');
+  ('eb7dd619-0ca6-4458-a48a-910619f05bf9', 'Lotus Room',   'Ground floor, couples massage'),
+  ('465f6f8c-5cb0-4ef5-9acd-dcf99570be8d', 'Zen Room',     'Second floor, single treatments'),
+  ('2d857b13-fdf1-4124-8dbe-8212795ba38e', 'Ocean Room',   'Ground floor, facial & body');
 
 -- Services
 INSERT INTO services (id, name, description, duration_minutes, buffer_minutes, price_ils) VALUES
-  ('c1111111-1111-1111-1111-111111111111', 'Swedish Massage',       'Full body relaxation massage',    60, 15, 35000),
-  ('c2222222-2222-2222-2222-222222222222', 'Deep Tissue Massage',   'Focused pressure therapy',        60, 15, 40000),
-  ('c3333333-3333-3333-3333-333333333333', 'Facial Treatment',      'Cleansing and rejuvenation',      45, 10, 28000),
-  ('c4444444-4444-4444-4444-444444444444', 'Hot Stone Massage',     'Heated basalt stones therapy',    90, 20, 50000),
-  ('c5555555-5555-5555-5555-555555555555', 'Couples Massage',       'Side by side relaxation',         60, 15, 65000);
+  ('ca9bb45d-b798-44cb-af7f-8b2290adc3ec', 'Swedish Massage',       'Full body relaxation massage',    60, 15, 35000),
+  ('e9817346-f660-4b6f-86d4-391760fde377', 'Deep Tissue Massage',   'Focused pressure therapy',        60, 15, 40000),
+  ('8d00225a-a59b-4627-9909-3c92a7fd06fc', 'Facial Treatment',      'Cleansing and rejuvenation',      45, 10, 28000),
+  ('456128c0-e656-40e8-be6b-52951cdfbab3', 'Hot Stone Massage',     'Heated basalt stones therapy',    90, 20, 50000),
+  ('037e3a4e-4df8-448c-8e2f-b754ba762cec', 'Couples Massage',       'Side by side relaxation',         60, 15, 65000);
 
 -- Therapist qualifications
 INSERT INTO therapist_services (therapist_id, service_id) VALUES
-  ('a1111111-1111-1111-1111-111111111111', 'c1111111-1111-1111-1111-111111111111'),
-  ('a1111111-1111-1111-1111-111111111111', 'c2222222-2222-2222-2222-222222222222'),
-  ('a1111111-1111-1111-1111-111111111111', 'c4444444-4444-4444-4444-444444444444'),
-  ('a2222222-2222-2222-2222-222222222222', 'c1111111-1111-1111-1111-111111111111'),
-  ('a2222222-2222-2222-2222-222222222222', 'c3333333-3333-3333-3333-333333333333'),
-  ('a2222222-2222-2222-2222-222222222222', 'c5555555-5555-5555-5555-555555555555'),
-  ('a3333333-3333-3333-3333-333333333333', 'c1111111-1111-1111-1111-111111111111'),
-  ('a3333333-3333-3333-3333-333333333333', 'c2222222-2222-2222-2222-222222222222'),
-  ('a3333333-3333-3333-3333-333333333333', 'c3333333-3333-3333-3333-333333333333');
+  ('838c1ccb-9a92-4990-9cd4-1c0a80d48859', 'ca9bb45d-b798-44cb-af7f-8b2290adc3ec'),
+  ('838c1ccb-9a92-4990-9cd4-1c0a80d48859', 'e9817346-f660-4b6f-86d4-391760fde377'),
+  ('838c1ccb-9a92-4990-9cd4-1c0a80d48859', '456128c0-e656-40e8-be6b-52951cdfbab3'),
+  ('48301779-5394-48c1-a82a-83de9b2e2126', 'ca9bb45d-b798-44cb-af7f-8b2290adc3ec'),
+  ('48301779-5394-48c1-a82a-83de9b2e2126', '8d00225a-a59b-4627-9909-3c92a7fd06fc'),
+  ('48301779-5394-48c1-a82a-83de9b2e2126', '037e3a4e-4df8-448c-8e2f-b754ba762cec'),
+  ('62936e33-3b8c-44dd-a969-833b87b97378', 'ca9bb45d-b798-44cb-af7f-8b2290adc3ec'),
+  ('62936e33-3b8c-44dd-a969-833b87b97378', 'e9817346-f660-4b6f-86d4-391760fde377'),
+  ('62936e33-3b8c-44dd-a969-833b87b97378', '8d00225a-a59b-4627-9909-3c92a7fd06fc');
 
 -- Room compatibility
 INSERT INTO room_services (room_id, service_id) VALUES
-  ('b1111111-1111-1111-1111-111111111111', 'c1111111-1111-1111-1111-111111111111'),
-  ('b1111111-1111-1111-1111-111111111111', 'c2222222-2222-2222-2222-222222222222'),
-  ('b1111111-1111-1111-1111-111111111111', 'c4444444-4444-4444-4444-444444444444'),
-  ('b1111111-1111-1111-1111-111111111111', 'c5555555-5555-5555-5555-555555555555'),
-  ('b2222222-2222-2222-2222-222222222222', 'c1111111-1111-1111-1111-111111111111'),
-  ('b2222222-2222-2222-2222-222222222222', 'c2222222-2222-2222-2222-222222222222'),
-  ('b3333333-3333-3333-3333-333333333333', 'c1111111-1111-1111-1111-111111111111'),
-  ('b3333333-3333-3333-3333-333333333333', 'c3333333-3333-3333-3333-333333333333');
+  ('eb7dd619-0ca6-4458-a48a-910619f05bf9', 'ca9bb45d-b798-44cb-af7f-8b2290adc3ec'),
+  ('eb7dd619-0ca6-4458-a48a-910619f05bf9', 'e9817346-f660-4b6f-86d4-391760fde377'),
+  ('eb7dd619-0ca6-4458-a48a-910619f05bf9', '456128c0-e656-40e8-be6b-52951cdfbab3'),
+  ('eb7dd619-0ca6-4458-a48a-910619f05bf9', '037e3a4e-4df8-448c-8e2f-b754ba762cec'),
+  ('465f6f8c-5cb0-4ef5-9acd-dcf99570be8d', 'ca9bb45d-b798-44cb-af7f-8b2290adc3ec'),
+  ('465f6f8c-5cb0-4ef5-9acd-dcf99570be8d', 'e9817346-f660-4b6f-86d4-391760fde377'),
+  ('2d857b13-fdf1-4124-8dbe-8212795ba38e', 'ca9bb45d-b798-44cb-af7f-8b2290adc3ec'),
+  ('2d857b13-fdf1-4124-8dbe-8212795ba38e', '8d00225a-a59b-4627-9909-3c92a7fd06fc');
 
 -- Therapist availability (Sun-Thu working hours, typical Israeli schedule)
 INSERT INTO therapist_availability_rules (therapist_id, day_of_week, start_time, end_time) VALUES
-  ('a1111111-1111-1111-1111-111111111111', 'sunday',    '09:00', '17:00'),
-  ('a1111111-1111-1111-1111-111111111111', 'monday',    '09:00', '17:00'),
-  ('a1111111-1111-1111-1111-111111111111', 'tuesday',   '09:00', '17:00'),
-  ('a1111111-1111-1111-1111-111111111111', 'wednesday', '09:00', '17:00'),
-  ('a1111111-1111-1111-1111-111111111111', 'thursday',  '09:00', '17:00'),
-  ('a2222222-2222-2222-2222-222222222222', 'sunday',    '10:00', '18:00'),
-  ('a2222222-2222-2222-2222-222222222222', 'monday',    '10:00', '18:00'),
-  ('a2222222-2222-2222-2222-222222222222', 'tuesday',   '10:00', '18:00'),
-  ('a2222222-2222-2222-2222-222222222222', 'wednesday', '10:00', '18:00'),
-  ('a2222222-2222-2222-2222-222222222222', 'thursday',  '10:00', '18:00'),
-  ('a3333333-3333-3333-3333-333333333333', 'sunday',    '08:00', '14:00'),
-  ('a3333333-3333-3333-3333-333333333333', 'monday',    '08:00', '14:00'),
-  ('a3333333-3333-3333-3333-333333333333', 'tuesday',   '14:00', '20:00'),
-  ('a3333333-3333-3333-3333-333333333333', 'wednesday', '14:00', '20:00'),
-  ('a3333333-3333-3333-3333-333333333333', 'thursday',  '08:00', '14:00');
+  ('838c1ccb-9a92-4990-9cd4-1c0a80d48859', 'sunday',    '09:00', '17:00'),
+  ('838c1ccb-9a92-4990-9cd4-1c0a80d48859', 'monday',    '09:00', '17:00'),
+  ('838c1ccb-9a92-4990-9cd4-1c0a80d48859', 'tuesday',   '09:00', '17:00'),
+  ('838c1ccb-9a92-4990-9cd4-1c0a80d48859', 'wednesday', '09:00', '17:00'),
+  ('838c1ccb-9a92-4990-9cd4-1c0a80d48859', 'thursday',  '09:00', '17:00'),
+  ('48301779-5394-48c1-a82a-83de9b2e2126', 'sunday',    '10:00', '18:00'),
+  ('48301779-5394-48c1-a82a-83de9b2e2126', 'monday',    '10:00', '18:00'),
+  ('48301779-5394-48c1-a82a-83de9b2e2126', 'tuesday',   '10:00', '18:00'),
+  ('48301779-5394-48c1-a82a-83de9b2e2126', 'wednesday', '10:00', '18:00'),
+  ('48301779-5394-48c1-a82a-83de9b2e2126', 'thursday',  '10:00', '18:00'),
+  ('62936e33-3b8c-44dd-a969-833b87b97378', 'sunday',    '08:00', '14:00'),
+  ('62936e33-3b8c-44dd-a969-833b87b97378', 'monday',    '08:00', '14:00'),
+  ('62936e33-3b8c-44dd-a969-833b87b97378', 'tuesday',   '14:00', '20:00'),
+  ('62936e33-3b8c-44dd-a969-833b87b97378', 'wednesday', '14:00', '20:00'),
+  ('62936e33-3b8c-44dd-a969-833b87b97378', 'thursday',  '08:00', '14:00');
 
 -- Customers
 INSERT INTO customers (full_name, phone, email) VALUES

@@ -1,11 +1,6 @@
 import { z } from "zod";
 
-const uuidFormat = z
-  .string()
-  .regex(
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
-    "Invalid UUID"
-  );
+const uuidFormat = z.string().uuid("Invalid UUID");
 
 const isoDatetime = z
   .string()

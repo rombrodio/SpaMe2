@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { roomSchema, roomBlockSchema } from "@/lib/schemas/room";
 import { revalidatePath } from "next/cache";
+import { writeAuditLog } from "@/lib/audit";
 
 // ── Room CRUD ──
 
@@ -39,8 +40,24 @@ export async function createRoom(formData: FormData) {
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.from("rooms").insert(parsed.data);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { data: inserted, error } = await supabase
+    .from("rooms")
+    .insert(parsed.data)
+    .select("*")
+    .single();
   if (error) return { error: { _form: [error.message] } };
+
+  writeAuditLog({
+    userId: user?.id,
+    action: "create",
+    entityType: "room",
+    entityId: inserted.id,
+    newData: inserted,
+  });
 
   revalidatePath("/admin/rooms");
   return { success: true };
@@ -58,8 +75,32 @@ export async function updateRoom(id: string, formData: FormData) {
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.from("rooms").update(parsed.data).eq("id", id);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { data: oldRow } = await supabase
+    .from("rooms")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+
+  const { data: updated, error } = await supabase
+    .from("rooms")
+    .update(parsed.data)
+    .eq("id", id)
+    .select("*")
+    .single();
   if (error) return { error: { _form: [error.message] } };
+
+  writeAuditLog({
+    userId: user?.id,
+    action: "update",
+    entityType: "room",
+    entityId: id,
+    oldData: oldRow ?? undefined,
+    newData: updated,
+  });
 
   revalidatePath("/admin/rooms");
   return { success: true };
@@ -67,8 +108,26 @@ export async function updateRoom(id: string, formData: FormData) {
 
 export async function deleteRoom(id: string) {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { data: oldRow } = await supabase
+    .from("rooms")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+
   const { error } = await supabase.from("rooms").delete().eq("id", id);
   if (error) return { error: { _form: [error.message] } };
+
+  writeAuditLog({
+    userId: user?.id,
+    action: "delete",
+    entityType: "room",
+    entityId: id,
+    oldData: oldRow ?? undefined,
+  });
 
   revalidatePath("/admin/rooms");
   return { success: true };

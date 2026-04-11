@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { serviceSchema } from "@/lib/schemas/service";
 import { revalidatePath } from "next/cache";
+import { writeAuditLog } from "@/lib/audit";
 
 export async function getServices() {
   const supabase = await createClient();
@@ -37,8 +38,24 @@ export async function createService(formData: FormData) {
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.from("services").insert(parsed.data);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { data: inserted, error } = await supabase
+    .from("services")
+    .insert(parsed.data)
+    .select("*")
+    .single();
   if (error) return { error: { _form: [error.message] } };
+
+  writeAuditLog({
+    userId: user?.id,
+    action: "create",
+    entityType: "service",
+    entityId: inserted.id,
+    newData: inserted,
+  });
 
   revalidatePath("/admin/services");
   return { success: true };
@@ -56,11 +73,32 @@ export async function updateService(id: string, formData: FormData) {
   }
 
   const supabase = await createClient();
-  const { error } = await supabase
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { data: oldRow } = await supabase
+    .from("services")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+
+  const { data: updated, error } = await supabase
     .from("services")
     .update(parsed.data)
-    .eq("id", id);
+    .eq("id", id)
+    .select("*")
+    .single();
   if (error) return { error: { _form: [error.message] } };
+
+  writeAuditLog({
+    userId: user?.id,
+    action: "update",
+    entityType: "service",
+    entityId: id,
+    oldData: oldRow ?? undefined,
+    newData: updated,
+  });
 
   revalidatePath("/admin/services");
   return { success: true };
@@ -68,8 +106,26 @@ export async function updateService(id: string, formData: FormData) {
 
 export async function deleteService(id: string) {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { data: oldRow } = await supabase
+    .from("services")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+
   const { error } = await supabase.from("services").delete().eq("id", id);
   if (error) return { error: { _form: [error.message] } };
+
+  writeAuditLog({
+    userId: user?.id,
+    action: "delete",
+    entityType: "service",
+    entityId: id,
+    oldData: oldRow ?? undefined,
+  });
 
   revalidatePath("/admin/services");
   return { success: true };

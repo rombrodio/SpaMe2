@@ -1,12 +1,14 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import {
   therapistSchema,
   availabilityRuleSchema,
   timeOffSchema,
 } from "@/lib/schemas/therapist";
 import { revalidatePath } from "next/cache";
+import { writeAuditLog } from "@/lib/audit";
 
 // ── Therapist CRUD ──
 
@@ -31,8 +33,68 @@ export async function getTherapist(id: string) {
   return data;
 }
 
+/**
+ * Invite a Supabase Auth user by email and link them to a therapist row.
+ * Uses the service-role admin client to (a) create the auth user and
+ * (b) set profiles.therapist_id. The handle_new_user trigger creates the
+ * profile row automatically with role='therapist'.
+ */
+async function sendTherapistInvite(
+  therapistId: string,
+  email: string
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  try {
+    const admin = createAdminClient();
+
+    // If an auth user already exists with this email, just link the profile.
+    const { data: existing } = await admin
+      .from("profiles")
+      .select("id, therapist_id")
+      .eq("therapist_id", therapistId)
+      .maybeSingle();
+    if (existing) {
+      return { ok: true };
+    }
+
+    const siteUrl = process.env.APP_URL || "http://localhost:3000";
+    const { data: inviteData, error: inviteError } =
+      await admin.auth.admin.inviteUserByEmail(email, {
+        data: { therapist_id: therapistId },
+        redirectTo: `${siteUrl}/callback?next=/set-password`,
+      });
+
+    if (inviteError || !inviteData?.user) {
+      return {
+        ok: false,
+        message: inviteError?.message || "Unknown invite error",
+      };
+    }
+
+    const { error: profileError } = await admin
+      .from("profiles")
+      .update({ therapist_id: therapistId })
+      .eq("id", inviteData.user.id);
+
+    if (profileError) {
+      return {
+        ok: false,
+        message: `Invite sent but profile link failed: ${profileError.message}`,
+      };
+    }
+
+    return { ok: true };
+  } catch (err) {
+    return {
+      ok: false,
+      message: err instanceof Error ? err.message : String(err),
+    };
+  }
+}
+
 export async function createTherapist(formData: FormData) {
   const raw = Object.fromEntries(formData.entries());
+  const sendInvite =
+    raw.send_invite === "on" || raw.send_invite === "true";
   const parsed = therapistSchema.safeParse({
     ...raw,
     is_active: raw.is_active === "on" || raw.is_active === "true",
@@ -40,6 +102,12 @@ export async function createTherapist(formData: FormData) {
 
   if (!parsed.success) {
     return { error: parsed.error.flatten().fieldErrors };
+  }
+
+  if (sendInvite && !parsed.data.email) {
+    return {
+      error: { email: ["Email is required when sending an invite"] },
+    };
   }
 
   const data = {
@@ -50,11 +118,121 @@ export async function createTherapist(formData: FormData) {
   };
 
   const supabase = await createClient();
-  const { error } = await supabase.from("therapists").insert(data);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { data: inserted, error } = await supabase
+    .from("therapists")
+    .insert(data)
+    .select("*")
+    .single();
   if (error) return { error: { _form: [error.message] } };
 
+  writeAuditLog({
+    userId: user?.id,
+    action: "create",
+    entityType: "therapist",
+    entityId: inserted.id,
+    newData: inserted,
+  });
+
+  let warning: string | undefined;
+  if (sendInvite && parsed.data.email) {
+    const result = await sendTherapistInvite(inserted.id, parsed.data.email);
+    if (!result.ok) {
+      warning = `Therapist created but invite failed: ${result.message}`;
+    }
+  }
+
   revalidatePath("/admin/therapists");
+  return { success: true, data: inserted, warning };
+}
+
+/**
+ * Re-send an invite / password-setup email for a therapist.
+ *
+ * If the therapist already has a confirmed auth user (they clicked the
+ * original invite but never set a password), we send a password-recovery
+ * email instead of a new invite — Supabase won't re-invite a confirmed
+ * user, but recovery works and lands them on /set-password.
+ */
+export async function resendInvite(therapistId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { data: therapist, error: fetchErr } = await supabase
+    .from("therapists")
+    .select("id, email")
+    .eq("id", therapistId)
+    .maybeSingle();
+
+  if (fetchErr || !therapist) {
+    return { error: { _form: ["Therapist not found"] } };
+  }
+  if (!therapist.email) {
+    return {
+      error: { _form: ["Therapist has no email address on file"] },
+    };
+  }
+
+  const admin = createAdminClient();
+
+  // Check if the therapist already has a linked & confirmed auth user.
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("id")
+    .eq("therapist_id", therapistId)
+    .maybeSingle();
+
+  if (profile) {
+    // User already confirmed their email (clicked original invite).
+    // Server-side recovery emails don't work with Supabase PKCE because
+    // the code_verifier must live in the therapist's browser cookies.
+    // Return a message telling the admin to direct them to "Forgot password?".
+    return {
+      success: true,
+      warning:
+        "This therapist already accepted their invite. " +
+        'Ask them to use "Forgot password?" on the login page to set their password.',
+    };
+  } else {
+    // No auth user yet — send the original invite flow.
+    const result = await sendTherapistInvite(therapistId, therapist.email);
+    if (!result.ok) {
+      return { error: { _form: [result.message] } };
+    }
+  }
+
+  writeAuditLog({
+    userId: user?.id,
+    action: "update",
+    entityType: "therapist",
+    entityId: therapistId,
+    newData: { action: "resend_invite", email: therapist.email },
+  });
+
+  revalidatePath(`/admin/therapists/${therapistId}`);
   return { success: true };
+}
+
+/**
+ * Check whether a therapist has a linked Supabase Auth user
+ * (i.e. a profiles row where therapist_id = this therapist's id).
+ * Used by the edit form to show/hide the "Resend invite" button.
+ */
+export async function getTherapistAuthStatus(
+  therapistId: string
+): Promise<{ hasAuthUser: boolean }> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("profiles")
+    .select("id")
+    .eq("therapist_id", therapistId)
+    .maybeSingle();
+  return { hasAuthUser: !!data };
 }
 
 export async function updateTherapist(id: string, formData: FormData) {
@@ -76,11 +254,32 @@ export async function updateTherapist(id: string, formData: FormData) {
   };
 
   const supabase = await createClient();
-  const { error } = await supabase
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { data: oldRow } = await supabase
+    .from("therapists")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+
+  const { data: updated, error } = await supabase
     .from("therapists")
     .update(data)
-    .eq("id", id);
+    .eq("id", id)
+    .select("*")
+    .single();
   if (error) return { error: { _form: [error.message] } };
+
+  writeAuditLog({
+    userId: user?.id,
+    action: "update",
+    entityType: "therapist",
+    entityId: id,
+    oldData: oldRow ?? undefined,
+    newData: updated,
+  });
 
   revalidatePath("/admin/therapists");
   return { success: true };
@@ -88,8 +287,26 @@ export async function updateTherapist(id: string, formData: FormData) {
 
 export async function deleteTherapist(id: string) {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { data: oldRow } = await supabase
+    .from("therapists")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+
   const { error } = await supabase.from("therapists").delete().eq("id", id);
   if (error) return { error: { _form: [error.message] } };
+
+  writeAuditLog({
+    userId: user?.id,
+    action: "delete",
+    entityType: "therapist",
+    entityId: id,
+    oldData: oldRow ?? undefined,
+  });
 
   revalidatePath("/admin/therapists");
   return { success: true };

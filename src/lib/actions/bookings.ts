@@ -64,6 +64,8 @@ export async function getBooking(id: string) {
 
 /**
  * Get bookings for a date range (calendar view).
+ * Uses interval-overlap semantics so bookings that straddle a range
+ * boundary (e.g. start before `from` but end inside) are included.
  */
 export async function getBookingsForRange(from: string, to: string) {
   const supabase = await createClient();
@@ -73,8 +75,8 @@ export async function getBookingsForRange(from: string, to: string) {
       "*, customers(id, full_name), therapists(id, full_name, color), rooms(id, name), services(id, name, duration_minutes)"
     )
     .neq("status", "cancelled")
-    .gte("start_at", from)
     .lte("start_at", to)
+    .gte("end_at", from)
     .order("start_at");
   if (error) throw new Error(error.message);
   return data;
@@ -254,7 +256,7 @@ export async function getBookingFormData() {
  * Get therapists qualified for a service and rooms compatible with it.
  */
 export async function getServiceConstraints(serviceId: string) {
-  const uuidResult = z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i).safeParse(serviceId);
+  const uuidResult = z.string().uuid().safeParse(serviceId);
   if (!uuidResult.success) {
     return { therapistIds: [], roomIds: [] };
   }
