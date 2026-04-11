@@ -1,11 +1,6 @@
 import { z } from "zod";
 
-const uuidFormat = z
-  .string()
-  .regex(
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
-    "Invalid UUID"
-  );
+const uuidFormat = z.string().uuid("Invalid UUID");
 
 export const roomSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),

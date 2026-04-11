@@ -4,6 +4,7 @@ import {
   getTherapistServices,
   getAvailabilityRules,
   getTimeOffs,
+  getTherapistAuthStatus,
 } from "@/lib/actions/therapists";
 import { getServices } from "@/lib/actions/services";
 import { TherapistEditForm } from "@/components/admin/therapist/edit-form";
@@ -25,12 +26,14 @@ export default async function TherapistDetailPage({ params }: Props) {
     notFound();
   }
 
-  const [therapistServices, allServices, rules, timeOffs] = await Promise.all([
-    getTherapistServices(id),
-    getServices(),
-    getAvailabilityRules(id),
-    getTimeOffs(id),
-  ]);
+  const [therapistServices, allServices, rules, timeOffs, authStatus] =
+    await Promise.all([
+      getTherapistServices(id),
+      getServices(),
+      getAvailabilityRules(id),
+      getTimeOffs(id),
+      getTherapistAuthStatus(id),
+    ]);
 
   const assignedServiceIds = therapistServices.map(
     (ts: any) => ts.service_id as string
@@ -40,7 +43,10 @@ export default async function TherapistDetailPage({ params }: Props) {
     <div className="mx-auto max-w-3xl space-y-6">
       <h1 className="text-2xl font-bold">{therapist.full_name}</h1>
 
-      <TherapistEditForm therapist={therapist} />
+      <TherapistEditForm
+        therapist={therapist}
+        hasAuthUser={authStatus.hasAuthUser}
+      />
 
       <TherapistServicesSection
         therapistId={id}

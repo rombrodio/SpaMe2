@@ -20,16 +20,25 @@ import { FormErrors } from "@/components/admin/form-message";
 export default function NewTherapistPage() {
   const router = useRouter();
   const [errors, setErrors] = useState<Record<string, string[]> | undefined>();
+  const [warning, setWarning] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [sendInvite, setSendInvite] = useState(true);
 
   async function handleSubmit(formData: FormData) {
     setSubmitting(true);
     setErrors(undefined);
+    setWarning(null);
 
     const result = await createTherapist(formData);
 
     if (result && 'error' in result) {
       setErrors(result.error);
+      setSubmitting(false);
+      return;
+    }
+
+    if (result?.warning) {
+      setWarning(result.warning);
       setSubmitting(false);
       return;
     }
@@ -48,6 +57,11 @@ export default function NewTherapistPage() {
         <CardContent>
           <form action={handleSubmit} className="space-y-4">
             <FormErrors errors={errors} />
+            {warning && (
+              <div className="rounded-md border border-yellow-300 bg-yellow-50 p-3 text-sm text-yellow-900">
+                {warning}
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="full_name">Full Name</Label>
@@ -61,8 +75,10 @@ export default function NewTherapistPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input id="email" name="email" type="email" />
+                <Label htmlFor="email">
+                  Email {sendInvite && <span className="text-destructive">*</span>}
+                </Label>
+                <Input id="email" name="email" type="email" required={sendInvite} />
               </div>
             </div>
 
@@ -81,6 +97,24 @@ export default function NewTherapistPage() {
               />
               <Label htmlFor="is_active">Active</Label>
             </div>
+
+            <div className="flex items-center gap-2">
+              <input
+                id="send_invite"
+                name="send_invite"
+                type="checkbox"
+                checked={sendInvite}
+                onChange={(e) => setSendInvite(e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300"
+              />
+              <Label htmlFor="send_invite">
+                Send login invite by email
+              </Label>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Email is required when sending an invite. The therapist will
+              receive a magic link to set their password.
+            </p>
 
             <div className="flex gap-3 pt-2">
               <Button type="submit" disabled={submitting}>

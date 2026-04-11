@@ -6,6 +6,7 @@ import Link from "next/link";
 import {
   updateTherapist,
   deleteTherapist,
+  resendInvite,
 } from "@/lib/actions/therapists";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -28,11 +29,33 @@ interface Therapist {
   is_active: boolean;
 }
 
-export function TherapistEditForm({ therapist }: { therapist: Therapist }) {
+export function TherapistEditForm({
+  therapist,
+  hasAuthUser,
+}: {
+  therapist: Therapist;
+  hasAuthUser?: boolean;
+}) {
   const router = useRouter();
   const [errors, setErrors] = useState<Record<string, string[]> | undefined>();
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [resendNotice, setResendNotice] = useState<string | null>(null);
+
+  async function handleResendInvite() {
+    setResending(true);
+    setResendNotice(null);
+    setErrors(undefined);
+    const result = await resendInvite(therapist.id);
+    if (result && "error" in result) {
+      setErrors(result.error as Record<string, string[]>);
+    } else {
+      setResendNotice("Invite sent.");
+      router.refresh();
+    }
+    setResending(false);
+  }
 
   async function handleSubmit(formData: FormData) {
     setSubmitting(true);
@@ -75,6 +98,28 @@ export function TherapistEditForm({ therapist }: { therapist: Therapist }) {
       <CardContent>
         <form action={handleSubmit} className="space-y-4">
           <FormErrors errors={errors} />
+          {resendNotice && (
+            <div className="rounded-md border border-green-300 bg-green-50 p-3 text-sm text-green-900">
+              {resendNotice}
+            </div>
+          )}
+          {!hasAuthUser && (
+            <div className="flex items-center justify-between rounded-md border border-yellow-300 bg-yellow-50 p-3">
+              <div className="text-sm text-yellow-900">
+                No login user linked to this therapist.
+                {!therapist.email && " Add an email, save, then send invite."}
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={resending || !therapist.email}
+                onClick={handleResendInvite}
+              >
+                {resending ? "Sending..." : "Send invite"}
+              </Button>
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="full_name">Full Name</Label>
