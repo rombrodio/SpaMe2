@@ -23,6 +23,17 @@ interface FormData {
   services: Array<{ id: string; name: string; duration_minutes: number; price_ils: number }>;
 }
 
+/** Shape of a slot returned by findAvailableSlotsAction (dates already serialized). */
+interface SerializedSlot {
+  start: string;
+  end: string;
+  therapist_id: string;
+  therapist_name: string;
+  therapist_color: string | null;
+  room_id: string;
+  room_name: string;
+}
+
 interface BookingFormProps {
   formData: FormData;
 }
@@ -44,43 +55,67 @@ export function BookingForm({ formData }: BookingFormProps) {
   // Filtered options based on service selection
   const [qualifiedTherapistIds, setQualifiedTherapistIds] = useState<string[]>([]);
   const [compatibleRoomIds, setCompatibleRoomIds] = useState<string[]>([]);
-  const [slots, setSlots] = useState<any[]>([]);
-  const [loadingSlots, setLoadingSlots] = useState(false);
+  const [slots, setSlots] = useState<SerializedSlot[]>([]);
+  const [slotsLoading, setSlotsLoading] = useState(false);
 
-  // When service changes, fetch constraints
-  useEffect(() => {
-    if (!serviceId) {
+  // Reset dependent state inline so the effects below can stay pure (no
+  // synchronous setState at the top of an effect body — see React docs on
+  // https://react.dev/reference/react/useEffect#caveats ).
+  function handleServiceChange(newServiceId: string) {
+    setServiceId(newServiceId);
+    setStartAt("");
+    if (!newServiceId) {
       setQualifiedTherapistIds([]);
       setCompatibleRoomIds([]);
       setTherapistId("");
       setRoomId("");
       setSlots([]);
-      return;
     }
+  }
 
+  // When service changes (to a non-empty value), fetch its constraints.
+  useEffect(() => {
+    if (!serviceId) return;
+
+    let cancelled = false;
     getServiceConstraints(serviceId).then(({ therapistIds, roomIds }) => {
+      if (cancelled) return;
       setQualifiedTherapistIds(therapistIds);
       setCompatibleRoomIds(roomIds);
-      // Reset if current selections are invalid
-      if (!therapistIds.includes(therapistId)) setTherapistId("");
-      if (!roomIds.includes(roomId)) setRoomId("");
+      // Reset therapist/room selections if they are no longer valid.
+      setTherapistId((prev) => (therapistIds.includes(prev) ? prev : ""));
+      setRoomId((prev) => (roomIds.includes(prev) ? prev : ""));
     });
+    return () => {
+      cancelled = true;
+    };
   }, [serviceId]);
 
-  // When service + date change, find available slots
+  // When service + date change, find available slots. We track an in-flight
+  // cancellation flag so stale responses can't overwrite newer ones.
   useEffect(() => {
-    if (!serviceId || !date) {
-      setSlots([]);
-      return;
-    }
+    if (!serviceId || !date) return;
 
-    setLoadingSlots(true);
+    let cancelled = false;
+    // Showing a loading indicator requires a synchronous setState here; the
+    // rule's concern (cascading renders) doesn't apply because we only run
+    // when serviceId/date/therapistId actually change.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSlotsLoading(true);
     findAvailableSlotsAction(serviceId, date, therapistId || undefined)
-      .then(setSlots)
-      .finally(() => setLoadingSlots(false));
+      .then((result) => {
+        if (cancelled) return;
+        setSlots(result);
+      })
+      .finally(() => {
+        if (!cancelled) setSlotsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [serviceId, date, therapistId]);
 
-  function handleSlotSelect(slot: any) {
+  function handleSlotSelect(slot: SerializedSlot) {
     setStartAt(`${date}T${format(new Date(slot.start), "HH:mm")}`);
     if (!therapistId) setTherapistId(slot.therapist_id);
     if (!roomId) setRoomId(slot.room_id);
@@ -142,7 +177,7 @@ export function BookingForm({ formData }: BookingFormProps) {
                   id="service_id"
                   name="service_id"
                   value={serviceId}
-                  onChange={(e) => setServiceId(e.target.value)}
+                  onChange={(e) => handleServiceChange(e.target.value)}
                   required
                 >
                   <option value="">Select service...</option>
@@ -274,7 +309,7 @@ export function BookingForm({ formData }: BookingFormProps) {
               <p className="text-sm text-muted-foreground">
                 Select a service and date to see available slots.
               </p>
-            ) : loadingSlots ? (
+            ) : slotsLoading ? (
               <p className="text-sm text-muted-foreground">Loading slots...</p>
             ) : slots.length === 0 ? (
               <p className="text-sm text-muted-foreground">
@@ -283,7 +318,7 @@ export function BookingForm({ formData }: BookingFormProps) {
               </p>
             ) : (
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                {slots.map((slot: any, i: number) => {
+                {slots.map((slot, i) => {
                   const slotTime = format(new Date(slot.start), "HH:mm");
                   const isSelected =
                     startAt.includes(slotTime) &&

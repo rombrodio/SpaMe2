@@ -42,7 +42,7 @@ export default async function ServicesListPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {services.map((service: any) => (
+                  {services.map((service) => (
                     <tr key={service.id} className="border-b last:border-0">
                       <td className="py-3">{service.name}</td>
                       <td className="py-3">{service.duration_minutes} min</td>

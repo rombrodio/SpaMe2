@@ -50,7 +50,7 @@ export default async function BookingsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {bookings.map((booking: any) => (
+                  {bookings.map((booking) => (
                     <tr key={booking.id} className="border-b last:border-0">
                       <td className="py-3">
                         <div>{formatInTimeZone(new Date(booking.start_at), TZ, "MMM d, yyyy")}</div>

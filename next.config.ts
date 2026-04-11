@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: resolve(__dirname),
   },
-  webpack: (config, { isServer }) => {
+  webpack: (config) => {
     config.watchOptions = {
       ...config.watchOptions,
       ignored: [

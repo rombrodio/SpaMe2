@@ -339,7 +339,7 @@ APP_URL
 
 **Depends on:** Nothing
 
-### Phase 2: Admin CRUD (~30 files)
+### Phase 2: Admin CRUD (~30 files) ✅ COMPLETE
 **Goal:** Full CRUD for therapists, rooms, services, customers with data tables.
 
 - [x] Zod schemas: `therapist.ts`, `room.ts`, `service.ts`, `customer.ts`, `common.ts`
@@ -354,25 +354,26 @@ APP_URL
 - [x] Therapist portal: `src/app/therapist/time-off/page.tsx` — manage own time-off
 - [x] Admin: invite therapist flow (create Supabase Auth user + profile with role=therapist + link to therapist record)
 - [x] Admin: remove therapist (deactivate auth user + therapist record)
-- [ ] `src/lib/utils/audit.ts` + wire audit logging into all actions
-- [ ] `src/app/admin/audit-log/page.tsx`
+- [x] `src/lib/audit.ts` + wire audit logging into all actions (shipped at `src/lib/audit.ts`, not `src/lib/utils/audit.ts`; wired into therapists/rooms/services/customers/bookings actions)
+- [x] `src/app/admin/audit-log/page.tsx` — filterable log viewer (entity type + action)
 
 **Depends on:** Phase 1
 
-### Phase 3: Scheduling Core (~15 files)
+### Phase 3: Scheduling Core (~15 files) ✅ COMPLETE
 **Goal:** Availability engine, slot finding, booking CRUD, calendar view.
 
-- [ ] `src/lib/services/scheduling.ts` — `getTherapistAvailability()`, `findAvailableSlots()`, `validateBookingSlot()`
-- [ ] `src/lib/schemas/booking.ts`
-- [ ] `src/lib/services/booking-service.ts` — `createBooking()`, `cancelBooking()`, `rescheduleBooking()`, `completeBooking()`, `markNoShow()`
-- [ ] `src/lib/actions/bookings.ts`
-- [ ] `src/app/admin/bookings/new/page.tsx` — multi-step: service → therapist (filtered) → room (filtered) → slot → customer → create
-- [ ] `src/app/admin/bookings/page.tsx` — list with filters
-- [ ] `src/app/admin/bookings/[id]/page.tsx` — detail with cancel/reschedule/complete
-- [ ] `src/app/admin/calendar/page.tsx` — week/day view by therapist or room
-- [ ] Therapist time-off management UI
-- [ ] Room block management UI
-- [ ] `src/lib/utils/dates.ts`
+- [x] `src/lib/scheduling/availability.ts` — `getTherapistWindows()`, `findAvailableSlots()`, `validateBookingSlot()` (shipped under `lib/scheduling/` instead of `lib/services/scheduling.ts`)
+- [x] `src/lib/schemas/booking.ts`
+- [x] `src/lib/scheduling/booking-engine.ts` — `createBooking()`, `cancelBooking()`, `rescheduleBooking()`, `updateBookingStatus()`, `findSlots()` (shipped under `lib/scheduling/booking-engine.ts` instead of `lib/services/booking-service.ts`)
+- [x] `src/lib/actions/bookings.ts`
+- [x] `src/app/admin/bookings/new/page.tsx` — multi-step: service → therapist (filtered) → room (filtered) → slot → customer → create
+- [x] `src/app/admin/bookings/page.tsx` — list with filters
+- [x] `src/app/admin/bookings/[id]/page.tsx` — detail with cancel/reschedule/complete
+- [x] `src/app/admin/calendar/page.tsx` — week/day view by therapist or room
+- [x] Therapist time-off management UI (admin + therapist portal)
+- [x] Room block management UI
+- [x] Date/time helpers — inlined via `TZ` constant + `date-fns-tz` (no dedicated `src/lib/utils/dates.ts`)
+- [x] Vitest unit tests for availability engine (31 tests)
 
 **Depends on:** Phase 2
 

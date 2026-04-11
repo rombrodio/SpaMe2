@@ -1,6 +1,5 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
 import { formatInTimeZone } from "date-fns-tz";
 import { TZ } from "@/lib/constants";
 import Link from "next/link";

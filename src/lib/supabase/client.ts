@@ -11,7 +11,8 @@ import { getSupabaseAnonKey, getSupabaseUrl } from "./env";
 function ensureSessionStorage() {
   if (typeof window === "undefined") return;
   try {
-    window.sessionStorage;
+    // Probe the getter — reading it throws in restricted contexts.
+    void window.sessionStorage;
   } catch {
     Object.defineProperty(window, "sessionStorage", {
       value: {

@@ -4,17 +4,9 @@ import { differenceInMinutes } from "date-fns";
 import { toZonedTime, formatInTimeZone } from "date-fns-tz";
 import { TZ } from "@/lib/constants";
 import { BookingCard } from "./booking-card";
+import type { CalendarBooking } from "./types";
 
-interface Booking {
-  id: string;
-  start_at: string;
-  end_at: string;
-  status: string;
-  customers: { full_name: string } | null;
-  therapists: { full_name: string; color: string | null } | null;
-  rooms: { name: string } | null;
-  services: { name: string; duration_minutes: number } | null;
-}
+type Booking = CalendarBooking;
 
 interface DayViewProps {
   date: Date;
@@ -168,7 +160,6 @@ function NowIndicator({
 }) {
   const now = new Date();
   const nowZoned = toZonedTime(now, TZ);
-  const dateZoned = toZonedTime(date, TZ);
   if (
     formatInTimeZone(now, TZ, "yyyy-MM-dd") !==
     formatInTimeZone(date, TZ, "yyyy-MM-dd")

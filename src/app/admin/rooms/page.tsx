@@ -41,7 +41,7 @@ export default async function RoomsListPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {rooms.map((room: any) => (
+                  {rooms.map((room) => (
                     <tr key={room.id} className="border-b last:border-0">
                       <td className="py-3">{room.name}</td>
                       <td className="py-3 max-w-xs truncate text-muted-foreground">

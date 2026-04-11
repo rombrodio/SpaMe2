@@ -42,7 +42,7 @@ export default async function TherapistsListPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {therapists.map((therapist: any) => (
+                  {therapists.map((therapist) => (
                     <tr key={therapist.id} className="border-b last:border-0">
                       <td className="py-3">{therapist.full_name}</td>
                       <td className="py-3">

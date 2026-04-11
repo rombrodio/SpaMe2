@@ -35,9 +35,9 @@ export default async function TherapistDetailPage({ params }: Props) {
       getTherapistAuthStatus(id),
     ]);
 
-  const assignedServiceIds = therapistServices.map(
-    (ts: any) => ts.service_id as string
-  );
+  const assignedServiceIds = (
+    therapistServices as Array<{ service_id: string }>
+  ).map((ts) => ts.service_id);
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">

@@ -21,10 +21,20 @@ import {
 } from "@/components/ui/card";
 import { FormErrors } from "@/components/admin/form-message";
 
+interface ServiceRecord {
+  id: string;
+  name: string;
+  description: string | null;
+  duration_minutes: number;
+  buffer_minutes: number | null;
+  price_ils: number;
+  is_active: boolean;
+}
+
 export default function EditServicePage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
-  const [service, setService] = useState<any>(null);
+  const [service, setService] = useState<ServiceRecord | null>(null);
   const [errors, setErrors] = useState<Record<string, string[]> | undefined>();
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -32,7 +42,7 @@ export default function EditServicePage() {
 
   useEffect(() => {
     getService(params.id).then((data) => {
-      setService(data);
+      setService(data as ServiceRecord);
       setLoading(false);
     });
   }, [params.id]);
