@@ -342,18 +342,18 @@ APP_URL
 ### Phase 2: Admin CRUD (~30 files)
 **Goal:** Full CRUD for therapists, rooms, services, customers with data tables.
 
-- [ ] Zod schemas: `therapist.ts`, `room.ts`, `service.ts`, `customer.ts`, `common.ts`
-- [ ] TypeScript types: `src/lib/types/index.ts`
-- [ ] Server actions: `therapists.ts`, `rooms.ts`, `services.ts`, `customers.ts`
-- [ ] `src/components/admin/data-table.tsx` — generic sortable/filterable table
-- [ ] Therapist pages (list, detail/edit, create) with availability rules + service assignment
-- [ ] Room pages with service assignment
-- [ ] Service pages
-- [ ] Customer pages (list, detail)
-- [ ] Therapist portal: `src/app/therapist/availability/page.tsx` — manage own weekly rules
-- [ ] Therapist portal: `src/app/therapist/time-off/page.tsx` — manage own time-off
-- [ ] Admin: invite therapist flow (create Supabase Auth user + profile with role=therapist + link to therapist record)
-- [ ] Admin: remove therapist (deactivate auth user + therapist record)
+- [x] Zod schemas: `therapist.ts`, `room.ts`, `service.ts`, `customer.ts`, `common.ts`
+- [x] TypeScript types: `src/lib/types/index.ts`
+- [x] Server actions: `therapists.ts`, `rooms.ts`, `services.ts`, `customers.ts`
+- [x] `src/components/admin/data-table.tsx` — generic sortable/filterable table
+- [x] Therapist pages (list, detail/edit, create) with availability rules + service assignment
+- [x] Room pages with service assignment
+- [x] Service pages
+- [x] Customer pages (list, detail)
+- [x] Therapist portal: `src/app/therapist/availability/page.tsx` — manage own weekly rules
+- [x] Therapist portal: `src/app/therapist/time-off/page.tsx` — manage own time-off
+- [x] Admin: invite therapist flow (create Supabase Auth user + profile with role=therapist + link to therapist record)
+- [x] Admin: remove therapist (deactivate auth user + therapist record)
 - [ ] `src/lib/utils/audit.ts` + wire audit logging into all actions
 - [ ] `src/app/admin/audit-log/page.tsx`
 
