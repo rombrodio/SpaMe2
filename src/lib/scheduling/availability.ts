@@ -4,8 +4,6 @@
  */
 
 import {
-  startOfDay,
-  endOfDay,
   addMinutes,
   isBefore,
   isAfter,

@@ -4,11 +4,10 @@ import { useState, useEffect, useCallback } from "react";
 import { CalendarHeader } from "./calendar-header";
 import { DayView } from "./day-view";
 import { WeekView } from "./week-view";
+import type { CalendarBooking } from "./types";
 import { getBookingsForRange } from "@/lib/actions/bookings";
 import {
-  format,
   startOfWeek,
-  endOfWeek,
   startOfDay,
   endOfDay,
   addDays,
@@ -31,7 +30,7 @@ export function CalendarShell({
     initialDate ? new Date(initialDate) : new Date()
   );
   const [view, setView] = useState<"day" | "week">(initialView);
-  const [bookings, setBookings] = useState<any[]>([]);
+  const [bookings, setBookings] = useState<CalendarBooking[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchBookings = useCallback(async () => {
@@ -47,7 +46,7 @@ export function CalendarShell({
         to = endOfDay(addDays(ws, 6)).toISOString();
       }
       const data = await getBookingsForRange(from, to);
-      setBookings(data);
+      setBookings(data as unknown as CalendarBooking[]);
     } finally {
       setLoading(false);
     }

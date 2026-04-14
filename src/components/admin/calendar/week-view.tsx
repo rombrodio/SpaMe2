@@ -4,17 +4,9 @@ import { addDays, startOfWeek, isSameDay } from "date-fns";
 import { toZonedTime, formatInTimeZone } from "date-fns-tz";
 import { TZ } from "@/lib/constants";
 import { BookingCard } from "./booking-card";
+import type { CalendarBooking } from "./types";
 
-interface Booking {
-  id: string;
-  start_at: string;
-  end_at: string;
-  status: string;
-  customers: { full_name: string } | null;
-  therapists: { full_name: string; color: string | null } | null;
-  rooms: { name: string } | null;
-  services: { name: string; duration_minutes: number } | null;
-}
+type Booking = CalendarBooking;
 
 interface WeekViewProps {
   date: Date;

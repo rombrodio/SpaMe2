@@ -29,7 +29,9 @@ export default async function RoomDetailPage({ params }: Props) {
     getRoomBlocks(id),
   ]);
 
-  const assignedServiceIds = roomServices.map((rs: any) => rs.service_id);
+  const assignedServiceIds = (
+    roomServices as Array<{ service_id: string }>
+  ).map((rs) => rs.service_id);
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">

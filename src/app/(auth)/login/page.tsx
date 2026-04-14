@@ -1,7 +1,7 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,20 +19,15 @@ function parseHashError(): string | null {
 }
 
 function LoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const next = searchParams.get("next") ?? "/admin";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  // Lazy-init from the URL hash so we don't need an effect to read it.
+  const [error, setError] = useState<string | null>(() => parseHashError());
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<"login" | "reset">("login");
-
-  useEffect(() => {
-    const hashErr = parseHashError();
-    if (hashErr) setError(hashErr);
-  }, []);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();

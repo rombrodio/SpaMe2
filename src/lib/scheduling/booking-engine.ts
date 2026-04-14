@@ -9,11 +9,65 @@ import { addMinutes, parseISO, startOfDay, endOfDay } from "date-fns";
 import { validateBookingSlot, findAvailableSlots } from "./availability";
 import { writeAuditLog } from "@/lib/audit";
 import type {
+  AvailabilityRule,
   AvailableSlot,
-  ServiceInfo,
   ExistingBooking,
+  RoomBlock,
+  ServiceInfo,
+  TimeOff,
 } from "./types";
 import type { ActionResult } from "@/lib/constants";
+
+// Row shapes for joined/typed Supabase responses in this module.
+// We don't use generated Supabase types, so queries default to any — these
+// interfaces describe the shape each query in this file is known to return.
+
+interface ServiceRow {
+  id?: string;
+  name?: string;
+  duration_minutes: number;
+  buffer_minutes: number;
+  price_ils: number;
+  is_active?: boolean;
+}
+
+interface TherapistServiceJoinRow {
+  therapist_id: string;
+  therapists: {
+    id: string;
+    full_name: string;
+    color: string | null;
+    is_active: boolean;
+  } | null;
+}
+
+interface RoomServiceJoinRow {
+  room_id: string;
+  service_id: string;
+  rooms: {
+    id: string;
+    name: string;
+    is_active: boolean;
+  } | null;
+}
+
+interface BookingRow {
+  id: string;
+  customer_id: string;
+  therapist_id: string;
+  room_id: string;
+  service_id: string;
+  start_at: string;
+  end_at: string;
+  status: string;
+  price_ils: number;
+  notes: string | null;
+  created_by: string | null;
+  cancelled_at: string | null;
+  cancel_reason: string | null;
+  created_at: string;
+  updated_at: string;
+}
 
 /**
  * Fetch all data needed to validate a booking at a given time range.
@@ -26,10 +80,26 @@ async function fetchValidationData(
   serviceId: string,
   rangeStart: Date,
   rangeEnd: Date,
-  knownService?: { duration_minutes: number; buffer_minutes: number; price_ils: number }
+  knownService?: ServiceRow
 ) {
+  // Fetch service separately — avoids mixing a hand-built Promise.resolve
+  // with Supabase's typed query results in the same Promise.all tuple.
+  let service: ServiceRow;
+  if (knownService) {
+    service = knownService;
+  } else {
+    const { data, error } = await supabase
+      .from("services")
+      .select("*")
+      .eq("id", serviceId)
+      .single();
+    if (error || !data) {
+      throw new Error(error?.message ?? "Service not found");
+    }
+    service = data as ServiceRow;
+  }
+
   const [
-    serviceRes,
     therapistServicesRes,
     roomServicesRes,
     rulesRes,
@@ -37,9 +107,6 @@ async function fetchValidationData(
     roomBlocksRes,
     bookingsRes,
   ] = await Promise.all([
-    knownService
-      ? Promise.resolve({ data: knownService, error: null })
-      : supabase.from("services").select("*").eq("id", serviceId).single(),
     supabase
       .from("therapist_services")
       .select("service_id")
@@ -71,21 +138,22 @@ async function fetchValidationData(
       .or(
         `and(therapist_id.eq.${therapistId},start_at.lt.${rangeEnd.toISOString()},end_at.gt.${rangeStart.toISOString()}),and(room_id.eq.${roomId},start_at.lt.${rangeEnd.toISOString()},end_at.gt.${rangeStart.toISOString()})`
       ),
-  ] as any);
+  ]);
 
-  if (serviceRes.error) throw new Error(serviceRes.error.message);
+  const therapistServiceIds = ((therapistServicesRes.data ?? []) as Array<{
+    service_id: string;
+  }>).map((r) => r.service_id);
+  const roomServiceIds = ((roomServicesRes.data ?? []) as Array<{
+    service_id: string;
+  }>).map((r) => r.service_id);
 
   return {
-    service: serviceRes.data as ServiceInfo,
-    therapistServiceIds: (therapistServicesRes.data ?? []).map(
-      (r: { service_id: string }) => r.service_id
-    ),
-    roomServiceIds: (roomServicesRes.data ?? []).map(
-      (r: { service_id: string }) => r.service_id
-    ),
-    availabilityRules: rulesRes.data ?? [],
-    timeOffs: timeOffRes.data ?? [],
-    roomBlocks: roomBlocksRes.data ?? [],
+    service: service as ServiceInfo,
+    therapistServiceIds,
+    roomServiceIds,
+    availabilityRules: (rulesRes.data ?? []) as AvailabilityRule[],
+    timeOffs: (timeOffRes.data ?? []) as TimeOff[],
+    roomBlocks: (roomBlocksRes.data ?? []) as RoomBlock[],
     existingBookings: (bookingsRes.data ?? []) as ExistingBooking[],
   };
 }
@@ -197,7 +265,7 @@ export async function createBooking(
   }
 
   // Insert the booking
-  const { data: booking, error: insertErr } = await supabase
+  const { data: bookingRaw, error: insertErr } = await supabase
     .from("bookings")
     .insert({
       customer_id: input.customer_id,
@@ -225,15 +293,17 @@ export async function createBooking(
     return { error: { _form: [insertErr.message] } };
   }
 
+  const booking = bookingRaw as BookingRow;
+
   writeAuditLog({
     userId: input.created_by,
     action: "create",
     entityType: "booking",
     entityId: booking.id,
-    newData: booking,
+    newData: booking as unknown as Record<string, unknown>,
   });
 
-  return { success: true, data: booking };
+  return { success: true, data: booking as unknown as Record<string, unknown> };
 }
 
 /**
@@ -492,12 +562,20 @@ export async function findSlots(
   if (therapistId) {
     therapistQuery = therapistQuery.eq("therapist_id", therapistId);
   }
-  const { data: tsRows } = await therapistQuery;
-  if (!tsRows || tsRows.length === 0) return [];
+  const { data: rawTsRows } = await therapistQuery;
+  // Supabase's inferred type treats the joined `therapists` as an array
+  // because the client doesn't know about FK cardinality without generated
+  // types. At runtime this join returns a single object (many-to-one).
+  const tsRows = (rawTsRows ?? []) as unknown as TherapistServiceJoinRow[];
+  if (tsRows.length === 0) return [];
 
-  const therapistIds = tsRows
-    .filter((r: any) => r.therapists?.is_active)
-    .map((r: any) => r.therapist_id);
+  const activeTsRows = tsRows.filter(
+    (r): r is TherapistServiceJoinRow & {
+      therapists: NonNullable<TherapistServiceJoinRow["therapists"]>;
+    } => !!r.therapists?.is_active
+  );
+
+  const therapistIds = activeTsRows.map((r) => r.therapist_id);
 
   if (therapistIds.length === 0) return [];
 
@@ -530,35 +608,34 @@ export async function findSlots(
         .gt("end_at", dayStart.toISOString()),
     ]);
 
+  const allRules = (rulesRes.data ?? []) as AvailabilityRule[];
+  const allTimeOffs = (timeOffsRes.data ?? []) as TimeOff[];
+  const allRoomBlocks = (roomBlocksRes.data ?? []) as RoomBlock[];
+  const roomSvcRows = (roomSvcRes.data ?? []) as unknown as RoomServiceJoinRow[];
+
   // Build therapist data
-  const therapists = tsRows
-    .filter((r: any) => r.therapists?.is_active)
-    .map((r: any) => {
-      const t = r.therapists;
-      return {
-        id: t.id,
-        full_name: t.full_name,
-        color: t.color,
-        availabilityRules: (rulesRes.data ?? []).filter(
-          (rule: any) => rule.therapist_id === t.id
-        ),
-        timeOffs: (timeOffsRes.data ?? []).filter(
-          (off: any) => off.therapist_id === t.id
-        ),
-        serviceIds: [serviceId],
-      };
-    });
+  const therapists = activeTsRows.map((r) => {
+    const t = r.therapists;
+    return {
+      id: t.id,
+      full_name: t.full_name,
+      color: t.color,
+      availabilityRules: allRules.filter((rule) => rule.therapist_id === t.id),
+      timeOffs: allTimeOffs.filter((off) => off.therapist_id === t.id),
+      serviceIds: [serviceId],
+    };
+  });
 
   // Build room data
-  const rooms = (roomSvcRes.data ?? [])
-    .filter((r: any) => r.rooms?.is_active)
-    .map((r: any) => ({
+  const rooms = roomSvcRows
+    .filter((r): r is RoomServiceJoinRow & {
+      rooms: NonNullable<RoomServiceJoinRow["rooms"]>;
+    } => !!r.rooms?.is_active)
+    .map((r) => ({
       id: r.rooms.id,
       name: r.rooms.name,
       serviceIds: [serviceId],
-      blocks: (roomBlocksRes.data ?? []).filter(
-        (b: any) => b.room_id === r.rooms.id
-      ),
+      blocks: allRoomBlocks.filter((b) => b.room_id === r.rooms.id),
     }));
 
   return findAvailableSlots({

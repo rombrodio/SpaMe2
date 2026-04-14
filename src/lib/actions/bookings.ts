@@ -109,7 +109,7 @@ export async function createBookingAction(formData: FormData) {
 
   revalidatePath("/admin/bookings");
   revalidatePath("/admin/calendar");
-  return { success: true, bookingId: (result.data as any).id };
+  return { success: true, bookingId: result.data.id as string };
 }
 
 export async function rescheduleBookingAction(formData: FormData) {
