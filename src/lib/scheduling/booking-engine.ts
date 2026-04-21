@@ -160,8 +160,24 @@ async function fetchValidationData(
 
 const TERMINAL_STATUSES = ["cancelled", "completed", "no_show"];
 
+/** Default soft-hold window for pending_payment bookings (see phase 4). */
+export const DEFAULT_HOLD_MINUTES = 15;
+
+type PaymentMethod =
+  | "credit_card_full"
+  | "cash_at_reception"
+  | "voucher_dts"
+  | "voucher_vpay";
+
 /**
  * Create a new booking with full validation.
+ *
+ * Phase 4 additions:
+ *  - `payment_method` is persisted when the caller already knows which
+ *    flow the customer picked (e.g. /book contact form).
+ *  - `hold_minutes` sets `hold_expires_at = now() + N min` when the
+ *    booking starts out as pending_payment. The hold-expiry cron
+ *    cancels bookings where that timestamp has passed. Default: 15.
  */
 export async function createBooking(
   supabase: SupabaseClient,
@@ -174,6 +190,8 @@ export async function createBooking(
     status: string;
     notes?: string;
     created_by?: string;
+    payment_method?: PaymentMethod;
+    hold_minutes?: number;
   }
 ): Promise<ActionResult> {
   const startDate = parseISO(input.start_at);
@@ -264,6 +282,13 @@ export async function createBooking(
     };
   }
 
+  // Compute hold_expires_at for pending_payment bookings (Phase 4).
+  const holdMinutes = input.hold_minutes ?? DEFAULT_HOLD_MINUTES;
+  const holdExpiresAtIso =
+    input.status === "pending_payment"
+      ? addMinutes(new Date(), holdMinutes).toISOString()
+      : null;
+
   // Insert the booking
   const { data: bookingRaw, error: insertErr } = await supabase
     .from("bookings")
@@ -278,6 +303,8 @@ export async function createBooking(
       price_ils: service.price_ils,
       notes: input.notes || null,
       created_by: input.created_by || null,
+      payment_method: input.payment_method ?? null,
+      hold_expires_at: holdExpiresAtIso,
     })
     .select("*")
     .single();
