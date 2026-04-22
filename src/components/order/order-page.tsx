@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { BookingSummary } from "./booking-summary";
 import { MethodPicker } from "./method-picker";
 import { CardComPaymentForm } from "./cardcom-iframe";
+import { DtsVoucherForm } from "./voucher-dts-form";
 import { updateOrderDetailsAction } from "@/lib/actions/payments";
 import { he } from "@/lib/i18n/he";
 import type { PaymentMethod } from "@/lib/payments/types";
@@ -146,7 +147,16 @@ function MethodForm(props: {
       />
     );
   }
-  // Voucher methods land in commits 17 (DTS) + 18 (VPay).
+  if (props.method === "voucher_dts") {
+    return (
+      <DtsVoucherForm
+        token={props.token}
+        bookingId={props.bookingId}
+        serviceName={props.serviceName}
+      />
+    );
+  }
+  // VPay form lands in commit 18.
   return (
     <div className="rounded-md border border-dashed border-stone-300 bg-white p-6 text-center text-sm text-stone-600">
       {he.common.loading}

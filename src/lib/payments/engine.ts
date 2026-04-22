@@ -205,17 +205,42 @@ export async function initiatePayment(
   }
 
   // If there's already an in-flight payment for this booking+role, reuse
-  // it rather than creating a duplicate (keeps idempotency tight with the
-  // unique partial index one_active_payment_per_booking_role).
+  // it only when the METHOD also matches (keeps idempotency tight with the
+  // unique partial index one_active_payment_per_booking_role). When the
+  // customer switches methods (e.g. voucher_dts → voucher_vpay, same role=
+  // 'capture'), void the stale row so the new insert doesn't collide on
+  // the unique index.
   const desiredRole: PaymentRole = cashMethod(input.method);
-  const { data: existingRows } = await supabase
+  const { data: existingRowsRaw } = await supabase
     .from("payments")
     .select("*")
     .eq("booking_id", booking.id)
     .in("status", ["pending", "authorized"]);
+  const existingRows = (existingRowsRaw as PaymentRow[] | null) ?? [];
 
-  const existing = (existingRows as PaymentRow[] | null)?.find(
-    (p) => p.role === desiredRole
+  // Void any in-flight row with matching role but different method.
+  for (const row of existingRows) {
+    if (row.role === desiredRole && row.method !== input.method) {
+      await supabase
+        .from("payments")
+        .update({
+          status: "failed",
+          voided_at: new Date().toISOString(),
+        })
+        .eq("id", row.id);
+      writeAuditLog({
+        userId: null,
+        action: "update",
+        entityType: "payment",
+        entityId: row.id,
+        oldData: { method: row.method, status: row.status },
+        newData: { status: "failed", reason: "method_switch" },
+      });
+    }
+  }
+
+  const existing = existingRows.find(
+    (p) => p.role === desiredRole && p.method === input.method
   );
 
   const amountAgorot =
