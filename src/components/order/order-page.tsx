@@ -3,8 +3,10 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { BookingSummary } from "./booking-summary";
+import { MethodPicker } from "./method-picker";
 import { updateOrderDetailsAction } from "@/lib/actions/payments";
 import { he } from "@/lib/i18n/he";
+import type { PaymentMethod } from "@/lib/payments/types";
 
 export interface OrderPageBooking {
   id: string;
@@ -13,12 +15,7 @@ export interface OrderPageBooking {
   priceAgorot: number;
   notes: string;
   holdExpiresAt: string | null;
-  paymentMethod:
-    | "credit_card_full"
-    | "cash_at_reception"
-    | "voucher_dts"
-    | "voucher_vpay"
-    | null;
+  paymentMethod: PaymentMethod | null;
   genderPreference: "male" | "female" | "any";
 }
 
@@ -48,6 +45,9 @@ export function OrderPage(props: OrderPageProps) {
   const [email, setEmail] = useState(props.customer.email);
   const [notes, setNotes] = useState(props.booking.notes);
   const [editError, setEditError] = useState<string | null>(null);
+  const [selectedMethod, setSelectedMethod] = useState<PaymentMethod | null>(
+    props.booking.paymentMethod
+  );
 
   function handleEditSave(patch: {
     full_name?: string;
@@ -68,8 +68,6 @@ export function OrderPage(props: OrderPageProps) {
         return;
       }
 
-      // Optimistic state already updated in handlers; refresh the server
-      // component so any downstream renderings pick up the change.
       router.refresh();
     });
   }
@@ -101,15 +99,51 @@ export function OrderPage(props: OrderPageProps) {
         notes={notes}
       />
 
-      {/* Method picker lands in commit 15 */}
-      <div className="rounded-md border border-dashed border-stone-300 bg-white p-6 text-center text-sm text-stone-600">
-        {/* TODO commit 15 */}
-        {he.order.methodPicker.heading} — coming next
-      </div>
+      <MethodPicker
+        selected={selectedMethod}
+        onSelect={setSelectedMethod}
+      />
+
+      {selectedMethod && (
+        <MethodFormPlaceholder method={selectedMethod} />
+      )}
 
       <CancellationPolicyNote />
     </div>
   );
+}
+
+/**
+ * Placeholder shown once the customer picks a payment method.
+ * Commits 16-18 replace this with per-method forms:
+ *   - credit_card_full / cash_at_reception → CardCom iframe
+ *   - voucher_dts → DTS card-number + item selection
+ *   - voucher_vpay → VPay card + CVV + amount
+ */
+function MethodFormPlaceholder({ method }: { method: PaymentMethod }) {
+  const label = he.order.methodPicker[
+    camelCaseMethod(method)
+  ].title;
+  return (
+    <div className="rounded-md border border-dashed border-stone-300 bg-white p-6 text-center text-sm text-stone-600">
+      {label} — {he.common.loading}
+    </div>
+  );
+}
+
+function camelCaseMethod(
+  method: PaymentMethod
+): "creditCardFull" | "cashAtReception" | "voucherDts" | "voucherVpay" {
+  switch (method) {
+    case "credit_card_full":
+      return "creditCardFull";
+    case "cash_at_reception":
+      return "cashAtReception";
+    case "voucher_dts":
+      return "voucherDts";
+    case "voucher_vpay":
+      return "voucherVpay";
+  }
 }
 
 function CancellationPolicyNote() {
