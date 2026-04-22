@@ -118,6 +118,7 @@ export type ApplyCancellationFeeInput = z.infer<
 export const bookContactSchema = z.object({
   service_id: uuidFormat,
   therapist_id: uuidFormat,
+  room_id: uuidFormat,
   start_at: z
     .string()
     .regex(

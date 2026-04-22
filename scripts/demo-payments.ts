@@ -55,14 +55,6 @@ function fail(s: string): void {
   console.log(red("  ✗ ") + s);
 }
 
-function printJSON(obj: unknown): void {
-  const json = JSON.stringify(obj, null, 2)
-    .split("\n")
-    .map((l) => gray("      ") + l)
-    .join("\n");
-  console.log(json);
-}
-
 function ilsFromAgorot(agorot: number): string {
   return `${(agorot / 100).toFixed(2)} ILS`;
 }

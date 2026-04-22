@@ -346,8 +346,9 @@ export function buildMockVpayProvider(): PosMoneyVoucherProvider {
         throw Object.assign(new Error("CVV mismatch"), { code: 402 });
       }
       if (vpayWithdraws.has(input.invoiceNumber)) {
-        // VPay "816 — already performed": idempotent success.
-        const prior = vpayWithdraws.get(input.invoiceNumber)!;
+        // VPay "816 — already performed": idempotent success. We don't
+        // re-debit or mutate anything; the caller gets back the same
+        // actionReference they'd have received the first time.
         return {
           actionReference: input.invoiceNumber,
           balanceAfter: balanceOf(card),
