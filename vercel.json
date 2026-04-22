@@ -1,0 +1,18 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "regions": ["fra1"],
+  "crons": [
+    {
+      "path": "/api/cron/expire-holds",
+      "schedule": "*/2 * * * *"
+    }
+  ],
+  "functions": {
+    "src/app/api/webhooks/cardcom/[secret]/route.ts": {
+      "maxDuration": 20
+    },
+    "src/app/api/cron/expire-holds/route.ts": {
+      "maxDuration": 30
+    }
+  }
+}
