@@ -45,7 +45,13 @@ export const he = {
       heading: "בחרו תאריך ושעה",
       noSlots: "אין זמנים פנויים ליום זה. נסו תאריך אחר.",
       dateLabel: "תאריך",
-      withTherapist: (name: string) => `עם ${name}`,
+      timesHeading: "שעות פנויות",
+      gender: {
+        heading: "העדפת מין המטפל/ת",
+        any: "ללא העדפה",
+        female: "מטפלת",
+        male: "מטפל",
+      },
     },
     stepContact: {
       heading: "פרטי התקשרות",

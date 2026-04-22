@@ -38,6 +38,7 @@ interface TherapistServiceJoinRow {
     full_name: string;
     color: string | null;
     is_active: boolean;
+    gender: "male" | "female" | null;
   } | null;
 }
 
@@ -562,13 +563,30 @@ export async function updateBookingStatus(
 
 /**
  * Find available slots for a service on a date (used by slot-finder UI and AI).
+ *
+ * Options:
+ *   - therapistId: restrict to one specific therapist (used by admin
+ *     "book for X" flow). Leave undefined for the open pool.
+ *   - genderFilter: customer's gender preference on /book. 'any' or
+ *     undefined = no filter. 'male' / 'female' narrows the candidate
+ *     pool to matching therapists. Rows whose gender is NULL (legacy
+ *     therapists pre-00017) are excluded when a specific gender is
+ *     requested — safer than silently including them.
  */
 export async function findSlots(
   supabase: SupabaseClient,
   serviceId: string,
   date: Date,
-  therapistId?: string
+  options: {
+    therapistId?: string;
+    genderFilter?: "male" | "female" | "any";
+  } = {}
 ): Promise<AvailableSlot[]> {
+  const therapistId = options.therapistId;
+  const genderFilter =
+    options.genderFilter && options.genderFilter !== "any"
+      ? options.genderFilter
+      : undefined;
   const dayStart = startOfDay(date);
   const dayEnd = endOfDay(date);
 
@@ -584,7 +602,9 @@ export async function findSlots(
   // Fetch qualified therapists
   let therapistQuery = supabase
     .from("therapist_services")
-    .select("therapist_id, therapists(id, full_name, color, is_active)")
+    .select(
+      "therapist_id, therapists(id, full_name, color, is_active, gender)"
+    )
     .eq("service_id", serviceId);
   if (therapistId) {
     therapistQuery = therapistQuery.eq("therapist_id", therapistId);
@@ -599,7 +619,12 @@ export async function findSlots(
   const activeTsRows = tsRows.filter(
     (r): r is TherapistServiceJoinRow & {
       therapists: NonNullable<TherapistServiceJoinRow["therapists"]>;
-    } => !!r.therapists?.is_active
+    } => {
+      const t = r.therapists;
+      if (!t?.is_active) return false;
+      if (genderFilter && t.gender !== genderFilter) return false;
+      return true;
+    }
   );
 
   const therapistIds = activeTsRows.map((r) => r.therapist_id);

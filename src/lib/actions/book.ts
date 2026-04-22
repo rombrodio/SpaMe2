@@ -11,6 +11,7 @@ import {
 import { issueOrderToken } from "@/lib/payments/jwt";
 import { normalizePhoneIL } from "@/lib/messaging/twilio";
 import { writeAuditLog } from "@/lib/audit";
+import type { AvailableSlot } from "@/lib/scheduling/types";
 
 // ────────────────────────────────────────────────────────────
 // Catalog reads for the /book service grid (anonymous callers;
@@ -30,34 +31,49 @@ export async function getPublicServices() {
   return data ?? [];
 }
 
+/**
+ * Anonymous slot shown to the customer. Carries NO therapist identity —
+ * only time. The server picks the actual therapist at submit time in
+ * createBookingFromBookAction.
+ */
 export interface PublicSlot {
   start: string; // ISO
   end: string; // ISO
-  therapist_id: string;
-  therapist_name: string;
-  therapist_color: string | null;
-  room_id: string;
-  room_name: string;
 }
+
+export type GenderPreference = "male" | "female" | "any";
 
 export async function getPublicSlots(input: {
   service_id: string;
   date: string; // "YYYY-MM-DD"
+  gender_preference?: GenderPreference;
 }): Promise<PublicSlot[]> {
   const admin = createAdminClient();
   const date = parseISO(input.date);
   if (isNaN(date.getTime())) return [];
 
-  const slots = await engineFindSlots(admin, input.service_id, date);
-  return slots.map((s) => ({
-    start: s.start.toISOString(),
-    end: s.end.toISOString(),
-    therapist_id: s.therapist_id,
-    therapist_name: s.therapist_name,
-    therapist_color: s.therapist_color ?? null,
-    room_id: s.room_id,
-    room_name: s.room_name,
-  }));
+  const slots = await engineFindSlots(admin, input.service_id, date, {
+    genderFilter: input.gender_preference ?? "any",
+  });
+  return dedupeByStart(slots);
+}
+
+/**
+ * The underlying engine returns one AvailableSlot per (therapist, room)
+ * pair that can serve a given time. For the customer UI we want exactly
+ * one entry per start time — whichever (therapist, room) happens to be
+ * eligible doesn't concern the customer. Ordering preserved.
+ */
+function dedupeByStart(slots: AvailableSlot[]): PublicSlot[] {
+  const seen = new Set<string>();
+  const out: PublicSlot[] = [];
+  for (const s of slots) {
+    const key = s.start.toISOString();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ start: key, end: s.end.toISOString() });
+  }
+  return out;
 }
 
 // ────────────────────────────────────────────────────────────
@@ -67,16 +83,43 @@ export async function getPublicSlots(input: {
 
 export async function createBookingFromBookAction(input: {
   service_id: string;
-  therapist_id: string;
-  room_id: string;
   start_at: string;
+  gender_preference: GenderPreference;
   full_name: string;
   phone: string;
   email?: string;
   notes?: string;
 }) {
-  const parsed = bookContactSchema.safeParse(input);
+  // We can't validate via bookContactSchema yet because the client no
+  // longer sends therapist_id / room_id. Validate the subset inline.
+  const parsed = bookContactSchema
+    .pick({
+      service_id: true,
+      start_at: true,
+      full_name: true,
+      phone: true,
+      email: true,
+      notes: true,
+    })
+    .safeParse({
+      service_id: input.service_id,
+      start_at: input.start_at,
+      full_name: input.full_name,
+      phone: input.phone,
+      email: input.email,
+      notes: input.notes,
+    });
   if (!parsed.success) return { error: parsed.error.flatten().fieldErrors };
+
+  if (
+    input.gender_preference !== "male" &&
+    input.gender_preference !== "female" &&
+    input.gender_preference !== "any"
+  ) {
+    return {
+      error: { gender_preference: ["Invalid gender preference"] },
+    };
+  }
 
   const normalizedPhone = normalizePhoneIL(parsed.data.phone);
   if (!normalizedPhone) {
@@ -85,7 +128,38 @@ export async function createBookingFromBookAction(input: {
 
   const admin = createAdminClient();
 
-  // Find or create customer by normalized phone.
+  // ── Pick therapist + room server-side ────────────────────
+  // Re-run slot search for the requested date so we get the fresh
+  // set of eligible (therapist, room) pairs. Filter to ones that
+  // match the requested start time exactly.
+  const startDate = parseISO(parsed.data.start_at);
+  if (isNaN(startDate.getTime())) {
+    return { error: { start_at: ["Invalid date/time format"] } };
+  }
+  const allSlots = await engineFindSlots(
+    admin,
+    parsed.data.service_id,
+    startDate,
+    { genderFilter: input.gender_preference }
+  );
+  const startMs = startDate.getTime();
+  const candidates = allSlots.filter(
+    (s) => s.start.getTime() === startMs
+  );
+  if (candidates.length === 0) {
+    return {
+      error: {
+        _form: [
+          "The requested time is no longer available. Please pick another.",
+        ],
+      },
+    };
+  }
+
+  // Random assignment among eligible therapists.
+  const picked = candidates[Math.floor(Math.random() * candidates.length)];
+
+  // ── Find or create customer by normalized phone ───────────
   const { data: existingCustomer } = await admin
     .from("customers")
     .select("id, full_name, email")
@@ -95,9 +169,11 @@ export async function createBookingFromBookAction(input: {
   let customerId: string;
   if (existingCustomer) {
     customerId = existingCustomer.id as string;
-    // Best-effort: update name/email if the customer provided better info.
     const patch: Record<string, unknown> = {};
-    if (parsed.data.full_name && parsed.data.full_name !== existingCustomer.full_name) {
+    if (
+      parsed.data.full_name &&
+      parsed.data.full_name !== existingCustomer.full_name
+    ) {
       patch.full_name = parsed.data.full_name;
     }
     if (parsed.data.email && parsed.data.email !== existingCustomer.email) {
@@ -133,22 +209,29 @@ export async function createBookingFromBookAction(input: {
     });
   }
 
-  // Create the booking via the scheduling engine. Status is
-  // pending_payment and hold_minutes=15 (default) so the cron can
-  // sweep it if the customer abandons the pay page.
+  // ── Create booking ────────────────────────────────────────
   const createResult = await engineCreate(admin, {
     customer_id: customerId,
-    therapist_id: parsed.data.therapist_id,
-    room_id: parsed.data.room_id,
+    therapist_id: picked.therapist_id,
+    room_id: picked.room_id,
     service_id: parsed.data.service_id,
     start_at: parsed.data.start_at,
     status: "pending_payment",
     notes: parsed.data.notes || undefined,
-    // created_by stays null — no logged-in user; flow source is audit_log.
   });
   if ("error" in createResult) return createResult;
 
   const bookingRow = createResult.data as { id: string };
+
+  // Persist the gender preference snapshot — createBooking engine
+  // doesn't take it yet (not every caller has one).
+  if (input.gender_preference !== "any") {
+    await admin
+      .from("bookings")
+      .update({ therapist_gender_preference: input.gender_preference })
+      .eq("id", bookingRow.id);
+  }
+
   const token = await issueOrderToken({
     bid: bookingRow.id,
     src: "book",
@@ -159,7 +242,11 @@ export async function createBookingFromBookAction(input: {
     action: "create",
     entityType: "booking",
     entityId: bookingRow.id,
-    newData: { source: "book_flow_contact_submit" },
+    newData: {
+      source: "book_flow_contact_submit",
+      gender_preference: input.gender_preference,
+      assigned_therapist_id: picked.therapist_id,
+    },
   });
 
   return {
@@ -179,6 +266,6 @@ export async function isBookingHoldActive(bookingId: string): Promise<boolean> {
   if (!data) return false;
   const row = data as { status: string; hold_expires_at: string | null };
   if (row.status !== "pending_payment") return false;
-  if (!row.hold_expires_at) return true; // no expiry set
+  if (!row.hold_expires_at) return true;
   return new Date(row.hold_expires_at).getTime() > Date.now();
 }

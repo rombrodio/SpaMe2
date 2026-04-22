@@ -206,12 +206,9 @@ export async function findAvailableSlotsAction(
 
   const supabase = await createClient();
   const date = parseISO(parsed.data.date);
-  const slots = await engineFindSlots(
-    supabase,
-    parsed.data.service_id,
-    date,
-    parsed.data.therapist_id
-  );
+  const slots = await engineFindSlots(supabase, parsed.data.service_id, date, {
+    therapistId: parsed.data.therapist_id,
+  });
 
   // Serialize dates for client
   return slots.map((s) => ({

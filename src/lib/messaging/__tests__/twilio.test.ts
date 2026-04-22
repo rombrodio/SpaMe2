@@ -37,25 +37,32 @@ describe("normalizePhoneIL", () => {
 });
 
 describe("buildBookingConfirmedSms", () => {
-  it("produces a short Hebrew body with date/time/therapist", () => {
+  it("produces a short anonymous Hebrew body with date/time", () => {
     const body = buildBookingConfirmedSms({
       serviceName: "עיסוי שוודי 60 דקות",
       startAt: "2026-05-25T11:00:00Z", // 14:00 Jerusalem (DST)
-      therapistName: "דנה",
     });
     expect(body).toContain("אושר");
     expect(body).toContain("עיסוי שוודי 60 דקות");
-    expect(body).toContain("דנה");
     expect(body).toContain("25/05");
     expect(body).toContain("14:00");
     expect(body).toContain("ספאמי");
+  });
+
+  it("does NOT leak a therapist name (anonymization policy)", () => {
+    const body = buildBookingConfirmedSms({
+      serviceName: "X",
+      startAt: "2026-05-25T11:00:00Z",
+    });
+    // The template takes no therapistName input at all; the most common
+    // legacy value "עם" must not appear in the rendered copy.
+    expect(body).not.toMatch(/\bעם\b/);
   });
 
   it("accepts a Date object", () => {
     const body = buildBookingConfirmedSms({
       serviceName: "Facial",
       startAt: new Date("2026-05-25T11:00:00Z"),
-      therapistName: "Dana",
     });
     expect(body).toContain("14:00");
   });
@@ -64,7 +71,6 @@ describe("buildBookingConfirmedSms", () => {
     const body = buildBookingConfirmedSms({
       serviceName: "X",
       startAt: "2026-05-25T11:00:00Z",
-      therapistName: "Y",
       businessName: "Custom Spa",
     });
     expect(body.endsWith("Custom Spa")).toBe(true);
@@ -74,9 +80,8 @@ describe("buildBookingConfirmedSms", () => {
     const body = buildBookingConfirmedSms({
       serviceName: "עיסוי רקמות עמוקות 90 דקות",
       startAt: "2026-05-25T11:00:00Z",
-      therapistName: "אלונה",
     });
     // UCS-2 single segment = 70 chars; we aim to stay under that.
-    expect(body.length).toBeLessThanOrEqual(90);
+    expect(body.length).toBeLessThanOrEqual(80);
   });
 });

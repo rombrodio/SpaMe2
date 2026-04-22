@@ -10,6 +10,7 @@ import {
   createBookingFromBookAction,
   getPublicSlots,
   type PublicSlot,
+  type GenderPreference,
 } from "@/lib/actions/book";
 import { he, formatDateTimeILFull } from "@/lib/i18n/he";
 import { Button } from "@/components/ui/button";
@@ -32,10 +33,14 @@ export function BookFlow({ services }: BookFlowProps) {
   const router = useRouter();
   const [step, setStep] = useState<Step>("service");
 
-  const [selectedService, setSelectedService] = useState<BookService | null>(null);
+  const [selectedService, setSelectedService] = useState<BookService | null>(
+    null
+  );
   const [selectedDate, setSelectedDate] = useState<string>(
     format(new Date(), "yyyy-MM-dd")
   );
+  const [genderPreference, setGenderPreference] =
+    useState<GenderPreference>("any");
   const [slots, setSlots] = useState<PublicSlot[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<PublicSlot | null>(null);
@@ -49,19 +54,38 @@ export function BookFlow({ services }: BookFlowProps) {
     setSelectedSlot(null);
     setSlots([]);
     setStep("slot");
-    void refreshSlots(s.id, selectedDate);
+    void refreshSlots(s.id, selectedDate, genderPreference);
   }
 
-  async function refreshSlots(serviceId: string, date: string) {
+  async function refreshSlots(
+    serviceId: string,
+    date: string,
+    gender: GenderPreference
+  ) {
     setSlotsLoading(true);
     try {
       const fetched = await getPublicSlots({
         service_id: serviceId,
         date,
+        gender_preference: gender,
       });
       setSlots(fetched);
     } finally {
       setSlotsLoading(false);
+    }
+  }
+
+  function handleDateChange(date: string) {
+    setSelectedDate(date);
+    if (selectedService) {
+      void refreshSlots(selectedService.id, date, genderPreference);
+    }
+  }
+
+  function handleGenderChange(g: GenderPreference) {
+    setGenderPreference(g);
+    if (selectedService) {
+      void refreshSlots(selectedService.id, selectedDate, g);
     }
   }
 
@@ -82,9 +106,8 @@ export function BookFlow({ services }: BookFlowProps) {
     startSubmit(async () => {
       const result = await createBookingFromBookAction({
         service_id: selectedService.id,
-        therapist_id: selectedSlot.therapist_id,
-        room_id: selectedSlot.room_id,
         start_at: selectedSlot.start,
+        gender_preference: genderPreference,
         full_name: input.full_name,
         phone: input.phone,
         email: input.email || undefined,
@@ -92,8 +115,6 @@ export function BookFlow({ services }: BookFlowProps) {
       });
 
       if ("error" in result && result.error) {
-        // Zod's flatten().fieldErrors types values as string[] | undefined;
-        // strip the undefineds before handing to our state bucket.
         const clean: Record<string, string[]> = {};
         for (const [k, v] of Object.entries(result.error)) {
           if (v) clean[k] = v;
@@ -116,10 +137,7 @@ export function BookFlow({ services }: BookFlowProps) {
       <StepIndicator step={step} />
 
       {step === "service" && (
-        <ServicesList
-          services={services}
-          onPick={pickService}
-        />
+        <ServicesList services={services} onPick={pickService} />
       )}
 
       {step === "slot" && selectedService && (
@@ -129,12 +147,10 @@ export function BookFlow({ services }: BookFlowProps) {
             onChange={() => setStep("service")}
           />
           <SlotGrid
-            serviceId={selectedService.id}
             selectedDate={selectedDate}
-            onDateChange={(d) => {
-              setSelectedDate(d);
-              void refreshSlots(selectedService.id, d);
-            }}
+            onDateChange={handleDateChange}
+            genderPreference={genderPreference}
+            onGenderPreferenceChange={handleGenderChange}
             slots={slots}
             loading={slotsLoading}
             onPick={pickSlot}
@@ -147,6 +163,7 @@ export function BookFlow({ services }: BookFlowProps) {
           <SelectedSummary
             service={selectedService}
             slot={selectedSlot}
+            genderPreference={genderPreference}
             onChangeSlot={() => setStep("slot")}
             onChangeService={() => setStep("service")}
           />
@@ -173,8 +190,7 @@ function StepIndicator({ step }: { step: Step }) {
     <ol className="flex justify-between text-xs font-medium text-stone-600">
       {steps.map((s, idx) => {
         const current = s.id === step;
-        const done =
-          steps.findIndex((x) => x.id === step) > idx;
+        const done = steps.findIndex((x) => x.id === step) > idx;
         return (
           <li
             key={s.id}
@@ -242,14 +258,23 @@ function SelectedServiceBanner({
 function SelectedSummary({
   service,
   slot,
+  genderPreference,
   onChangeSlot,
   onChangeService,
 }: {
   service: BookService;
   slot: PublicSlot;
+  genderPreference: GenderPreference;
   onChangeSlot: () => void;
   onChangeService: () => void;
 }) {
+  const genderLabel =
+    genderPreference === "any"
+      ? he.book.stepSlot.gender.any
+      : genderPreference === "female"
+      ? he.book.stepSlot.gender.female
+      : he.book.stepSlot.gender.male;
+
   return (
     <div className="rounded-md border border-stone-200 bg-white p-4 text-sm">
       <div className="flex items-center justify-between">
@@ -259,7 +284,12 @@ function SelectedSummary({
             {he.book.stepService.minutes(service.duration_minutes)}
           </div>
         </div>
-        <Button type="button" variant="ghost" size="sm" onClick={onChangeService}>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={onChangeService}
+        >
           {he.common.edit}
         </Button>
       </div>
@@ -268,7 +298,7 @@ function SelectedSummary({
         <div>
           <div>{formatDateTimeILFull(slot.start)}</div>
           <div className="text-stone-600">
-            {he.book.stepSlot.withTherapist(slot.therapist_name)}
+            {he.book.stepSlot.gender.heading}: {genderLabel}
           </div>
         </div>
         <Button type="button" variant="ghost" size="sm" onClick={onChangeSlot}>
