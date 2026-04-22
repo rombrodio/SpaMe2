@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { BookingSummary } from "./booking-summary";
 import { MethodPicker } from "./method-picker";
+import { CardComPaymentForm } from "./cardcom-iframe";
 import { updateOrderDetailsAction } from "@/lib/actions/payments";
 import { he } from "@/lib/i18n/he";
 import type { PaymentMethod } from "@/lib/payments/types";
@@ -105,7 +106,13 @@ export function OrderPage(props: OrderPageProps) {
       />
 
       {selectedMethod && (
-        <MethodFormPlaceholder method={selectedMethod} />
+        <MethodForm
+          method={selectedMethod}
+          token={props.token}
+          bookingId={props.booking.id}
+          serviceName={props.service.name}
+          priceAgorot={props.service.priceAgorot}
+        />
       )}
 
       <CancellationPolicyNote />
@@ -114,36 +121,37 @@ export function OrderPage(props: OrderPageProps) {
 }
 
 /**
- * Placeholder shown once the customer picks a payment method.
- * Commits 16-18 replace this with per-method forms:
- *   - credit_card_full / cash_at_reception → CardCom iframe
- *   - voucher_dts → DTS card-number + item selection
- *   - voucher_vpay → VPay card + CVV + amount
+ * Dispatches the chosen payment method to the right per-method form.
+ * CardCom handles both credit_card_full (capture) and cash_at_reception
+ * (CreateTokenOnly); voucher forms land in commits 17-18.
  */
-function MethodFormPlaceholder({ method }: { method: PaymentMethod }) {
-  const label = he.order.methodPicker[
-    camelCaseMethod(method)
-  ].title;
+function MethodForm(props: {
+  method: PaymentMethod;
+  token: string;
+  bookingId: string;
+  serviceName: string;
+  priceAgorot: number;
+}) {
+  if (
+    props.method === "credit_card_full" ||
+    props.method === "cash_at_reception"
+  ) {
+    return (
+      <CardComPaymentForm
+        token={props.token}
+        bookingId={props.bookingId}
+        method={props.method}
+        serviceName={props.serviceName}
+        priceAgorot={props.priceAgorot}
+      />
+    );
+  }
+  // Voucher methods land in commits 17 (DTS) + 18 (VPay).
   return (
     <div className="rounded-md border border-dashed border-stone-300 bg-white p-6 text-center text-sm text-stone-600">
-      {label} — {he.common.loading}
+      {he.common.loading}
     </div>
   );
-}
-
-function camelCaseMethod(
-  method: PaymentMethod
-): "creditCardFull" | "cashAtReception" | "voucherDts" | "voucherVpay" {
-  switch (method) {
-    case "credit_card_full":
-      return "creditCardFull";
-    case "cash_at_reception":
-      return "cashAtReception";
-    case "voucher_dts":
-      return "voucherDts";
-    case "voucher_vpay":
-      return "voucherVpay";
-  }
 }
 
 function CancellationPolicyNote() {
