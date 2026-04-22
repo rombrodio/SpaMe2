@@ -222,6 +222,13 @@ export function resetDtsMock(): void {
   dtsRedemptions.clear();
 }
 
+/** True when at least one DTS card is currently seeded. Providers.ts
+ *  uses this to skip auto-seeding demo cards when tests have already
+ *  seeded their own fixtures. */
+export function hasDtsCards(): boolean {
+  return dtsCards.size > 0;
+}
+
 /** Test helper: seed a DTS card with benefits. */
 export function seedDtsCard(
   cardNumber: string,
@@ -304,6 +311,12 @@ const vpayWithdraws = new Map<
 export function resetVpayMock(): void {
   vpayCards.clear();
   vpayWithdraws.clear();
+}
+
+/** True when at least one VPay card is currently seeded. Same purpose
+ *  as hasDtsCards — prevents auto-seed from overwriting test fixtures. */
+export function hasVpayCards(): boolean {
+  return vpayCards.size > 0;
 }
 
 /** Test helper: seed a VPay card with a balance. */

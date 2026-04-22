@@ -14,6 +14,8 @@ import {
   buildMockCardComProvider,
   buildMockDtsProvider,
   buildMockVpayProvider,
+  hasDtsCards,
+  hasVpayCards,
   seedDtsCard,
   seedVpayCard,
 } from "./mock";
@@ -56,6 +58,8 @@ export const DEMO_VPAY_CVV = "123";
 function ensureDtsDemoSeed(): void {
   if (dtsSeeded) return;
   dtsSeeded = true;
+  // Don't clobber any test or manual seed that already exists.
+  if (hasDtsCards()) return;
   seedDtsCard(DEMO_DTS_CARD_NUMBER, {
     customer: {
       organizationId: "demo-org",
@@ -92,6 +96,7 @@ function ensureDtsDemoSeed(): void {
 function ensureVpayDemoSeed(): void {
   if (vpaySeeded) return;
   vpaySeeded = true;
+  if (hasVpayCards()) return;
   seedVpayCard(DEMO_VPAY_CARD_NUMBER, {
     cvv: DEMO_VPAY_CVV,
     balanceAgorot: 50_000, // 500 ILS
