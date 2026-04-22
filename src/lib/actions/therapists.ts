@@ -95,8 +95,11 @@ export async function createTherapist(formData: FormData) {
   const raw = Object.fromEntries(formData.entries());
   const sendInvite =
     raw.send_invite === "on" || raw.send_invite === "true";
+  // Coerce empty-string gender from the form to undefined before Zod.
+  const genderRaw = typeof raw.gender === "string" ? raw.gender : "";
   const parsed = therapistSchema.safeParse({
     ...raw,
+    gender: genderRaw === "" ? undefined : genderRaw,
     is_active: raw.is_active === "on" || raw.is_active === "true",
   });
 
@@ -110,11 +113,22 @@ export async function createTherapist(formData: FormData) {
     };
   }
 
+  // Gender is required when creating a new therapist (legacy rows are
+  // the only ones allowed to have null gender — see 00017 migration).
+  if (!parsed.data.gender) {
+    return {
+      error: {
+        gender: ["Gender is required for new therapists"],
+      },
+    };
+  }
+
   const data = {
     ...parsed.data,
     email: parsed.data.email || null,
     phone: parsed.data.phone || null,
     color: parsed.data.color || null,
+    gender: parsed.data.gender,
   };
 
   const supabase = await createClient();
@@ -237,8 +251,10 @@ export async function getTherapistAuthStatus(
 
 export async function updateTherapist(id: string, formData: FormData) {
   const raw = Object.fromEntries(formData.entries());
+  const genderRaw = typeof raw.gender === "string" ? raw.gender : "";
   const parsed = therapistSchema.safeParse({
     ...raw,
+    gender: genderRaw === "" ? undefined : genderRaw,
     is_active: raw.is_active === "on" || raw.is_active === "true",
   });
 
@@ -246,12 +262,21 @@ export async function updateTherapist(id: string, formData: FormData) {
     return { error: parsed.error.flatten().fieldErrors };
   }
 
-  const data = {
+  // On edit, we allow saving without gender (legacy support) BUT if the
+  // admin picked a value we always persist it. Undefined from the Zod
+  // parse means "admin didn't pick" — omit the field to preserve the
+  // prior DB value.
+  const data: Record<string, unknown> = {
     ...parsed.data,
     email: parsed.data.email || null,
     phone: parsed.data.phone || null,
     color: parsed.data.color || null,
   };
+  if (parsed.data.gender === undefined) {
+    delete data.gender;
+  } else {
+    data.gender = parsed.data.gender;
+  }
 
   const supabase = await createClient();
   const {

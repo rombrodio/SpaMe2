@@ -7,10 +7,10 @@
 -- uses z.string().uuid() which enforces the variant-bit check.
 
 -- Therapists
-INSERT INTO therapists (id, full_name, phone, email, color) VALUES
-  ('838c1ccb-9a92-4990-9cd4-1c0a80d48859', 'Dana Cohen',    '+972501234501', 'dana@example.com',  '#3B82F6'),
-  ('48301779-5394-48c1-a82a-83de9b2e2126', 'Yael Levy',     '+972501234502', 'yael@example.com',  '#10B981'),
-  ('62936e33-3b8c-44dd-a969-833b87b97378', 'Noam Shapira',  '+972501234503', 'noam@example.com',  '#F59E0B');
+INSERT INTO therapists (id, full_name, phone, email, color, gender) VALUES
+  ('838c1ccb-9a92-4990-9cd4-1c0a80d48859', 'Dana Cohen',    '+972501234501', 'dana@example.com',  '#3B82F6', 'female'),
+  ('48301779-5394-48c1-a82a-83de9b2e2126', 'Yael Levy',     '+972501234502', 'yael@example.com',  '#10B981', 'female'),
+  ('62936e33-3b8c-44dd-a969-833b87b97378', 'Noam Shapira',  '+972501234503', 'noam@example.com',  '#F59E0B', 'male');
 
 -- Rooms
 INSERT INTO rooms (id, name, description) VALUES

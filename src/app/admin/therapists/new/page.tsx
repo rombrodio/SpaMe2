@@ -87,6 +87,38 @@ export default function NewTherapistPage() {
               <Input id="color" name="color" type="color" defaultValue="#6366f1" />
             </div>
 
+            <fieldset className="space-y-2">
+              <Label>
+                Gender <span className="text-destructive">*</span>
+              </Label>
+              <div className="flex gap-4 text-sm">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="gender"
+                    value="female"
+                    required
+                    className="h-4 w-4"
+                  />
+                  Female
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="gender"
+                    value="male"
+                    required
+                    className="h-4 w-4"
+                  />
+                  Male
+                </label>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Used to match customer gender preferences at booking time.
+                Not displayed to customers.
+              </p>
+            </fieldset>
+
             <div className="flex items-center gap-2">
               <input
                 id="is_active"

@@ -2,6 +2,9 @@ import { z } from "zod";
 
 const uuidFormat = z.string().uuid("Invalid UUID");
 
+export const therapistGenderEnum = z.enum(["male", "female"]);
+export type TherapistGender = z.infer<typeof therapistGenderEnum>;
+
 export const therapistSchema = z.object({
   full_name: z.string().min(1, "Name is required").max(100),
   phone: z.string().max(20).optional().default(""),
@@ -11,6 +14,12 @@ export const therapistSchema = z.object({
     .regex(/^#[0-9a-fA-F]{6}$/, "Must be a hex color like #FF0000")
     .optional()
     .or(z.literal("")),
+  // Gender is nullable in DB (legacy rows pre-00017). The new-therapist
+  // form enforces `required` via HTML; the edit form shows a warning
+  // banner when empty and still accepts saves without picking so admins
+  // can update other fields first. Server actions coerce empty-string
+  // from raw FormData to undefined before calling safeParse.
+  gender: therapistGenderEnum.optional(),
   is_active: z.boolean().default(true),
 });
 
