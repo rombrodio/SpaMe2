@@ -148,6 +148,12 @@ export interface InitiatePaymentInput {
   method: PaymentMethod;
   returnUrlBase: string;       // e.g. https://spame2.app — used to build
                                 // success/error/cancel + indicator URLs
+  /**
+   * The /order/<token> JWT. Embedded in the success/error/cancel URLs
+   * so the customer lands on a token-scoped page that can re-verify
+   * the booking and render the right state.
+   */
+  tokenForReturn: string;
   productName: string;
   language?: "he" | "en";
 }
@@ -285,9 +291,9 @@ export async function initiatePayment(
       language: input.language ?? "he",
       customer: contactFromCustomer(customer),
       urls: {
-        success: `${input.returnUrlBase}/order/return?r=success&pid=${payment.id}`,
-        error: `${input.returnUrlBase}/order/return?r=error&pid=${payment.id}`,
-        cancel: `${input.returnUrlBase}/order/return?r=cancel&pid=${payment.id}`,
+        success: `${input.returnUrlBase}/order/${input.tokenForReturn}/return?r=success&pid=${payment.id}`,
+        error: `${input.returnUrlBase}/order/${input.tokenForReturn}/return?r=error&pid=${payment.id}`,
+        cancel: `${input.returnUrlBase}/order/${input.tokenForReturn}/return?r=cancel&pid=${payment.id}`,
         indicator: `${input.returnUrlBase}/api/webhooks/cardcom`,
       },
     });

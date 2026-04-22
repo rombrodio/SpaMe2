@@ -110,6 +110,7 @@ export async function initiatePaymentAction(input: {
     bookingId: parsed.data.booking_id,
     method: parsed.data.method,
     returnUrlBase: returnUrlBase(),
+    tokenForReturn: input.token,
     productName: input.product_name,
     language: "he",
   });
