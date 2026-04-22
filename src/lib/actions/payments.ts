@@ -21,7 +21,9 @@ import {
   redeemVpayVoucher,
   markCashReceived,
   applyCancellationFee,
+  confirmFromWebhook,
 } from "@/lib/payments/engine";
+import { simulateCardcomDealCompletion } from "@/lib/payments/mock";
 import { writeAuditLog } from "@/lib/audit";
 import { DtsError } from "@/lib/payments/dts";
 import { VpayProxyError } from "@/lib/payments/vpay";
@@ -364,4 +366,66 @@ export async function getPaymentsForBooking(bookingId: string) {
     .order("created_at", { ascending: true });
   if (error) return { error: { _form: [error.message] } };
   return { success: true, data: { rows: data ?? [] } };
+}
+
+// ────────────────────────────────────────────────────────────
+// Dev-only: simulate a CardCom webhook for the mock provider so the
+// /order/<token> flow can be driven end-to-end without a real iframe
+// submit. Guarded by NODE_ENV + PAYMENTS_CARDCOM_PROVIDER=mock.
+// ────────────────────────────────────────────────────────────
+
+export async function simulateCardcomWebhookAction(input: {
+  token: string;
+  booking_id: string;
+  outcome: "succeeded" | "failed";
+}) {
+  if (process.env.NODE_ENV === "production") {
+    return { error: { _form: ["Not available in production"] } };
+  }
+  if (process.env.PAYMENTS_CARDCOM_PROVIDER === "real") {
+    return { error: { _form: ["Real CardCom provider is active"] } };
+  }
+
+  const auth = await requireOrderToken(input.token, input.booking_id);
+  if ("error" in auth) return auth;
+
+  const admin = createAdminClient();
+  // Find the most recent in-flight CardCom payment for this booking.
+  const { data: payments } = await admin
+    .from("payments")
+    .select("id, provider_tx_id, status, role, created_at")
+    .eq("booking_id", input.booking_id)
+    .eq("provider", "cardcom")
+    .in("status", ["pending"])
+    .order("created_at", { ascending: false })
+    .limit(1);
+
+  const payment = (payments as Array<{
+    id: string;
+    provider_tx_id: string | null;
+    status: string;
+    role: string;
+  }> | null)?.[0];
+
+  if (!payment || !payment.provider_tx_id) {
+    return {
+      error: { _form: ["No pending CardCom payment for this booking"] },
+    };
+  }
+
+  // Drive the in-memory mock state, then run the engine's normal
+  // webhook pull-through path — same code path the real webhook hits.
+  try {
+    simulateCardcomDealCompletion(payment.provider_tx_id, input.outcome);
+  } catch (err) {
+    return {
+      error: { _form: [(err as Error).message] },
+    };
+  }
+
+  const result = await confirmFromWebhook(admin, {
+    lowProfileCode: payment.provider_tx_id,
+    rawWebhook: { lowprofilecode: payment.provider_tx_id, _simulated: "true" },
+  });
+  return result;
 }

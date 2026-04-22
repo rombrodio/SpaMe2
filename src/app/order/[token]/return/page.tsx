@@ -5,6 +5,7 @@ import { verifyOrderToken } from "@/lib/payments/jwt";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { he } from "@/lib/i18n/he";
+import { DevCardcomSimulator } from "@/components/order/dev-cardcom-simulator";
 
 export const dynamic = "force-dynamic";
 
@@ -101,12 +102,18 @@ export default async function ReturnPage({ params, searchParams }: PageProps) {
 
   // Still pending — meta refresh until status flips. Avoids needing a
   // client component just for polling.
+  const isMockMode =
+    process.env.NODE_ENV !== "production" &&
+    (process.env.PAYMENTS_CARDCOM_PROVIDER ?? "mock") !== "real";
+
   return renderShell(
     he.order.cardcom.waiting,
     he.order.cardcom.waiting,
-    null,
+    isMockMode ? (
+      <DevCardcomSimulator token={token} bookingId={verified.claims.bid} />
+    ) : null,
     {
-      autoRefreshSeconds: 2,
+      autoRefreshSeconds: isMockMode ? undefined : 2,
     }
   );
 }
