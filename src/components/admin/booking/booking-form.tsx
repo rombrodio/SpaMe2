@@ -51,6 +51,10 @@ export function BookingForm({ formData }: BookingFormProps) {
   const [startAt, setStartAt] = useState("");
   const [status, setStatus] = useState("confirmed");
   const [notes, setNotes] = useState("");
+  // Phase 5 deferred-assignment: when checked, submit with no therapist
+  // so the booking lands as assignment_status='unassigned' and the
+  // manager picks someone on /admin/assignments.
+  const [leaveUnassigned, setLeaveUnassigned] = useState(false);
 
   // Filtered options based on service selection
   const [qualifiedTherapistIds, setQualifiedTherapistIds] = useState<string[]>([]);
@@ -194,17 +198,19 @@ export function BookingForm({ formData }: BookingFormProps) {
                 <Select
                   id="therapist_id"
                   name="therapist_id"
-                  value={therapistId}
+                  value={leaveUnassigned ? "" : therapistId}
                   onChange={(e) => setTherapistId(e.target.value)}
-                  required
-                  disabled={!serviceId}
+                  required={!leaveUnassigned}
+                  disabled={!serviceId || leaveUnassigned}
                 >
                   <option value="">
-                    {!serviceId
-                      ? "Select a service first..."
-                      : filteredTherapists.length === 0
-                        ? "No qualified therapists"
-                        : "Select therapist..."}
+                    {leaveUnassigned
+                      ? "Unassigned — manager will assign later"
+                      : !serviceId
+                        ? "Select a service first..."
+                        : filteredTherapists.length === 0
+                          ? "No qualified therapists"
+                          : "Select therapist..."}
                   </option>
                   {filteredTherapists.map((t) => (
                     <option key={t.id} value={t.id}>
@@ -212,6 +218,25 @@ export function BookingForm({ formData }: BookingFormProps) {
                     </option>
                   ))}
                 </Select>
+                <div className="mt-2 flex items-center gap-2">
+                  <input
+                    id="leave_unassigned"
+                    name="leave_unassigned"
+                    type="checkbox"
+                    checked={leaveUnassigned}
+                    onChange={(e) => {
+                      setLeaveUnassigned(e.target.checked);
+                      if (e.target.checked) setTherapistId("");
+                    }}
+                    className="h-4 w-4 rounded border-gray-300"
+                  />
+                  <Label
+                    htmlFor="leave_unassigned"
+                    className="text-xs font-normal text-muted-foreground"
+                  >
+                    Leave unassigned (manager picks later)
+                  </Label>
+                </div>
               </div>
 
               <div>

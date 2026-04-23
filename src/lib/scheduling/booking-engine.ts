@@ -5,10 +5,17 @@
  */
 
 import { SupabaseClient } from "@supabase/supabase-js";
-import { addMinutes, parseISO, startOfDay, endOfDay } from "date-fns";
-import { validateBookingSlot, findAvailableSlots } from "./availability";
+import { addMinutes, parseISO, startOfDay, endOfDay, areIntervalsOverlapping } from "date-fns";
+import {
+  validateBookingSlot,
+  findAvailableSlots,
+  getTherapistWindows,
+  type UnassignedBookingForMatcher,
+} from "./availability";
+import { canPlaceAll, type MatcherBooking } from "./matcher";
 import { writeAuditLog } from "@/lib/audit";
 import type {
+  AssignmentStatus,
   AvailabilityRule,
   AvailableSlot,
   ExistingBooking,
@@ -55,12 +62,14 @@ interface RoomServiceJoinRow {
 interface BookingRow {
   id: string;
   customer_id: string;
-  therapist_id: string;
+  // NULL for unassigned bookings (phase 5 deferred-assignment work).
+  therapist_id: string | null;
   room_id: string;
   service_id: string;
   start_at: string;
   end_at: string;
   status: string;
+  assignment_status: AssignmentStatus;
   price_ils: number;
   notes: string | null;
   created_by: string | null;
@@ -164,6 +173,172 @@ const TERMINAL_STATUSES = ["cancelled", "completed", "no_show"];
 /** Default soft-hold window for pending_payment bookings (see phase 4). */
 export const DEFAULT_HOLD_MINUTES = 15;
 
+// ─────────────────────────────────────────────────────────────
+// Matcher eligibility helpers (phase 5 — deferred assignment)
+//
+// The matcher needs to know, for each paid-but-unassigned booking on a
+// given day, which therapists could possibly cover it. We compute
+// eligibility on the fly rather than storing it: the inputs (rules,
+// time-off, confirmed bookings) can change frequently, so a cached
+// eligibility set would be stale the moment the admin edits
+// availability.
+// ─────────────────────────────────────────────────────────────
+
+export interface UnassignedBookingRow {
+  id: string;
+  service_id: string;
+  start_at: string;
+  end_at: string;
+  therapist_gender_preference: "male" | "female" | "any";
+}
+
+export interface MatcherPoolTherapist {
+  id: string;
+  gender: "male" | "female" | null;
+  serviceIds: Set<string>;
+  rules: AvailabilityRule[];
+  timeOffs: TimeOff[];
+}
+
+/**
+ * Fetch every active therapist plus all their skills, availability
+ * rules, and relevant time-off. Tiny at spa scale; cheaper than
+ * scoping per-search because the unassigned bookings may be for
+ * services the currently-searched-for service doesn't overlap with.
+ */
+export async function fetchMatcherPool(
+  supabase: SupabaseClient,
+  rangeStart: Date,
+  rangeEnd: Date
+): Promise<MatcherPoolTherapist[]> {
+  const [thRes, tsRes, rulesRes, offsRes] = await Promise.all([
+    supabase
+      .from("therapists")
+      .select("id, gender, is_active")
+      .eq("is_active", true),
+    supabase.from("therapist_services").select("therapist_id, service_id"),
+    supabase.from("therapist_availability_rules").select("*"),
+    supabase
+      .from("therapist_time_off")
+      .select("*")
+      .lte("start_at", rangeEnd.toISOString())
+      .gte("end_at", rangeStart.toISOString()),
+  ]);
+
+  const therapistRows = (thRes.data ?? []) as Array<{
+    id: string;
+    gender: "male" | "female" | null;
+  }>;
+  const tsRows = (tsRes.data ?? []) as Array<{
+    therapist_id: string;
+    service_id: string;
+  }>;
+  const rules = (rulesRes.data ?? []) as AvailabilityRule[];
+  const offs = (offsRes.data ?? []) as TimeOff[];
+
+  return therapistRows.map((t) => ({
+    id: t.id,
+    gender: t.gender,
+    serviceIds: new Set(
+      tsRows.filter((r) => r.therapist_id === t.id).map((r) => r.service_id)
+    ),
+    rules: rules.filter((r) => r.therapist_id === t.id),
+    timeOffs: offs.filter((o) => o.therapist_id === t.id),
+  }));
+}
+
+/**
+ * Compute the eligible therapist set for one paid-but-unassigned
+ * booking: qualified for the service, gender preference satisfied,
+ * has an availability window covering the booking, and isn't
+ * consumed by a confirmed (or pending_confirmation) booking during
+ * that window.
+ */
+export function computeUnassignedEligibility(
+  booking: UnassignedBookingRow,
+  pool: readonly MatcherPoolTherapist[],
+  confirmedOrPending: readonly ExistingBooking[]
+): string[] {
+  const bStart = new Date(booking.start_at);
+  const bEnd = new Date(booking.end_at);
+
+  return pool
+    .filter((t) => {
+      if (!t.serviceIds.has(booking.service_id)) return false;
+      if (
+        booking.therapist_gender_preference !== "any" &&
+        t.gender !== booking.therapist_gender_preference
+      ) {
+        return false;
+      }
+      const windows = getTherapistWindows(bStart, t.rules, t.timeOffs);
+      const covered = windows.some(
+        (w) => bStart.getTime() >= w.start.getTime() && bEnd.getTime() <= w.end.getTime()
+      );
+      if (!covered) return false;
+      const busy = confirmedOrPending.some(
+        (b) =>
+          b.therapist_id === t.id &&
+          areIntervalsOverlapping(
+            { start: bStart, end: bEnd },
+            { start: new Date(b.start_at), end: new Date(b.end_at) }
+          )
+      );
+      return !busy;
+    })
+    .map((t) => t.id);
+}
+
+/**
+ * End-to-end helper: pulls every unassigned booking on the day and
+ * computes per-booking eligibility. Returns an empty array when none
+ * exist — callers can short-circuit.
+ */
+async function buildUnassignedForMatcher(
+  supabase: SupabaseClient,
+  dayStart: Date,
+  dayEnd: Date,
+  excludeBookingId?: string
+): Promise<UnassignedBookingForMatcher[]> {
+  const { data: bookingsRaw } = await supabase
+    .from("bookings")
+    .select(
+      "id, therapist_id, service_id, start_at, end_at, status, assignment_status, therapist_gender_preference"
+    )
+    .neq("status", "cancelled")
+    .lt("start_at", dayEnd.toISOString())
+    .gt("end_at", dayStart.toISOString());
+
+  const rows = (bookingsRaw ?? []) as Array<
+    ExistingBooking & {
+      assignment_status: AssignmentStatus;
+      therapist_gender_preference: "male" | "female" | "any";
+    }
+  >;
+
+  const unassigned = rows.filter(
+    (r) =>
+      r.assignment_status === "unassigned" && r.id !== excludeBookingId
+  );
+  if (unassigned.length === 0) return [];
+
+  const confirmedOrPending = rows.filter(
+    (r) => r.assignment_status !== "unassigned"
+  );
+  const pool = await fetchMatcherPool(supabase, dayStart, dayEnd);
+
+  return unassigned.map((u) => ({
+    id: u.id,
+    start_at: u.start_at,
+    end_at: u.end_at,
+    eligibleTherapistIds: computeUnassignedEligibility(
+      u,
+      pool,
+      confirmedOrPending
+    ),
+  }));
+}
+
 type PaymentMethod =
   | "credit_card_full"
   | "cash_at_reception"
@@ -173,22 +348,45 @@ type PaymentMethod =
 /**
  * Create a new booking with full validation.
  *
- * Phase 4 additions:
- *  - `payment_method` is persisted when the caller already knows which
- *    flow the customer picked (e.g. /book contact form).
- *  - `hold_minutes` sets `hold_expires_at = now() + N min` when the
- *    booking starts out as pending_payment. The hold-expiry cron
- *    cancels bookings where that timestamp has passed. Default: 15.
+ * Two modes, selected by the combination of `therapist_id` +
+ * `assignment_status` on the input:
+ *
+ *  A. PINNED — therapist_id is set. Standard flow: validates therapist
+ *     is active + qualified + free, plus the matcher gate from Phase 2
+ *     so pinning a therapist doesn't strand a paid-but-unassigned
+ *     neighbour.
+ *
+ *  B. UNASSIGNED — therapist_id is omitted (or input.assignment_status
+ *     is 'unassigned'). Used by the /book customer flow and the admin
+ *     "leave unassigned" toggle. Skips therapist-specific checks,
+ *     validates the room, computes the new booking's eligibility, and
+ *     runs the matcher to confirm capacity still fits (existing
+ *     unassigneds + this new one).
+ *
+ * Common to both modes:
+ *  - Service active, room active, customer exists.
+ *  - `payment_method` / `hold_minutes` control the payment handoff
+ *    (Phase 4 of the payments work).
+ *  - `assignment_status` defaults to 'confirmed' in pinned mode and
+ *    'unassigned' otherwise.
  */
 export async function createBooking(
   supabase: SupabaseClient,
   input: {
     customer_id: string;
-    therapist_id: string;
+    /** Omit (or leave undefined) to create an unassigned booking. */
+    therapist_id?: string;
     room_id: string;
     service_id: string;
     start_at: string;
     status: string;
+    assignment_status?: AssignmentStatus;
+    /**
+     * Customer's gender preference for the therapist. Persisted on the
+     * booking row and used by the unassigned-path matcher to compute
+     * eligibility. Defaults to 'any'.
+     */
+    therapist_gender_preference?: "male" | "female" | "any";
     notes?: string;
     created_by?: string;
     payment_method?: PaymentMethod;
@@ -200,7 +398,10 @@ export async function createBooking(
     return { error: { start_at: ["Invalid date/time format"] } };
   }
 
-  // Fetch service to compute end time
+  const isUnassigned =
+    !input.therapist_id || input.assignment_status === "unassigned";
+
+  // Fetch service (needed by both paths)
   const { data: service, error: svcErr } = await supabase
     .from("services")
     .select("duration_minutes, buffer_minutes, price_ils, is_active")
@@ -213,13 +414,14 @@ export async function createBooking(
     return { error: { service_id: ["Service is not active"] } };
   }
 
-  // Validate therapist is active, room is active, customer exists — in parallel
-  const [therapistRes, roomRes, customerRes] = await Promise.all([
-    supabase
-      .from("therapists")
-      .select("id, is_active")
-      .eq("id", input.therapist_id)
-      .single(),
+  const totalMinutes = service.duration_minutes + service.buffer_minutes;
+  const endDate = addMinutes(startDate, totalMinutes);
+  const dayStart = startOfDay(startDate);
+  const dayEnd = endOfDay(startDate);
+  const genderPref = input.therapist_gender_preference ?? "any";
+
+  // Validate room + customer (both paths need these)
+  const [roomRes, customerRes] = await Promise.all([
     supabase
       .from("rooms")
       .select("id, is_active")
@@ -231,13 +433,6 @@ export async function createBooking(
       .eq("id", input.customer_id)
       .single(),
   ]);
-
-  if (therapistRes.error || !therapistRes.data) {
-    return { error: { therapist_id: ["Therapist not found"] } };
-  }
-  if (!therapistRes.data.is_active) {
-    return { error: { therapist_id: ["Therapist is not active"] } };
-  }
   if (roomRes.error || !roomRes.data) {
     return { error: { room_id: ["Room not found"] } };
   }
@@ -248,54 +443,211 @@ export async function createBooking(
     return { error: { customer_id: ["Customer not found"] } };
   }
 
-  const totalMinutes = service.duration_minutes + service.buffer_minutes;
-  const endDate = addMinutes(startDate, totalMinutes);
+  // ──────────────────────────────────────────────────────────
+  // Branch on mode
+  // ──────────────────────────────────────────────────────────
 
-  // Fetch validation data, reusing the already-fetched service
-  const valData = await fetchValidationData(
-    supabase,
-    input.therapist_id,
-    input.room_id,
-    input.service_id,
-    startDate,
-    endDate,
-    service
-  );
+  if (!isUnassigned) {
+    // ── PINNED mode (existing behaviour + matcher gate) ──
+    const therapistId = input.therapist_id!;
 
-  // Run conflict checks
-  const conflicts = validateBookingSlot({
-    therapistId: input.therapist_id,
-    roomId: input.room_id,
-    serviceId: input.service_id,
-    start: startDate,
-    end: endDate,
-    availabilityRules: valData.availabilityRules,
-    timeOffs: valData.timeOffs,
-    roomBlocks: valData.roomBlocks,
-    existingBookings: valData.existingBookings,
-    therapistServiceIds: valData.therapistServiceIds,
-    roomServiceIds: valData.roomServiceIds,
-  });
+    const { data: therapistRow, error: therapistErr } = await supabase
+      .from("therapists")
+      .select("id, is_active")
+      .eq("id", therapistId)
+      .single();
+    if (therapistErr || !therapistRow) {
+      return { error: { therapist_id: ["Therapist not found"] } };
+    }
+    if (!therapistRow.is_active) {
+      return { error: { therapist_id: ["Therapist is not active"] } };
+    }
 
-  if (conflicts.length > 0) {
-    return {
-      error: { _form: conflicts.map((c) => c.message) },
-    };
+    const valData = await fetchValidationData(
+      supabase,
+      therapistId,
+      input.room_id,
+      input.service_id,
+      startDate,
+      endDate,
+      service
+    );
+    const unassignedForMatcher = await buildUnassignedForMatcher(
+      supabase,
+      dayStart,
+      dayEnd
+    );
+    const conflicts = validateBookingSlot({
+      therapistId,
+      roomId: input.room_id,
+      serviceId: input.service_id,
+      start: startDate,
+      end: endDate,
+      availabilityRules: valData.availabilityRules,
+      timeOffs: valData.timeOffs,
+      roomBlocks: valData.roomBlocks,
+      existingBookings: valData.existingBookings,
+      therapistServiceIds: valData.therapistServiceIds,
+      roomServiceIds: valData.roomServiceIds,
+      unassignedBookingsForMatcher: unassignedForMatcher,
+    });
+    if (conflicts.length > 0) {
+      return { error: { _form: conflicts.map((c) => c.message) } };
+    }
+  } else {
+    // ── UNASSIGNED mode (/book flow + admin leave-unassigned) ──
+    //
+    // Steps:
+    //  1. Room compatibility (room_services join) + room blocks + no
+    //     concurrent room booking. Same guarantees the pinned path has,
+    //     just via a smaller targeted fetch since we don't need
+    //     therapist data.
+    //  2. Capacity check: compute new-booking eligibility (qualified +
+    //     gender-matching + window-covering + not consumed by confirmed
+    //     bookings), fetch existing unassigned bookings for the day
+    //     with their eligibility, run canPlaceAll. Reject if the full
+    //     set can't be placed.
+
+    const [roomSvcRes, roomBlocksRes, roomBookingsRes] = await Promise.all([
+      supabase
+        .from("room_services")
+        .select("service_id")
+        .eq("room_id", input.room_id),
+      supabase
+        .from("room_blocks")
+        .select("id, room_id, start_at, end_at")
+        .eq("room_id", input.room_id)
+        .lte("start_at", endDate.toISOString())
+        .gte("end_at", startDate.toISOString()),
+      supabase
+        .from("bookings")
+        .select("id, room_id, start_at, end_at, status")
+        .eq("room_id", input.room_id)
+        .neq("status", "cancelled")
+        .lt("start_at", endDate.toISOString())
+        .gt("end_at", startDate.toISOString()),
+    ]);
+
+    const roomServiceIds = (
+      (roomSvcRes.data ?? []) as Array<{ service_id: string }>
+    ).map((r) => r.service_id);
+    if (!roomServiceIds.includes(input.service_id)) {
+      return {
+        error: { _form: ["Room is not compatible with this service"] },
+      };
+    }
+    if ((roomBlocksRes.data ?? []).length > 0) {
+      return {
+        error: { _form: ["Room is blocked during this period"] },
+      };
+    }
+    if ((roomBookingsRes.data ?? []).length > 0) {
+      return {
+        error: {
+          _form: ["Room already has a booking at this time"],
+        },
+      };
+    }
+
+    // Capacity matcher: can we place every unassigned booking on the
+    // day (including this new one) without double-booking any therapist?
+    const pool = await fetchMatcherPool(supabase, dayStart, dayEnd);
+
+    const { data: dayBookingsRaw } = await supabase
+      .from("bookings")
+      .select(
+        "id, therapist_id, service_id, start_at, end_at, status, assignment_status, therapist_gender_preference"
+      )
+      .neq("status", "cancelled")
+      .lt("start_at", dayEnd.toISOString())
+      .gt("end_at", dayStart.toISOString());
+
+    const dayBookings = (dayBookingsRaw ?? []) as Array<
+      ExistingBooking & {
+        assignment_status: AssignmentStatus;
+        therapist_gender_preference: "male" | "female" | "any";
+      }
+    >;
+    const existingUnassigned = dayBookings.filter(
+      (b) => b.assignment_status === "unassigned"
+    );
+    const confirmedOrPending = dayBookings.filter(
+      (b) => b.assignment_status !== "unassigned"
+    );
+
+    const newEligibility = computeUnassignedEligibility(
+      {
+        id: "__new__",
+        service_id: input.service_id,
+        start_at: startDate.toISOString(),
+        end_at: endDate.toISOString(),
+        therapist_gender_preference: genderPref,
+      },
+      pool,
+      confirmedOrPending
+    );
+    if (newEligibility.length === 0) {
+      return {
+        error: {
+          _form: [
+            "No eligible therapists are available for this time slot. Please pick a different time.",
+          ],
+        },
+      };
+    }
+
+    const matcherInput: MatcherBooking[] = [
+      ...existingUnassigned.map((u) => ({
+        id: u.id,
+        start: new Date(u.start_at),
+        end: new Date(u.end_at),
+        eligibleTherapistIds: computeUnassignedEligibility(
+          {
+            id: u.id,
+            service_id: u.service_id,
+            start_at: u.start_at,
+            end_at: u.end_at,
+            therapist_gender_preference: u.therapist_gender_preference,
+          },
+          pool,
+          confirmedOrPending
+        ),
+      })),
+      {
+        id: "__new__",
+        start: startDate,
+        end: endDate,
+        eligibleTherapistIds: newEligibility,
+      },
+    ];
+    if (!canPlaceAll(matcherInput)) {
+      return {
+        error: {
+          _form: [
+            "Capacity exhausted for this time slot. Please pick another.",
+          ],
+        },
+      };
+    }
   }
 
-  // Compute hold_expires_at for pending_payment bookings (Phase 4).
+  // ──────────────────────────────────────────────────────────
+  // Insert (both modes converge)
+  // ──────────────────────────────────────────────────────────
+
   const holdMinutes = input.hold_minutes ?? DEFAULT_HOLD_MINUTES;
   const holdExpiresAtIso =
     input.status === "pending_payment"
       ? addMinutes(new Date(), holdMinutes).toISOString()
       : null;
+  const assignmentStatus: AssignmentStatus =
+    input.assignment_status ?? (isUnassigned ? "unassigned" : "confirmed");
 
-  // Insert the booking
   const { data: bookingRaw, error: insertErr } = await supabase
     .from("bookings")
     .insert({
       customer_id: input.customer_id,
-      therapist_id: input.therapist_id,
+      therapist_id: isUnassigned ? null : input.therapist_id!,
       room_id: input.room_id,
       service_id: input.service_id,
       start_at: startDate.toISOString(),
@@ -306,12 +658,13 @@ export async function createBooking(
       created_by: input.created_by || null,
       payment_method: input.payment_method ?? null,
       hold_expires_at: holdExpiresAtIso,
+      assignment_status: assignmentStatus,
+      therapist_gender_preference: genderPref,
     })
     .select("*")
     .single();
 
   if (insertErr) {
-    // The DB exclusion constraints are our safety net for concurrent writes
     if (insertErr.message.includes("no_therapist_overlap")) {
       return { error: { _form: ["Therapist already has a booking at this time (concurrent conflict)"] } };
     }
@@ -392,6 +745,18 @@ export async function rescheduleBooking(
     service
   );
 
+  // Matcher gate: reschedule must not strand an unassigned booking by
+  // consuming a therapist it still needs. Exclude the booking being
+  // rescheduled from the pool (self-shouldn't count against itself).
+  const rescheduleDayStart = startOfDay(startDate);
+  const rescheduleDayEnd = endOfDay(startDate);
+  const unassignedForMatcher = await buildUnassignedForMatcher(
+    supabase,
+    rescheduleDayStart,
+    rescheduleDayEnd,
+    input.booking_id
+  );
+
   const conflicts = validateBookingSlot({
     therapistId,
     roomId,
@@ -405,6 +770,7 @@ export async function rescheduleBooking(
     therapistServiceIds: valData.therapistServiceIds,
     roomServiceIds: valData.roomServiceIds,
     excludeBookingId: input.booking_id,
+    unassignedBookingsForMatcher: unassignedForMatcher,
   });
 
   if (conflicts.length > 0) {
@@ -680,6 +1046,15 @@ export async function findSlots(
     };
   });
 
+  // Build unassigned-booking matcher input. Uses a broader data fetch
+  // than the narrow per-service query above, because unassigned bookings
+  // can be for services the searched service doesn't share a pool with.
+  const unassignedBookings = await buildUnassignedForMatcher(
+    supabase,
+    dayStart,
+    dayEnd
+  );
+
   // Build room data
   const rooms = roomSvcRows
     .filter((r): r is RoomServiceJoinRow & {
@@ -698,6 +1073,7 @@ export async function findSlots(
     therapists,
     rooms,
     existingBookings: (bookingsRes.data ?? []) as ExistingBooking[],
+    unassignedBookings,
     filterTherapistId: therapistId,
     minStart: options.minStart,
   });

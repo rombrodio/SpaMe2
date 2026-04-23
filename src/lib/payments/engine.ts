@@ -41,7 +41,8 @@ import type { ActionResult } from "@/lib/constants";
 interface BookingRow {
   id: string;
   customer_id: string;
-  therapist_id: string;
+  // NULL for unassigned bookings (phase 5 deferred-assignment work).
+  therapist_id: string | null;
   room_id: string;
   service_id: string;
   start_at: string;

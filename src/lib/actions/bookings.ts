@@ -86,7 +86,20 @@ export async function getBookingsForRange(from: string, to: string) {
 
 export async function createBookingAction(formData: FormData) {
   const raw = Object.fromEntries(formData.entries());
-  const parsed = createBookingSchema.safeParse(raw);
+  // Phase 5 deferred-assignment: "Leave unassigned" checkbox comes
+  // through as form field `leave_unassigned`. When set, coerce
+  // therapist_id to undefined so the engine takes the UNASSIGNED path.
+  const leaveUnassigned =
+    raw.leave_unassigned === "on" || raw.leave_unassigned === "true";
+  const therapistIdRaw =
+    typeof raw.therapist_id === "string" ? raw.therapist_id.trim() : "";
+
+  const parsed = createBookingSchema.safeParse({
+    ...raw,
+    therapist_id:
+      leaveUnassigned || therapistIdRaw === "" ? undefined : therapistIdRaw,
+    assignment_status: leaveUnassigned ? "unassigned" : undefined,
+  });
 
   if (!parsed.success) {
     return { error: parsed.error.flatten().fieldErrors };

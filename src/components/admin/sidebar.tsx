@@ -12,6 +12,8 @@ import {
   ClipboardList,
   LayoutDashboard,
   LogOut,
+  Settings,
+  UserCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
@@ -21,12 +23,14 @@ const navItems = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { href: "/admin/calendar", label: "Calendar", icon: Calendar },
   { href: "/admin/bookings", label: "Bookings", icon: BookOpen },
+  { href: "/admin/assignments", label: "Assignments", icon: UserCheck },
   { href: "/admin/therapists", label: "Therapists", icon: Users },
   { href: "/admin/rooms", label: "Rooms", icon: DoorOpen },
   { href: "/admin/services", label: "Services", icon: Scissors },
   { href: "/admin/customers", label: "Customers", icon: Users },
   { href: "/admin/inbox", label: "Inbox", icon: MessageSquare },
   { href: "/admin/audit-log", label: "Audit Log", icon: ClipboardList },
+  { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
 
 export function AdminSidebar() {

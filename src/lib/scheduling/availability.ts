@@ -13,6 +13,7 @@ import {
 } from "date-fns";
 import { toZonedTime, fromZonedTime } from "date-fns-tz";
 import { TZ } from "@/lib/constants";
+import { canPlaceAll, type MatcherBooking } from "./matcher";
 import type {
   AvailabilityRule,
   TimeOff,
@@ -22,6 +23,19 @@ import type {
   AvailableSlot,
   BookingConflict,
 } from "./types";
+
+/**
+ * Paid-but-unassigned booking that still needs a therapist. The caller
+ * pre-computes eligibility (skill + gender + availability + confirmed-
+ * conflict filter) because it has the full data at hand; this module
+ * stays a pure scheduling kernel that just consumes the result.
+ */
+export interface UnassignedBookingForMatcher {
+  id: string;
+  start_at: string;
+  end_at: string;
+  eligibleTherapistIds: readonly string[];
+}
 
 const SLOT_INCREMENT_MINUTES = 15;
 
@@ -211,6 +225,13 @@ function isWithinWindows(
 /**
  * Validate a proposed booking for conflicts.
  * Returns an empty array if the booking is valid.
+ *
+ * When `unassignedBookingsForMatcher` is supplied, the final check runs
+ * the exact matching solver: is there a valid therapist assignment for
+ * (every unassigned booking in the day) + (this new booking pinned to
+ * `therapistId`)? If not, a `capacity_blocked_unassigned` conflict is
+ * surfaced so the admin knows picking this therapist would strand a
+ * paid-but-unassigned booking.
  */
 export function validateBookingSlot(params: {
   therapistId: string;
@@ -225,6 +246,7 @@ export function validateBookingSlot(params: {
   therapistServiceIds: string[];
   roomServiceIds: string[];
   excludeBookingId?: string;
+  unassignedBookingsForMatcher?: readonly UnassignedBookingForMatcher[];
 }): BookingConflict[] {
   const conflicts: BookingConflict[] = [];
 
@@ -312,12 +334,56 @@ export function validateBookingSlot(params: {
     });
   }
 
+  // 7. Capacity gate for paid-but-unassigned bookings.
+  //
+  // Only run the matcher when there are no other conflicts — the simpler
+  // failure modes are more actionable for the caller. And only when the
+  // caller actually passed an unassigned pool; omitted = legacy caller.
+  if (
+    conflicts.length === 0 &&
+    params.unassignedBookingsForMatcher &&
+    params.unassignedBookingsForMatcher.length > 0
+  ) {
+    const matcherInput: MatcherBooking[] = [
+      ...params.unassignedBookingsForMatcher
+        .filter((u) => u.id !== params.excludeBookingId)
+        .map((u) => ({
+          id: u.id,
+          start: new Date(u.start_at),
+          end: new Date(u.end_at),
+          eligibleTherapistIds: u.eligibleTherapistIds,
+        })),
+      {
+        id: "__validate_new__",
+        start: params.start,
+        end: params.end,
+        eligibleTherapistIds: [params.therapistId],
+      },
+    ];
+    if (!canPlaceAll(matcherInput)) {
+      conflicts.push({
+        type: "capacity_blocked_unassigned",
+        message:
+          "Assigning this therapist would leave a paid-but-unassigned booking unfillable. Reassign that booking first or pick a different therapist.",
+      });
+    }
+  }
+
   return conflicts;
 }
 
 /**
  * Find available slots for a service on a given date.
  * Optionally filter by a specific therapist.
+ *
+ * When `unassignedBookings` is supplied (phase 5 deferred-assignment),
+ * every candidate `(therapist, time)` pair is gated through the exact
+ * list-coloring matcher: the pair is emitted only if there's a valid
+ * way to assign the hypothetical new booking + every paid-but-
+ * unassigned booking already on the day without double-booking anyone.
+ * This prevents the engine from offering a slot that a specific
+ * therapist can "take" only by stealing them from an unassigned
+ * neighbour.
  */
 export function findAvailableSlots(params: {
   date: Date;
@@ -337,6 +403,12 @@ export function findAvailableSlots(params: {
     blocks: RoomBlock[];
   }>;
   existingBookings: ExistingBooking[];
+  /**
+   * Paid-but-unassigned bookings on this day, with eligibility pre-
+   * computed by the caller. When omitted or empty the matcher gate is
+   * skipped and this function reduces to the pre-phase-5 behaviour.
+   */
+  unassignedBookings?: readonly UnassignedBookingForMatcher[];
   filterTherapistId?: string;
   /**
    * Earliest Date a slot is allowed to start at. Slots whose start is
@@ -347,7 +419,16 @@ export function findAvailableSlots(params: {
    */
   minStart?: Date;
 }): AvailableSlot[] {
-  const { date, service, therapists, rooms, existingBookings, filterTherapistId, minStart } = params;
+  const {
+    date,
+    service,
+    therapists,
+    rooms,
+    existingBookings,
+    unassignedBookings,
+    filterTherapistId,
+    minStart,
+  } = params;
   const totalMinutes = service.duration_minutes + service.buffer_minutes;
   const slots: AvailableSlot[] = [];
 
@@ -361,6 +442,19 @@ export function findAvailableSlots(params: {
   const compatibleRooms = rooms.filter((r) =>
     r.serviceIds.includes(service.id)
   );
+
+  // Pre-materialise the matcher's "fixed" bookings once per call so we
+  // don't rebuild the unassigned-booking MatcherBooking array on every
+  // (therapist, time) iteration.
+  const matcherFixed: MatcherBooking[] =
+    unassignedBookings && unassignedBookings.length > 0
+      ? unassignedBookings.map((u) => ({
+          id: u.id,
+          start: new Date(u.start_at),
+          end: new Date(u.end_at),
+          eligibleTherapistIds: u.eligibleTherapistIds,
+        }))
+      : [];
 
   for (const therapist of qualifiedTherapists) {
     const windows = getTherapistWindows(
@@ -410,6 +504,24 @@ export function findAvailableSlots(params: {
                 .length === 0;
 
             if (roomFree && roomNotBlocked) {
+              // Matcher gate — only reached when the classic checks pass.
+              if (matcherFixed.length > 0) {
+                const matcherInput: MatcherBooking[] = [
+                  ...matcherFixed,
+                  {
+                    id: "__candidate_new__",
+                    start: slotStart,
+                    end: slotEnd,
+                    eligibleTherapistIds: [therapist.id],
+                  },
+                ];
+                if (!canPlaceAll(matcherInput)) {
+                  // Pinning this therapist here strands an unassigned
+                  // booking — don't offer the slot.
+                  break;
+                }
+              }
+
               slots.push({
                 start: slotStart,
                 end: addMinutes(slotStart, service.duration_minutes), // end = actual service end (no buffer)
