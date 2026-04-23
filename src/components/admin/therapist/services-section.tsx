@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { setTherapistServices } from "@/lib/actions/therapists";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -57,13 +58,18 @@ export function TherapistServicesSection({
     );
 
     if (result && 'error' in result) {
-      setMessage((result.error as Record<string, string[]>)._form?.[0] ?? "Failed to save services");
+      const msg =
+        (result.error as Record<string, string[]>)._form?.[0] ??
+        "Failed to save services";
+      setMessage(msg);
       setSubmitting(false);
+      toast.error(msg);
       return;
     }
 
     setMessage("Services updated.");
     setSubmitting(false);
+    toast.success("Services updated.");
     router.refresh();
   }
 

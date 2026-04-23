@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { setRoomServices } from "@/lib/actions/rooms";
 import { Button } from "@/components/ui/button";
 import {
@@ -48,13 +49,18 @@ export function RoomServicesSection({
     const result = await setRoomServices(roomId, Array.from(selected));
 
     if (result && 'error' in result) {
-      setMessage((result.error as Record<string, string[]>)._form?.[0] ?? "Failed to save services.");
+      const msg =
+        (result.error as Record<string, string[]>)._form?.[0] ??
+        "Failed to save services.";
+      setMessage(msg);
       setSaving(false);
+      toast.error(msg);
       return;
     }
 
     setMessage("Services updated.");
     setSaving(false);
+    toast.success("Compatible services updated.");
     router.refresh();
   }
 

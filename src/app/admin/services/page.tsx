@@ -9,6 +9,7 @@ import {
   CardContent,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { RowLink } from "@/components/admin/row-link";
 
 export default async function ServicesListPage() {
   const services = await getServices();
@@ -43,7 +44,10 @@ export default async function ServicesListPage() {
                 </thead>
                 <tbody>
                   {services.map((service) => (
-                    <tr key={service.id} className="border-b last:border-0">
+                    <RowLink
+                      key={service.id}
+                      href={`/admin/services/${service.id}`}
+                    >
                       <td className="py-3">{service.name}</td>
                       <td className="py-3">{service.duration_minutes} min</td>
                       <td className="py-3">
@@ -51,17 +55,13 @@ export default async function ServicesListPage() {
                       </td>
                       <td className="py-3">
                         <Badge
-                          variant={service.is_active ? "default" : "secondary"}
+                          variant={service.is_active ? "success" : "muted"}
                         >
+                          <span className="dot mr-1.5 inline-block h-1.5 w-1.5 rounded-full" />
                           {service.is_active ? "Active" : "Inactive"}
                         </Badge>
                       </td>
-                      <td className="py-3">
-                        <Link href={`/admin/services/${service.id}`} className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>
-                            Edit
-                          </Link>
-                      </td>
-                    </tr>
+                    </RowLink>
                   ))}
                 </tbody>
               </table>

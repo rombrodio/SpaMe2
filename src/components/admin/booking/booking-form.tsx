@@ -3,6 +3,7 @@
 import { useState, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -131,7 +132,9 @@ export function BookingForm({ formData }: BookingFormProps) {
       const result = await createBookingAction(formDataObj);
       if (result && "error" in result) {
         setErrors(result.error as Record<string, string[]>);
+        toast.error("Couldn't create booking. See errors below.");
       } else if (result?.success) {
+        toast.success("Booking created.");
         router.push("/admin/bookings");
       }
     });
@@ -327,6 +330,10 @@ export function BookingForm({ formData }: BookingFormProps) {
                   <Input
                     id="start_at_time"
                     type="time"
+                    // DEF-017: lock to 15-minute grid so custom typed times
+                    // don't produce 13:29 / 09:15 bookings that mis-align
+                    // with availability slots.
+                    step={900}
                     value={startAt ? startAt.split("T")[1] || "" : ""}
                     onChange={(e) =>
                       setStartAt(e.target.value ? `${date}T${e.target.value}` : "")
@@ -334,6 +341,10 @@ export function BookingForm({ formData }: BookingFormProps) {
                     required
                   />
                   <input type="hidden" name="start_at" value={startAt} />
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Times snap to 15-minute intervals. Pick a slot on the
+                    right to auto-fill.
+                  </p>
                 </div>
               </div>
 

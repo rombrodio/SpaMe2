@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import { toast } from "sonner";
 import {
   Card,
   CardHeader,
@@ -8,6 +9,7 @@ import {
   CardContent,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { ConfirmButton } from "@/components/ui/confirm-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
@@ -21,6 +23,13 @@ import {
 interface Props {
   serviceId: string;
 }
+
+/**
+ * DEF-018: SKU format convention. Providers accept uppercase alphanumerics
+ * plus a few punctuation characters. Validating client-side gives an
+ * instant error instead of a round-trip to the server.
+ */
+const SKU_PATTERN = /^[A-Z0-9][A-Z0-9_\-./]{0,63}$/;
 
 /**
  * Admin-only section on the service-edit page that lets staff map
@@ -56,9 +65,26 @@ export function VoucherMappingsSection({ serviceId }: Props) {
 
   function handleAdd(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const trimmed = sku.trim();
+    const trimmed = sku.trim().toUpperCase();
     if (!trimmed) {
       setError("SKU is required");
+      return;
+    }
+    if (!SKU_PATTERN.test(trimmed)) {
+      setError(
+        "SKUs use uppercase A–Z, 0–9, and the punctuation `_`, `-`, `.`, `/` (max 64 chars, must start with letter or digit)."
+      );
+      return;
+    }
+    // Client-side duplicate check — PK in DB is (service_id, provider, sku)
+    // so the insert would fail anyway, but catching it here gives a friendly
+    // message before the round-trip.
+    if (
+      rows.some(
+        (r) => r.provider === provider && r.provider_sku === trimmed
+      )
+    ) {
+      setError(`${provider.toUpperCase()} / ${trimmed} is already mapped.`);
       return;
     }
     setError(null);
@@ -73,37 +99,32 @@ export function VoucherMappingsSection({ serviceId }: Props) {
           Object.values(result.error).flat().filter(Boolean)[0] ??
           "Failed to add mapping";
         setError(msg);
+        toast.error(msg);
         return;
       }
+      toast.success(`Mapped ${provider.toUpperCase()} / ${trimmed}.`);
       setSku("");
       reload();
     });
   }
 
-  function handleDelete(row: VoucherMappingRow) {
+  async function handleDelete(row: VoucherMappingRow) {
     setError(null);
-    if (
-      !window.confirm(
-        `Remove mapping ${row.provider.toUpperCase()} / ${row.provider_sku}?`
-      )
-    ) {
-      return;
-    }
     const fd = new FormData();
     fd.set("service_id", row.service_id);
     fd.set("provider", row.provider);
     fd.set("provider_sku", row.provider_sku);
-    start(async () => {
-      const result = await deleteVoucherMapping(fd);
-      if ("error" in result && result.error) {
-        const msg =
-          Object.values(result.error).flat().filter(Boolean)[0] ??
-          "Failed to remove mapping";
-        setError(msg);
-        return;
-      }
-      reload();
-    });
+    const result = await deleteVoucherMapping(fd);
+    if ("error" in result && result.error) {
+      const msg =
+        Object.values(result.error).flat().filter(Boolean)[0] ??
+        "Failed to remove mapping";
+      throw new Error(msg);
+    }
+    toast.success(
+      `Removed ${row.provider.toUpperCase()} / ${row.provider_sku}.`
+    );
+    reload();
   }
 
   return (
@@ -146,15 +167,26 @@ export function VoucherMappingsSection({ serviceId }: Props) {
                   </span>
                   <span className="ml-2 font-mono">{row.provider_sku}</span>
                 </div>
-                <Button
-                  type="button"
+                <ConfirmButton
                   variant="ghost"
                   size="sm"
-                  onClick={() => handleDelete(row)}
+                  title="Remove voucher mapping"
+                  description={
+                    <p>
+                      Remove the{" "}
+                      <span className="font-mono">
+                        {row.provider.toUpperCase()} / {row.provider_sku}
+                      </span>{" "}
+                      mapping? The service stays — only this SKU-to-service
+                      link is deleted.
+                    </p>
+                  }
+                  confirmLabel="Remove mapping"
+                  onConfirm={() => handleDelete(row)}
                   disabled={pending}
                 >
                   Remove
-                </Button>
+                </ConfirmButton>
               </li>
             ))}
           </ul>
@@ -179,10 +211,16 @@ export function VoucherMappingsSection({ serviceId }: Props) {
             <Input
               id="vm_sku"
               value={sku}
-              onChange={(e) => setSku(e.target.value)}
+              onChange={(e) => setSku(e.target.value.toUpperCase())}
               placeholder="DTS-SWEDISH-60 or VPay SKU"
               maxLength={64}
+              pattern="[A-Z0-9][A-Z0-9_\-./]{0,63}"
             />
+            <p className="text-xs text-muted-foreground">
+              Uppercase only. Letters, digits, and{" "}
+              <span className="font-mono">_ - . /</span>. Duplicates under
+              the same provider are rejected.
+            </p>
           </div>
           <div className="flex items-end">
             <Button type="submit" disabled={pending}>

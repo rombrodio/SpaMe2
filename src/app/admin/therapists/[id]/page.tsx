@@ -11,6 +11,7 @@ import { TherapistEditForm } from "@/components/admin/therapist/edit-form";
 import { TherapistServicesSection } from "@/components/admin/therapist/services-section";
 import { AvailabilitySection } from "@/components/admin/therapist/availability-section";
 import { TimeOffSection } from "@/components/admin/therapist/time-off-section";
+import { Breadcrumbs } from "@/components/admin/breadcrumbs";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -41,6 +42,12 @@ export default async function TherapistDetailPage({ params }: Props) {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
+      <Breadcrumbs
+        items={[
+          { label: "Therapists", href: "/admin/therapists" },
+          { label: therapist.full_name },
+        ]}
+      />
       <h1 className="text-2xl font-bold">{therapist.full_name}</h1>
 
       <TherapistEditForm

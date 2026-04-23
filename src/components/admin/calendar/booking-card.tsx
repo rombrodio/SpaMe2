@@ -54,9 +54,24 @@ export function BookingCard({ booking, compact }: BookingCardProps) {
 
   const borderStyle = isUnassigned ? "border-l-4 border-dashed" : "border-l-4";
 
+  // DEF-024: full tooltip so truncated info is always recoverable on hover.
+  // Native `title` attribute shows up across all browsers/OS without a
+  // dependency on a tooltip primitive we don't yet have.
+  const customerName = booking.customers?.full_name ?? "No customer";
+  const serviceName = booking.services?.name ?? "Unknown service";
+  const therapistName = isUnassigned
+    ? "Unassigned"
+    : booking.therapists?.full_name ?? "No therapist";
+  const roomName = booking.rooms?.name ?? "No room";
+  const statusLabel = formatStatus(booking.status);
+  const tooltip = `${customerName} — ${serviceName}
+${timeStr} · ${therapistName} · ${roomName}
+Status: ${statusLabel}`;
+
   return (
     <Link
       href={href}
+      title={tooltip}
       className={`block h-full rounded ${borderStyle} px-1.5 py-0.5 text-xs hover:opacity-80 transition-opacity overflow-hidden`}
       style={{
         borderLeftColor: therapistColor,
@@ -66,11 +81,9 @@ export function BookingCard({ booking, compact }: BookingCardProps) {
       {compact ? (
         <>
           <div className="font-medium truncate">
-            {timeStr} {booking.services?.name}
+            {timeStr} · {customerName}
           </div>
-          <div className="truncate text-muted-foreground">
-            {isUnassigned ? "Unassigned" : booking.customers?.full_name}
-          </div>
+          <div className="truncate text-muted-foreground">{serviceName}</div>
         </>
       ) : (
         <>
@@ -84,20 +97,17 @@ export function BookingCard({ booking, compact }: BookingCardProps) {
               <StatusBadge status={booking.status} />
             )}
           </div>
-          <div className="mt-0.5 font-medium truncate">
-            {booking.services?.name}
-          </div>
+          <div className="mt-0.5 font-medium truncate">{customerName}</div>
           <div className="truncate text-muted-foreground">
-            {booking.customers?.full_name} &middot;{" "}
-            {isUnassigned ? (
-              <span className="italic">no therapist yet</span>
-            ) : (
-              booking.therapists?.full_name
+            {serviceName}
+            {!isUnassigned && booking.therapists?.full_name && (
+              <> &middot; {booking.therapists.full_name}</>
+            )}
+            {isUnassigned && (
+              <> &middot; <span className="italic">no therapist yet</span></>
             )}
           </div>
-          <div className="truncate text-muted-foreground">
-            {booking.rooms?.name}
-          </div>
+          <div className="truncate text-muted-foreground">{roomName}</div>
         </>
       )}
     </Link>
@@ -124,8 +134,24 @@ function AssignmentBadge({
   );
 }
 
+/**
+ * DEF-032: canonical Title Case label for a booking status. Use this
+ * everywhere we render a status chip so we don't get "pending payment"
+ * in a table next to "Pending Payment" in a dropdown.
+ */
+export function formatStatus(status: string): string {
+  return status
+    .split("_")
+    .map((word) =>
+      word.length === 0
+        ? word
+        : word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+    )
+    .join(" ");
+}
+
 export function StatusBadge({ status }: { status: string }) {
-  const label = status.replace("_", " ");
+  const label = formatStatus(status);
   return (
     <span
       className={`inline-flex items-center rounded-full border px-1.5 py-0.5 text-[10px] font-medium ${statusColors[status] || ""}`}

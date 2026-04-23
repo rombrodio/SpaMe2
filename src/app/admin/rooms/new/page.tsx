@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { toast } from "sonner";
 import { createRoom } from "@/lib/actions/rooms";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -31,9 +32,11 @@ export default function NewRoomPage() {
     if (result && 'error' in result) {
       setErrors(result.error);
       setSubmitting(false);
+      toast.error("Couldn't create room.");
       return;
     }
 
+    toast.success("Room created.");
     router.push("/admin/rooms");
   }
 

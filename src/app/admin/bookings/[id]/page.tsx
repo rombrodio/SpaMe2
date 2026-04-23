@@ -1,9 +1,10 @@
 import { getBooking, getBookingFormData } from "@/lib/actions/bookings";
 import { BookingDetail } from "@/components/admin/booking/booking-detail";
 import { PaymentPanel } from "@/components/admin/booking/payment-panel";
-import Link from "next/link";
-import { ChevronLeft } from "lucide-react";
+import { Breadcrumbs } from "@/components/admin/breadcrumbs";
 import { notFound } from "next/navigation";
+import { formatInTimeZone } from "date-fns-tz";
+import { TZ } from "@/lib/constants";
 
 export default async function BookingDetailPage({
   params,
@@ -38,15 +39,29 @@ export default async function BookingDetailPage({
     : extended.services;
   const servicePriceAgorot = svc?.price_ils ?? 0;
 
+  const crumbLabel = (() => {
+    const b = booking as unknown as {
+      customers?: { full_name: string | null } | null;
+      start_at?: string;
+    };
+    const name = b.customers?.full_name ?? "Booking";
+    if (!b.start_at) return name;
+    return `${name} — ${formatInTimeZone(
+      new Date(b.start_at),
+      TZ,
+      "MMM d"
+    )}`;
+  })();
+
   return (
     <div>
-      <Link
-        href="/admin/bookings"
-        className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ChevronLeft className="h-4 w-4" />
-        Back to bookings
-      </Link>
+      <Breadcrumbs
+        className="mb-4"
+        items={[
+          { label: "Bookings", href: "/admin/bookings" },
+          { label: crumbLabel },
+        ]}
+      />
       <h1 className="text-2xl font-bold">Booking Details</h1>
       <div className="mt-6 space-y-6">
         <BookingDetail booking={booking} therapists={therapists} rooms={rooms} />

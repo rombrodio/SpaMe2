@@ -8,6 +8,27 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { RowLink } from "@/components/admin/row-link";
+
+/**
+ * DEF-020: normalise names for display without mutating stored data.
+ * Title-cases each whitespace-separated token. "donald trump" → "Donald Trump",
+ * "MARY ANN" → "Mary Ann". Non-Latin scripts (e.g. Hebrew) round-trip
+ * unchanged because `toUpperCase`/`toLowerCase` are idempotent on letters
+ * without case.
+ */
+function toDisplayName(raw: string | null): string {
+  if (!raw) return "";
+  return raw
+    .trim()
+    .split(/\s+/)
+    .map((word) =>
+      word.length === 0
+        ? word
+        : word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+    )
+    .join(" ");
+}
 
 export default async function CustomersPage() {
   const customers = await getCustomers();
@@ -41,16 +62,27 @@ export default async function CustomersPage() {
                 </thead>
                 <tbody>
                   {customers.map((customer) => (
-                    <tr key={customer.id} className="border-b last:border-0">
-                      <td className="py-3">{customer.full_name || "-"}</td>
-                      <td className="py-3">{customer.phone}</td>
-                      <td className="py-3">{customer.email || "-"}</td>
-                      <td className="py-3 text-right">
-                        <Link href={`/admin/customers/${customer.id}`} className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>
-                            Edit
-                          </Link>
+                    <RowLink
+                      key={customer.id}
+                      href={`/admin/customers/${customer.id}`}
+                    >
+                      <td className="py-3">
+                        {toDisplayName(customer.full_name) || (
+                          <span className="text-muted-foreground">—</span>
+                        )}
                       </td>
-                    </tr>
+                      <td className="py-3">{customer.phone}</td>
+                      <td className="py-3">
+                        {customer.email || (
+                          <Link
+                            href={`/admin/customers/${customer.id}`}
+                            className="text-xs text-primary underline-offset-2 hover:underline"
+                          >
+                            + Add email
+                          </Link>
+                        )}
+                      </td>
+                    </RowLink>
                   ))}
                 </tbody>
               </table>

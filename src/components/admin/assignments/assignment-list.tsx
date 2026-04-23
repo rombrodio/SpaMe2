@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { toast } from "sonner";
 import { formatInTimeZone } from "date-fns-tz";
 import { UserCheck } from "lucide-react";
 import { parseISO } from "date-fns";
@@ -167,8 +168,10 @@ function AssignmentRow({
       const result = await assignTherapistAction(fd);
       if (result && "error" in result) {
         setErrors(result.error as Record<string, string[]>);
+        toast.error("Couldn't assign the therapist.");
         return;
       }
+      toast.success("Therapist assigned — confirmation SMS sent.");
       onAssignedAndRefresh();
     });
   }

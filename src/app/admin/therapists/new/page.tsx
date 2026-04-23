@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { toast } from "sonner";
 import { createTherapist } from "@/lib/actions/therapists";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -34,15 +35,18 @@ export default function NewTherapistPage() {
     if (result && 'error' in result) {
       setErrors(result.error);
       setSubmitting(false);
+      toast.error("Couldn't create therapist.");
       return;
     }
 
     if (result?.warning) {
       setWarning(result.warning);
       setSubmitting(false);
+      toast.warning("Therapist created with a warning.");
       return;
     }
 
+    toast.success("Therapist created.");
     router.push("/admin/therapists");
   }
 
