@@ -2,7 +2,10 @@
 
 import { useEffect, useState, useTransition, useRef } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { formatInTimeZone } from "date-fns-tz";
+import { UserCheck } from "lucide-react";
+import { parseISO } from "date-fns";
 import { TZ } from "@/lib/constants";
 import {
   assignTherapistAction,
@@ -11,11 +14,12 @@ import {
   type UnassignedBookingForAdmin,
 } from "@/lib/actions/assignments";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FormErrors } from "@/components/admin/form-message";
+import { cn } from "@/lib/utils";
 
 interface Row {
   booking: UnassignedBookingForAdmin;
@@ -76,11 +80,7 @@ export function AssignmentList({
       </div>
 
       {data.length === 0 ? (
-        <Card>
-          <CardContent className="py-8 text-center text-muted-foreground">
-            No unassigned bookings for this day.
-          </CardContent>
-        </Card>
+        <EmptyState date={date} />
       ) : (
         <div className="space-y-3">
           {data.map((row) => (
@@ -97,6 +97,43 @@ export function AssignmentList({
         </div>
       )}
     </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+
+function EmptyState({ date }: { date: string }) {
+  // parseISO gives a valid Date for yyyy-MM-dd strings; formatInTimeZone
+  // then prints it in the spa's timezone without a DST surprise.
+  const parsed = parseISO(date);
+  const prettyDate = isNaN(parsed.getTime())
+    ? date
+    : formatInTimeZone(parsed, TZ, "MMM d, yyyy");
+
+  return (
+    <Card>
+      <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
+          <UserCheck className="h-6 w-6" />
+        </div>
+        <div className="space-y-1">
+          <p className="text-base font-medium">
+            No unassigned bookings for {prettyDate}
+          </p>
+          <p className="mx-auto max-w-md text-sm text-muted-foreground">
+            Paid-but-unassigned bookings show up here automatically. The
+            on-call manager receives SMS + WhatsApp the moment a customer
+            pays, so you usually won&apos;t need to refresh.
+          </p>
+        </div>
+        <Link
+          href="/admin/bookings/new"
+          className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+        >
+          Create an unassigned booking
+        </Link>
+      </CardContent>
+    </Card>
   );
 }
 

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -218,24 +219,41 @@ export function BookingForm({ formData }: BookingFormProps) {
                     </option>
                   ))}
                 </Select>
-                <div className="mt-2 flex items-center gap-2">
-                  <input
-                    id="leave_unassigned"
-                    name="leave_unassigned"
-                    type="checkbox"
-                    checked={leaveUnassigned}
-                    onChange={(e) => {
-                      setLeaveUnassigned(e.target.checked);
-                      if (e.target.checked) setTherapistId("");
-                    }}
-                    className="h-4 w-4 rounded border-gray-300"
-                  />
-                  <Label
-                    htmlFor="leave_unassigned"
-                    className="text-xs font-normal text-muted-foreground"
-                  >
-                    Leave unassigned (manager picks later)
-                  </Label>
+                <div className="mt-2 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <input
+                      id="leave_unassigned"
+                      name="leave_unassigned"
+                      type="checkbox"
+                      checked={leaveUnassigned}
+                      onChange={(e) => {
+                        setLeaveUnassigned(e.target.checked);
+                        if (e.target.checked) setTherapistId("");
+                      }}
+                      className="h-4 w-4 rounded border-gray-300"
+                    />
+                    <Label
+                      htmlFor="leave_unassigned"
+                      className="text-xs font-normal text-muted-foreground"
+                    >
+                      Leave unassigned (manager picks later)
+                    </Label>
+                  </div>
+                  {leaveUnassigned && (
+                    <p className="pl-6 text-xs text-muted-foreground">
+                      The booking is saved without a therapist pinned. The
+                      on-call manager receives an SMS + WhatsApp alert once
+                      payment confirms, and picks a therapist on{" "}
+                      <Link
+                        href="/admin/assignments"
+                        className="font-medium underline underline-offset-2"
+                      >
+                        /admin/assignments
+                      </Link>
+                      . The therapist then has 2 hours to confirm; the
+                      manager is re-alerted if they don&apos;t.
+                    </p>
+                  )}
                 </div>
               </div>
 
