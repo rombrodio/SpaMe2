@@ -31,12 +31,26 @@ import {
 export default async function AdminDashboard() {
   const supabase = await createClient();
 
-  const nowZoned = toZonedTime(new Date(), TZ);
+  const now = new Date();
+  const nowMs = now.getTime();
+  const nowZoned = toZonedTime(now, TZ);
   const dayStart = fromZonedTime(startOfDay(nowZoned), TZ);
   const dayEnd = fromZonedTime(endOfDay(nowZoned), TZ);
   const dayStartIso = dayStart.toISOString();
   const dayEndIso = dayEnd.toISOString();
-  const nowIso = new Date().toISOString();
+
+  interface TodayBookingRow {
+    id: string;
+    start_at: string;
+    end_at: string;
+    status: string;
+    assignment_status: string | null;
+    price_ils: number | null;
+    customers: { id: string; full_name: string | null; phone: string } | null;
+    services: { id: string; name: string; duration_minutes: number } | null;
+    therapists: { id: string; full_name: string; color: string | null } | null;
+    rooms: { id: string; name: string } | null;
+  }
 
   const [
     todayBookings,
@@ -83,6 +97,7 @@ export default async function AdminDashboard() {
     0
   );
   const revenueIls = Math.round(revenueAgorot / 100);
+  const todayRows = (todayBookings.data ?? []) as unknown as TodayBookingRow[];
 
   return (
     <div className="space-y-6">
@@ -96,7 +111,7 @@ export default async function AdminDashboard() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <DashboardTile
           title="Today's bookings"
-          value={String((todayBookings.data ?? []).length)}
+          value={String(todayRows.length)}
           icon={<Calendar className="h-5 w-5 text-muted-foreground" />}
           href="/admin/bookings"
           footer={`Revenue: ₪${revenueIls.toLocaleString()}`}
@@ -143,7 +158,7 @@ export default async function AdminDashboard() {
           </Link>
         </CardHeader>
         <CardContent>
-          {(todayBookings.data ?? []).length === 0 ? (
+          {todayRows.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               No bookings today. Enjoy the quiet day.
             </p>
@@ -161,8 +176,8 @@ export default async function AdminDashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {(todayBookings.data ?? []).map((b) => {
-                    const isPast = new Date(b.end_at).getTime() < Date.now();
+                  {todayRows.map((b) => {
+                    const isPast = new Date(b.end_at).getTime() < nowMs;
                     return (
                       <tr
                         key={b.id}

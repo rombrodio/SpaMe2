@@ -3,7 +3,18 @@ import { getBookingFormData } from "@/lib/actions/bookings";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 
-export default async function NewBookingPage() {
+interface Params {
+  date?: string;
+  start?: string;
+  therapist_id?: string;
+}
+
+export default async function NewBookingPage({
+  searchParams,
+}: {
+  searchParams: Promise<Params>;
+}) {
+  const sp = await searchParams;
   const formData = await getBookingFormData();
 
   return (
@@ -20,7 +31,14 @@ export default async function NewBookingPage() {
         Select a service, then pick from available slots or enter a custom time.
       </p>
       <div className="mt-6">
-        <BookingForm formData={formData} />
+        <BookingForm
+          formData={formData}
+          prefill={{
+            date: sp.date,
+            start: sp.start,
+            therapistId: sp.therapist_id,
+          }}
+        />
       </div>
     </div>
   );

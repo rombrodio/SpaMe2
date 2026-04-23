@@ -51,7 +51,8 @@ export function GlobalSearch() {
     if (!open) return;
     const seq = ++lastRequest.current;
     if (query.trim().length < 2) {
-      setHits([]);
+      // Render uses `query.length < 2` to show the helper copy; avoid
+      // calling setHits here (React 19's set-state-in-effect rule).
       return;
     }
     startSearch(async () => {
@@ -61,15 +62,19 @@ export function GlobalSearch() {
     });
   }, [open, query]);
 
+  // When the query drops below the threshold we still want the UI to
+  // behave as "no results yet" — derived via render logic, not stored.
+  const effectiveHits = query.trim().length < 2 ? [] : hits;
+
   function handleSelect(hit: GlobalSearchHit) {
     setOpen(false);
     setQuery("");
     router.push(hit.href);
   }
 
-  const customerHits = hits.filter((h) => h.kind === "customer");
-  const therapistHits = hits.filter((h) => h.kind === "therapist");
-  const bookingHits = hits.filter((h) => h.kind === "booking");
+  const customerHits = effectiveHits.filter((h) => h.kind === "customer");
+  const therapistHits = effectiveHits.filter((h) => h.kind === "therapist");
+  const bookingHits = effectiveHits.filter((h) => h.kind === "booking");
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -104,7 +109,7 @@ export function GlobalSearch() {
               <div className="p-4 text-center text-sm text-muted-foreground">
                 Type at least 2 characters to search.
               </div>
-            ) : hits.length === 0 && !isSearching ? (
+            ) : effectiveHits.length === 0 && !isSearching ? (
               <CommandEmpty>No matches.</CommandEmpty>
             ) : (
               <>

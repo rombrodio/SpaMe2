@@ -39,19 +39,32 @@ interface SerializedSlot {
 
 interface BookingFormProps {
   formData: FormData;
+  /**
+   * Optional prefill applied to date / start time / therapist when the
+   * user arrives via the "click empty slot" flow from the calendar.
+   */
+  prefill?: {
+    date?: string;
+    start?: string;
+    therapistId?: string;
+  };
 }
 
-export function BookingForm({ formData }: BookingFormProps) {
+export function BookingForm({ formData, prefill }: BookingFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [errors, setErrors] = useState<Record<string, string[]>>({});
 
   const [serviceId, setServiceId] = useState("");
-  const [therapistId, setTherapistId] = useState("");
+  const [therapistId, setTherapistId] = useState(prefill?.therapistId ?? "");
   const [roomId, setRoomId] = useState("");
   const [customerId, setCustomerId] = useState("");
-  const [date, setDate] = useState(format(new Date(), "yyyy-MM-dd"));
-  const [startAt, setStartAt] = useState("");
+  const [date, setDate] = useState(
+    prefill?.date ?? format(new Date(), "yyyy-MM-dd")
+  );
+  const [startAt, setStartAt] = useState(
+    prefill?.date && prefill?.start ? `${prefill.date}T${prefill.start}` : ""
+  );
   const [status, setStatus] = useState("confirmed");
   const [notes, setNotes] = useState("");
   // Phase 5 deferred-assignment: when checked, submit with no therapist
