@@ -9,7 +9,6 @@ import {
   CardContent,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Avatar } from "@/components/ui/avatar";
 import { RowLink } from "@/components/admin/row-link";
 import { ListSearchBar } from "@/components/admin/list-search-bar";
 import { Pager } from "@/components/admin/bookings/pager";
@@ -67,10 +66,9 @@ export default async function TherapistsListPage({
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b text-left">
-                    <th className="pb-2 font-medium"></th>
                     <th className="pb-2 font-medium">Name</th>
                     <th className="pb-2 font-medium">Phone</th>
-                    <th className="pb-2 font-medium">Gender</th>
+                    <th className="pb-2 font-medium">Color</th>
                     <th className="pb-2 font-medium">Status</th>
                     <th className="pb-2 font-medium">Actions</th>
                   </tr>
@@ -81,21 +79,22 @@ export default async function TherapistsListPage({
                       key={therapist.id}
                       href={`/admin/therapists/${therapist.id}`}
                     >
-                      <td className="py-3 w-10">
-                        <Avatar
-                          name={therapist.full_name}
-                          color={therapist.color}
-                          size="md"
-                        />
+                      <td className="py-3">{therapist.full_name}</td>
+                      <td className="py-3">
+                        {therapist.phone || (
+                          <span className="text-muted-foreground">--</span>
+                        )}
                       </td>
-                      <td className="py-3 font-medium">
-                        {therapist.full_name}
-                      </td>
-                      <td className="py-3 text-muted-foreground">
-                        {therapist.phone || "--"}
-                      </td>
-                      <td className="py-3 capitalize text-muted-foreground">
-                        {therapist.gender || "—"}
+                      <td className="py-3">
+                        {therapist.color ? (
+                          <span
+                            className="inline-block h-5 w-5 rounded border"
+                            style={{ backgroundColor: therapist.color }}
+                            title={therapist.color}
+                          />
+                        ) : (
+                          <span className="text-muted-foreground">--</span>
+                        )}
                       </td>
                       <td className="py-3">
                         <Badge
