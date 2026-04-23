@@ -338,8 +338,16 @@ export function findAvailableSlots(params: {
   }>;
   existingBookings: ExistingBooking[];
   filterTherapistId?: string;
+  /**
+   * Earliest Date a slot is allowed to start at. Slots whose start is
+   * strictly before `minStart` are skipped. Undefined = no minimum
+   * (admin flow preserves the ability to create retro-active bookings).
+   * The customer-facing /book flow passes `now + lead-time` here so
+   * past and near-future slots don't appear on "today".
+   */
+  minStart?: Date;
 }): AvailableSlot[] {
-  const { date, service, therapists, rooms, existingBookings, filterTherapistId } = params;
+  const { date, service, therapists, rooms, existingBookings, filterTherapistId, minStart } = params;
   const totalMinutes = service.duration_minutes + service.buffer_minutes;
   const slots: AvailableSlot[] = [];
 
@@ -367,6 +375,13 @@ export function findAvailableSlots(params: {
       while (true) {
         const slotEnd = addMinutes(slotStart, totalMinutes);
         if (isAfter(slotEnd, window.end)) break;
+
+        // Skip slots that start before the caller-specified minimum.
+        // Used by /book to hide past + near-future times on "today".
+        if (minStart && isBefore(slotStart, minStart)) {
+          slotStart = addMinutes(slotStart, SLOT_INCREMENT_MINUTES);
+          continue;
+        }
 
         // Check therapist not double-booked
         const therapistFree =

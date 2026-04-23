@@ -580,6 +580,8 @@ export async function findSlots(
   options: {
     therapistId?: string;
     genderFilter?: "male" | "female" | "any";
+    /** Earliest allowed slot start. Forwarded to findAvailableSlots. */
+    minStart?: Date;
   } = {}
 ): Promise<AvailableSlot[]> {
   const therapistId = options.therapistId;
@@ -697,5 +699,6 @@ export async function findSlots(
     rooms,
     existingBookings: (bookingsRes.data ?? []) as ExistingBooking[],
     filterTherapistId: therapistId,
+    minStart: options.minStart,
   });
 }

@@ -43,6 +43,13 @@ export interface PublicSlot {
 
 export type GenderPreference = "male" | "female" | "any";
 
+/**
+ * Minimum time a customer must book in advance. 30 minutes is the spa's
+ * prep window — any slot starting sooner is either in the past or too
+ * close to be useful. Kept as a constant so it's easy to tune later.
+ */
+const MIN_LEAD_MINUTES = 30;
+
 export async function getPublicSlots(input: {
   service_id: string;
   date: string; // "YYYY-MM-DD"
@@ -52,8 +59,13 @@ export async function getPublicSlots(input: {
   const date = parseISO(input.date);
   if (isNaN(date.getTime())) return [];
 
+  // Customer-facing: never show past or near-future slots. The admin
+  // flow passes no minStart so it can still create ad-hoc bookings.
+  const minStart = new Date(Date.now() + MIN_LEAD_MINUTES * 60_000);
+
   const slots = await engineFindSlots(admin, input.service_id, date, {
     genderFilter: input.gender_preference ?? "any",
+    minStart,
   });
   return dedupeByStart(slots);
 }
@@ -136,11 +148,21 @@ export async function createBookingFromBookAction(input: {
   if (isNaN(startDate.getTime())) {
     return { error: { start_at: ["Invalid date/time format"] } };
   }
+  const minStart = new Date(Date.now() + MIN_LEAD_MINUTES * 60_000);
+  if (startDate.getTime() < minStart.getTime()) {
+    return {
+      error: {
+        start_at: [
+          "The requested time is no longer available. Please pick another.",
+        ],
+      },
+    };
+  }
   const allSlots = await engineFindSlots(
     admin,
     parsed.data.service_id,
     startDate,
-    { genderFilter: input.gender_preference }
+    { genderFilter: input.gender_preference, minStart }
   );
   const startMs = startDate.getTime();
   const candidates = allSlots.filter(

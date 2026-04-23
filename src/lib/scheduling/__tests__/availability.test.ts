@@ -358,6 +358,48 @@ describe("findAvailableSlots", () => {
     }
   });
 
+  it("minStart hides past + near-future slots", () => {
+    // The availability rule window is 09:00–17:00 Jerusalem time.
+    // Setting minStart to 13:00 should hide every 09:00–12:45 grid
+    // slot and leave the 13:00+ slots intact.
+    const date = makeDate("2025-01-01", "12:00");
+    const minStart = makeDate("2025-01-01", "13:00");
+    const slots = findAvailableSlots({
+      date,
+      service,
+      therapists: [therapist],
+      rooms: [room],
+      existingBookings: [],
+      minStart,
+    });
+    expect(slots.length).toBeGreaterThan(0);
+    for (const slot of slots) {
+      expect(slot.start.getTime()).toBeGreaterThanOrEqual(
+        minStart.getTime()
+      );
+    }
+    // Sanity: without minStart we would have gotten slots starting
+    // at 09:00. With the filter, none do.
+    const earliest = slots.reduce(
+      (min, s) => (s.start < min ? s.start : min),
+      slots[0].start
+    );
+    expect(getJerusalemHours(earliest)).toBeGreaterThanOrEqual(13);
+  });
+
+  it("minStart of a day's end returns zero slots", () => {
+    const date = makeDate("2025-01-01", "12:00");
+    const slots = findAvailableSlots({
+      date,
+      service,
+      therapists: [therapist],
+      rooms: [room],
+      existingBookings: [],
+      minStart: makeDate("2025-01-01", "23:59"),
+    });
+    expect(slots).toHaveLength(0);
+  });
+
   it("skips slots that overlap with existing bookings", () => {
     const date = makeDate("2025-01-01", "12:00");
     const existingBookings: ExistingBooking[] = [
