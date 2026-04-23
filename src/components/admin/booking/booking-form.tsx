@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FormErrors } from "@/components/admin/form-message";
+import { CustomerCombobox } from "@/components/admin/customer/customer-combobox";
 import {
   createBookingAction,
   getServiceConstraints,
@@ -38,19 +39,32 @@ interface SerializedSlot {
 
 interface BookingFormProps {
   formData: FormData;
+  /**
+   * Optional prefill applied to date / start time / therapist when the
+   * user arrives via the "click empty slot" flow from the calendar.
+   */
+  prefill?: {
+    date?: string;
+    start?: string;
+    therapistId?: string;
+  };
 }
 
-export function BookingForm({ formData }: BookingFormProps) {
+export function BookingForm({ formData, prefill }: BookingFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [errors, setErrors] = useState<Record<string, string[]>>({});
 
   const [serviceId, setServiceId] = useState("");
-  const [therapistId, setTherapistId] = useState("");
+  const [therapistId, setTherapistId] = useState(prefill?.therapistId ?? "");
   const [roomId, setRoomId] = useState("");
   const [customerId, setCustomerId] = useState("");
-  const [date, setDate] = useState(format(new Date(), "yyyy-MM-dd"));
-  const [startAt, setStartAt] = useState("");
+  const [date, setDate] = useState(
+    prefill?.date ?? format(new Date(), "yyyy-MM-dd")
+  );
+  const [startAt, setStartAt] = useState(
+    prefill?.date && prefill?.start ? `${prefill.date}T${prefill.start}` : ""
+  );
   const [status, setStatus] = useState("confirmed");
   const [notes, setNotes] = useState("");
   // Phase 5 deferred-assignment: when checked, submit with no therapist
@@ -166,20 +180,21 @@ export function BookingForm({ formData }: BookingFormProps) {
             <CardContent className="space-y-4">
               <div>
                 <Label htmlFor="customer_id">Customer</Label>
-                <Select
-                  id="customer_id"
+                <CustomerCombobox
                   name="customer_id"
                   value={customerId}
-                  onChange={(e) => setCustomerId(e.target.value)}
-                  required
-                >
-                  <option value="">Select customer...</option>
-                  {formData.customers.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.full_name} ({c.phone})
-                    </option>
-                  ))}
-                </Select>
+                  onChange={(id) => setCustomerId(id)}
+                  initialCustomers={formData.customers.map((c) => ({
+                    id: c.id,
+                    full_name: c.full_name,
+                    phone: c.phone,
+                    email: null,
+                  }))}
+                />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Type to search by name, phone, or email. Walk-in? Pick
+                  &quot;Create new customer&quot; at the bottom of the list.
+                </p>
               </div>
 
               <div>

@@ -9,10 +9,16 @@ interface PagerProps {
   page: number;
   pageSize: number;
   total: number;
+  /**
+   * Base path for the pager links (defaults to /admin/bookings for
+   * backward compatibility). Pass the page's own pathname when reusing
+   * the pager on other admin lists.
+   */
+  basePath?: string;
 }
 
 /** Renders a simple prev/next pager preserving every other search param. */
-export function Pager({ page, pageSize, total }: PagerProps) {
+export function Pager({ page, pageSize, total, basePath = "/admin/bookings" }: PagerProps) {
   const sp = useSearchParams();
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   if (totalPages <= 1) return null;
@@ -22,7 +28,7 @@ export function Pager({ page, pageSize, total }: PagerProps) {
     if (nextPage <= 1) params.delete("page");
     else params.set("page", String(nextPage));
     const qs = params.toString();
-    return qs ? `/admin/bookings?${qs}` : "/admin/bookings";
+    return qs ? `${basePath}?${qs}` : basePath;
   }
 
   const prevPage = Math.max(1, page - 1);

@@ -1,12 +1,16 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { updateSpaSettings } from "@/lib/actions/settings";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  DirtyFormGuard,
+  useFormDirtyOnRef,
+} from "@/components/ui/dirty-form-guard";
 import { FormErrors } from "@/components/admin/form-message";
 
 interface SettingsFormProps {
@@ -19,6 +23,8 @@ export function SettingsForm({ initialName, initialPhone }: SettingsFormProps) {
   const [errors, setErrors] = useState<Record<string, string[]> | undefined>();
   const [saved, setSaved] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const formRef = useRef<HTMLFormElement>(null);
+  const [dirty, resetDirty] = useFormDirtyOnRef(formRef);
 
   async function handleSubmit(formData: FormData) {
     setErrors(undefined);
@@ -32,12 +38,14 @@ export function SettingsForm({ initialName, initialPhone }: SettingsFormProps) {
       }
       setSaved(true);
       toast.success("Settings saved.");
+      resetDirty();
       router.refresh();
     });
   }
 
   return (
-    <form action={handleSubmit} className="space-y-4">
+    <DirtyFormGuard dirty={dirty && !isPending}>
+    <form ref={formRef} action={handleSubmit} className="space-y-4">
       <FormErrors errors={errors} />
 
       <div className="space-y-2">
@@ -72,5 +80,6 @@ export function SettingsForm({ initialName, initialPhone }: SettingsFormProps) {
         )}
       </div>
     </form>
+    </DirtyFormGuard>
   );
 }

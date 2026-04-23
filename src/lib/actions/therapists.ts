@@ -12,14 +12,37 @@ import { writeAuditLog } from "@/lib/audit";
 
 // ── Therapist CRUD ──
 
-export async function getTherapists() {
+/**
+ * List therapists. Legacy callers get the plain array for backwards-compat;
+ * the admin list page can ask for pagination + search via `filters`.
+ */
+export async function getTherapists(filters?: {
+  q?: string;
+  limit?: number;
+  offset?: number;
+  activeOnly?: boolean;
+}) {
   const supabase = await createClient();
-  const { data, error } = await supabase
+  const limit = filters?.limit ?? 100;
+  const offset = filters?.offset ?? 0;
+  let query = supabase
     .from("therapists")
-    .select("*")
-    .order("full_name");
+    .select("*", { count: "exact" })
+    .order("full_name")
+    .range(offset, offset + limit - 1);
+
+  if (filters?.activeOnly) query = query.eq("is_active", true);
+
+  if (filters?.q?.trim()) {
+    const clean = filters.q.trim().replace(/[%_]/g, "");
+    query = query.or(
+      `full_name.ilike.%${clean}%,phone.ilike.%${clean}%,email.ilike.%${clean}%`
+    );
+  }
+
+  const { data, error, count } = await query;
   if (error) throw new Error(error.message);
-  return data;
+  return { rows: data ?? [], total: count ?? 0 };
 }
 
 export async function getTherapist(id: string) {

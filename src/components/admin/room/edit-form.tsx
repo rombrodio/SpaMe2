@@ -1,12 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
 import { updateRoom, deleteRoom } from "@/lib/actions/rooms";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { ConfirmButton } from "@/components/ui/confirm-button";
+import {
+  DirtyFormGuard,
+  useFormDirtyOnRef,
+} from "@/components/ui/dirty-form-guard";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -32,6 +36,8 @@ export function RoomEditForm({ room }: RoomEditFormProps) {
   const router = useRouter();
   const [errors, setErrors] = useState<Record<string, string[]> | undefined>();
   const [submitting, setSubmitting] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
+  const [dirty, resetDirty] = useFormDirtyOnRef(formRef);
 
   async function handleSubmit(formData: FormData) {
     setSubmitting(true);
@@ -47,6 +53,7 @@ export function RoomEditForm({ room }: RoomEditFormProps) {
     }
 
     toast.success("Room saved.");
+    resetDirty();
     router.refresh();
     setSubmitting(false);
   }
@@ -65,12 +72,13 @@ export function RoomEditForm({ room }: RoomEditFormProps) {
   }
 
   return (
+    <DirtyFormGuard dirty={dirty && !submitting}>
     <Card>
       <CardHeader>
         <CardTitle>Room Details</CardTitle>
       </CardHeader>
       <CardContent>
-        <form action={handleSubmit} className="space-y-4">
+        <form ref={formRef} action={handleSubmit} className="space-y-4">
           <FormErrors errors={errors} />
 
           <div className="space-y-2">
@@ -124,5 +132,6 @@ export function RoomEditForm({ room }: RoomEditFormProps) {
         </form>
       </CardContent>
     </Card>
+    </DirtyFormGuard>
   );
 }

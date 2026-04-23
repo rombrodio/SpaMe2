@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -11,6 +11,10 @@ import {
 } from "@/lib/actions/customers";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { ConfirmButton } from "@/components/ui/confirm-button";
+import {
+  DirtyFormGuard,
+  useFormDirtyOnRef,
+} from "@/components/ui/dirty-form-guard";
 import { Breadcrumbs } from "@/components/admin/breadcrumbs";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -30,6 +34,8 @@ export default function EditCustomerPage() {
   const [errors, setErrors] = useState<Record<string, string[]> | undefined>();
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
+  const formRef = useRef<HTMLFormElement>(null);
+  const [dirty, resetDirty] = useFormDirtyOnRef(formRef);
   const [customer, setCustomer] = useState<{
     id: string;
     full_name: string;
@@ -68,6 +74,7 @@ export default function EditCustomerPage() {
     }
 
     toast.success("Customer saved.");
+    resetDirty();
     router.push("/admin/customers");
   }
 
@@ -115,12 +122,13 @@ export default function EditCustomerPage() {
         {customer.full_name || customer.phone}
       </h1>
 
+      <DirtyFormGuard dirty={dirty && !submitting}>
       <Card className="mt-6">
         <CardHeader>
           <CardTitle>Customer Details</CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
             <FormErrors errors={errors} />
 
             <div className="space-y-2">
@@ -199,6 +207,7 @@ export default function EditCustomerPage() {
           </form>
         </CardContent>
       </Card>
+      </DirtyFormGuard>
     </div>
   );
 }

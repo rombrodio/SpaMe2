@@ -4,13 +4,24 @@ import { useId, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { format, addDays, addWeeks, subDays, subWeeks, parseISO } from "date-fns";
+import {
+  format,
+  addDays,
+  addWeeks,
+  addMonths,
+  subDays,
+  subWeeks,
+  subMonths,
+  parseISO,
+} from "date-fns";
+
+export type CalendarView = "day" | "week" | "resource" | "month";
 
 interface CalendarHeaderProps {
   date: Date;
-  view: "day" | "week";
+  view: CalendarView;
   onDateChange: (date: Date) => void;
-  onViewChange: (view: "day" | "week") => void;
+  onViewChange: (view: CalendarView) => void;
 }
 
 export function CalendarHeader({
@@ -26,11 +37,23 @@ export function CalendarHeader({
   const pickerRef = useRef<HTMLInputElement>(null);
 
   function goBack() {
-    onDateChange(view === "day" ? subDays(date, 1) : subWeeks(date, 1));
+    if (view === "day" || view === "resource") {
+      onDateChange(subDays(date, 1));
+    } else if (view === "month") {
+      onDateChange(subMonths(date, 1));
+    } else {
+      onDateChange(subWeeks(date, 1));
+    }
   }
 
   function goForward() {
-    onDateChange(view === "day" ? addDays(date, 1) : addWeeks(date, 1));
+    if (view === "day" || view === "resource") {
+      onDateChange(addDays(date, 1));
+    } else if (view === "month") {
+      onDateChange(addMonths(date, 1));
+    } else {
+      onDateChange(addWeeks(date, 1));
+    }
   }
 
   function goToday() {
@@ -52,9 +75,11 @@ export function CalendarHeader({
   }
 
   const title =
-    view === "day"
+    view === "day" || view === "resource"
       ? format(date, "EEEE, MMMM d, yyyy")
-      : `Week of ${format(date, "MMM d, yyyy")}`;
+      : view === "month"
+        ? format(date, "MMMM yyyy")
+        : `Week of ${format(date, "MMM d, yyyy")}`;
 
   return (
     <div className="flex items-center justify-between">
@@ -86,7 +111,7 @@ export function CalendarHeader({
           onChange={handlePick}
         />
       </div>
-      <div className="flex items-center gap-1 rounded-md border border-input p-0.5">
+      <div className="flex flex-wrap items-center gap-1 rounded-md border border-input p-0.5">
         <Button
           variant={view === "day" ? "default" : "ghost"}
           size="sm"
@@ -100,6 +125,20 @@ export function CalendarHeader({
           onClick={() => onViewChange("week")}
         >
           Week
+        </Button>
+        <Button
+          variant={view === "resource" ? "default" : "ghost"}
+          size="sm"
+          onClick={() => onViewChange("resource")}
+        >
+          Resource
+        </Button>
+        <Button
+          variant={view === "month" ? "default" : "ghost"}
+          size="sm"
+          onClick={() => onViewChange("month")}
+        >
+          Month
         </Button>
       </div>
     </div>

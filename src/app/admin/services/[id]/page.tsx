@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -11,6 +11,10 @@ import {
 } from "@/lib/actions/services";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { ConfirmButton } from "@/components/ui/confirm-button";
+import {
+  DirtyFormGuard,
+  useFormDirtyOnRef,
+} from "@/components/ui/dirty-form-guard";
 import { Breadcrumbs } from "@/components/admin/breadcrumbs";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -42,6 +46,8 @@ export default function EditServicePage() {
   const [errors, setErrors] = useState<Record<string, string[]> | undefined>();
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
+  const formRef = useRef<HTMLFormElement>(null);
+  const [dirty, resetDirty] = useFormDirtyOnRef(formRef);
 
   useEffect(() => {
     getService(params.id).then((data) => {
@@ -64,6 +70,7 @@ export default function EditServicePage() {
     }
 
     toast.success("Service saved.");
+    resetDirty();
     router.push("/admin/services");
   }
 
@@ -100,12 +107,13 @@ export default function EditServicePage() {
       />
       <h1 className="text-2xl font-bold">{service.name}</h1>
 
+      <DirtyFormGuard dirty={dirty && !submitting}>
       <Card>
         <CardHeader>
           <CardTitle>Service Details</CardTitle>
         </CardHeader>
         <CardContent>
-          <form action={handleSubmit} className="space-y-4">
+          <form ref={formRef} action={handleSubmit} className="space-y-4">
             <FormErrors errors={errors} />
 
             <div className="space-y-2">
@@ -211,6 +219,7 @@ export default function EditServicePage() {
           </form>
         </CardContent>
       </Card>
+      </DirtyFormGuard>
 
       <VoucherMappingsSection serviceId={params.id} />
     </div>

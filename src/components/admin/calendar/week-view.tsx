@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { addDays, startOfWeek, isSameDay } from "date-fns";
 import { toZonedTime, formatInTimeZone } from "date-fns-tz";
 import { TZ } from "@/lib/constants";
@@ -92,6 +93,7 @@ function layoutOverlappingBookings(
 }
 
 export function WeekView({ date, bookings }: WeekViewProps) {
+  const router = useRouter();
   const weekStart = startOfWeek(date, { weekStartsOn: 0 });
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
   const hours = Array.from(
@@ -99,6 +101,13 @@ export function WeekView({ date, bookings }: WeekViewProps) {
     (_, i) => HOUR_START + i
   );
   const today = new Date();
+
+  function openEmpty(day: Date, hour: number, half: 0 | 1) {
+    const dateStr = formatInTimeZone(day, TZ, "yyyy-MM-dd");
+    const minute = half === 0 ? "00" : "30";
+    const start = `${String(hour).padStart(2, "0")}:${minute}`;
+    router.push(`/admin/bookings/new?date=${dateStr}&start=${start}`);
+  }
 
   return (
     <div className="mt-4 overflow-auto rounded-lg border border-border bg-card">
@@ -165,6 +174,32 @@ export function WeekView({ date, bookings }: WeekViewProps) {
                 />
               ))}
 
+              {/* SPA-032: click empty half-hour cell → New Booking prefilled */}
+              {hours.flatMap((hour) => [
+                <button
+                  type="button"
+                  key={`${hour}-0`}
+                  onClick={() => openEmpty(day, hour, 0)}
+                  aria-label={`Book at ${String(hour).padStart(2, "0")}:00`}
+                  className="absolute left-0 right-0 transition-colors hover:bg-muted/40"
+                  style={{
+                    top: (hour - HOUR_START) * HOUR_HEIGHT,
+                    height: HOUR_HEIGHT / 2,
+                  }}
+                />,
+                <button
+                  type="button"
+                  key={`${hour}-1`}
+                  onClick={() => openEmpty(day, hour, 1)}
+                  aria-label={`Book at ${String(hour).padStart(2, "0")}:30`}
+                  className="absolute left-0 right-0 transition-colors hover:bg-muted/40"
+                  style={{
+                    top: (hour - HOUR_START) * HOUR_HEIGHT + HOUR_HEIGHT / 2,
+                    height: HOUR_HEIGHT / 2,
+                  }}
+                />,
+              ])}
+
               {/* Bookings */}
               {layout.map(({ booking, top, height, col, totalCols }) => {
                 const widthPct = 100 / totalCols;
@@ -173,7 +208,7 @@ export function WeekView({ date, bookings }: WeekViewProps) {
                 return (
                   <div
                     key={booking.id}
-                    className="absolute overflow-hidden"
+                    className="absolute z-10 overflow-hidden"
                     style={{
                       top,
                       height,
