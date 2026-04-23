@@ -5,7 +5,6 @@ import { toZonedTime, formatInTimeZone, fromZonedTime } from "date-fns-tz";
 import { format } from "date-fns";
 import { TZ } from "@/lib/constants";
 import { BookingCard } from "./booking-card";
-import { Avatar } from "@/components/ui/avatar";
 import type { CalendarBooking, CalendarTherapist } from "./types";
 
 const HOUR_START = 7;
@@ -66,8 +65,11 @@ export function ResourceView({ date, bookings, therapists }: ResourceViewProps) 
             key={t.id}
             className="flex items-center justify-center gap-2 border-r border-border px-2 py-2 text-sm font-medium last:border-r-0"
           >
-            <Avatar name={t.full_name} color={t.color} size="sm" />
-            <span className="truncate">{t.full_name.split(" ")[0]}</span>
+            <span
+              className="h-2 w-2 shrink-0 rounded-full"
+              style={{ backgroundColor: t.color ?? "#94a3b8" }}
+            />
+            <span className="truncate">{t.full_name}</span>
           </div>
         ))}
       </div>
