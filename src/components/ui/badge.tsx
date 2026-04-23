@@ -14,6 +14,13 @@ const badgeVariants = cva(
         destructive:
           "border-transparent bg-destructive text-destructive-foreground",
         outline: "text-foreground",
+        // DEF-026: softer Active/Inactive presentation so admins stop
+        // confusing the chip with a button. The active state uses a
+        // green dot + light background; the inactive state is muted gray.
+        success:
+          "border-emerald-200 bg-emerald-50 text-emerald-800 [&>span.dot]:bg-emerald-500",
+        muted:
+          "border-border bg-muted text-muted-foreground [&>span.dot]:bg-muted-foreground",
       },
     },
     defaultVariants: {

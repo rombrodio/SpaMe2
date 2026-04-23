@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { formatInTimeZone } from "date-fns-tz";
 import { TZ } from "@/lib/constants";
 import {
@@ -78,8 +79,10 @@ function PendingRow({
       const result = await confirmAssignmentAction(fd);
       if (result && "error" in result) {
         setErrors(result.error as Record<string, string[]>);
+        toast.error("Couldn't accept the assignment.");
         return;
       }
+      toast.success("Assignment accepted.");
       router.refresh();
     });
   }
@@ -93,8 +96,10 @@ function PendingRow({
       const result = await declineAssignmentAction(fd);
       if (result && "error" in result) {
         setErrors(result.error as Record<string, string[]>);
+        toast.error("Couldn't decline the assignment.");
         return;
       }
+      toast.success("Assignment declined.");
       router.refresh();
     });
   }

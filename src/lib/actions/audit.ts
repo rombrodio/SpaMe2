@@ -30,6 +30,12 @@ export interface AuditLogFilters {
   entity_type?: string;
   action?: string;
   limit?: number;
+  offset?: number;
+}
+
+export interface AuditLogPage {
+  rows: EnrichedAuditLogRow[];
+  total: number;
 }
 
 /**
@@ -43,20 +49,23 @@ export interface AuditLogFilters {
  */
 export async function getAuditLogs(
   filters: AuditLogFilters = {}
-): Promise<EnrichedAuditLogRow[]> {
+): Promise<AuditLogPage> {
   const supabase = await createClient();
+  const limit = filters.limit ?? 50;
+  const offset = filters.offset ?? 0;
   let query = supabase
     .from("audit_logs")
-    .select("*")
+    .select("*", { count: "exact" })
     .order("created_at", { ascending: false })
-    .limit(filters.limit ?? 100);
+    .range(offset, offset + limit - 1);
 
   if (filters.entity_type) query = query.eq("entity_type", filters.entity_type);
   if (filters.action) query = query.eq("action", filters.action);
 
-  const { data, error } = await query;
+  const { data, error, count } = await query;
   if (error) throw new Error(error.message);
   const rows = (data ?? []) as AuditLogRow[];
+  const total = count ?? rows.length;
 
   // Bucket entity IDs by type so we can batch-fetch names.
   const idsByType: Record<string, Set<string>> = {};
@@ -206,11 +215,13 @@ export async function getAuditLogs(
     }
   }
 
-  return rows.map((row) => ({
+  const enriched: EnrichedAuditLogRow[] = rows.map((row) => ({
     ...row,
     entityLabel: row.entity_id
       ? labelMap.get(`${row.entity_type}:${row.entity_id}`) ?? null
       : null,
     entityHref: row.entity_id ? hrefFor(row.entity_type, row.entity_id) : null,
   }));
+
+  return { rows: enriched, total };
 }

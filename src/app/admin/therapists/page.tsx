@@ -9,6 +9,7 @@ import {
   CardContent,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { RowLink } from "@/components/admin/row-link";
 
 export default async function TherapistsListPage() {
   const therapists = await getTherapists();
@@ -43,7 +44,10 @@ export default async function TherapistsListPage() {
                 </thead>
                 <tbody>
                   {therapists.map((therapist) => (
-                    <tr key={therapist.id} className="border-b last:border-0">
+                    <RowLink
+                      key={therapist.id}
+                      href={`/admin/therapists/${therapist.id}`}
+                    >
                       <td className="py-3">{therapist.full_name}</td>
                       <td className="py-3">
                         {therapist.phone || (
@@ -63,19 +67,13 @@ export default async function TherapistsListPage() {
                       </td>
                       <td className="py-3">
                         <Badge
-                          variant={
-                            therapist.is_active ? "default" : "secondary"
-                          }
+                          variant={therapist.is_active ? "success" : "muted"}
                         >
+                          <span className="dot mr-1.5 inline-block h-1.5 w-1.5 rounded-full" />
                           {therapist.is_active ? "Active" : "Inactive"}
                         </Badge>
                       </td>
-                      <td className="py-3">
-                        <Link href={`/admin/therapists/${therapist.id}`} className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>
-                            Edit
-                          </Link>
-                      </td>
-                    </tr>
+                    </RowLink>
                   ))}
                 </tbody>
               </table>

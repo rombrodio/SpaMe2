@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { updateSpaSettings } from "@/lib/actions/settings";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,9 +27,11 @@ export function SettingsForm({ initialName, initialPhone }: SettingsFormProps) {
       const result = await updateSpaSettings(formData);
       if (result && "error" in result) {
         setErrors(result.error);
+        toast.error("Couldn't save settings.");
         return;
       }
       setSaved(true);
+      toast.success("Settings saved.");
       router.refresh();
     });
   }

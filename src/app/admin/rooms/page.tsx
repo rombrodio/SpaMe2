@@ -9,6 +9,7 @@ import {
   CardContent,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { RowLink } from "@/components/admin/row-link";
 
 export default async function RoomsListPage() {
   const rooms = await getRooms();
@@ -42,22 +43,20 @@ export default async function RoomsListPage() {
                 </thead>
                 <tbody>
                   {rooms.map((room) => (
-                    <tr key={room.id} className="border-b last:border-0">
+                    <RowLink key={room.id} href={`/admin/rooms/${room.id}`}>
                       <td className="py-3">{room.name}</td>
                       <td className="py-3 max-w-xs truncate text-muted-foreground">
                         {room.description || "\u2014"}
                       </td>
                       <td className="py-3">
                         <Badge
-                          variant={room.is_active ? "default" : "secondary"}
+                          variant={room.is_active ? "success" : "muted"}
                         >
+                          <span className="dot mr-1.5 inline-block h-1.5 w-1.5 rounded-full" />
                           {room.is_active ? "Active" : "Inactive"}
                         </Badge>
                       </td>
-                      <td className="py-3">
-                        <Link href={`/admin/rooms/${room.id}`} className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>Edit</Link>
-                      </td>
-                    </tr>
+                    </RowLink>
                   ))}
                 </tbody>
               </table>

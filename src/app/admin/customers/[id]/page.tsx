@@ -11,6 +11,7 @@ import {
 } from "@/lib/actions/customers";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { ConfirmButton } from "@/components/ui/confirm-button";
+import { Breadcrumbs } from "@/components/admin/breadcrumbs";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -104,7 +105,15 @@ export default function EditCustomerPage() {
 
   return (
     <div className="mx-auto max-w-lg">
-      <h1 className="text-2xl font-bold">Edit Customer</h1>
+      <Breadcrumbs
+        items={[
+          { label: "Customers", href: "/admin/customers" },
+          { label: customer.full_name || customer.phone },
+        ]}
+      />
+      <h1 className="mt-2 text-2xl font-bold">
+        {customer.full_name || customer.phone}
+      </h1>
 
       <Card className="mt-6">
         <CardHeader>

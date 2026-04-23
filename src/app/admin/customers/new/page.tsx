@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { toast } from "sonner";
 import { createCustomer } from "@/lib/actions/customers";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -33,9 +34,11 @@ export default function NewCustomerPage() {
     if (result && 'error' in result) {
       setErrors(result.error);
       setSubmitting(false);
+      toast.error("Couldn't create customer.");
       return;
     }
 
+    toast.success("Customer created.");
     router.push("/admin/customers");
   }
 

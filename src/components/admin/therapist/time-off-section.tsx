@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { createTimeOff, deleteTimeOff } from "@/lib/actions/therapists";
 import { Button } from "@/components/ui/button";
 import { ConfirmButton } from "@/components/ui/confirm-button";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -134,25 +135,15 @@ export function TimeOffSection({ therapistId, timeOffs }: Props) {
           <form action={handleAdd} className="space-y-4">
             <FormErrors errors={errors} />
 
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <div className="space-y-2">
-                <Label htmlFor="start_at">Start</Label>
-                <Input
-                  id="start_at"
-                  name="start_at"
-                  type="datetime-local"
-                  required
-                />
+                <Label>Start</Label>
+                <DateTimePicker name="start_at" required />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="end_at">End</Label>
-                <Input
-                  id="end_at"
-                  name="end_at"
-                  type="datetime-local"
-                  required
-                />
+                <Label>End</Label>
+                <DateTimePicker name="end_at" required />
               </div>
 
               <div className="space-y-2">

@@ -11,6 +11,7 @@ import {
 } from "@/lib/actions/services";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { ConfirmButton } from "@/components/ui/confirm-button";
+import { Breadcrumbs } from "@/components/admin/breadcrumbs";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -91,7 +92,13 @@ export default function EditServicePage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      <h1 className="text-2xl font-bold">Edit Service</h1>
+      <Breadcrumbs
+        items={[
+          { label: "Services", href: "/admin/services" },
+          { label: service.name },
+        ]}
+      />
+      <h1 className="text-2xl font-bold">{service.name}</h1>
 
       <Card>
         <CardHeader>

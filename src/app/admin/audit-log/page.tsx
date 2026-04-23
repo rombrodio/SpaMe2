@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { getAuditLogs } from "@/lib/actions/audit";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { DiffView } from "@/components/admin/audit-log/diff-view";
 import { formatInTimeZone } from "date-fns-tz";
 import { TZ } from "@/lib/constants";
 
@@ -13,23 +16,47 @@ const ENTITY_TYPES = [
   "payment",
 ];
 const ACTIONS = ["create", "update", "delete", "status_change", "payment_webhook"];
+const PAGE_SIZE = 50;
+
+type SearchParams = {
+  entity_type?: string;
+  action?: string;
+  page?: string;
+};
 
 export default async function AuditLogPage({
   searchParams,
 }: {
-  searchParams: Promise<{ entity_type?: string; action?: string }>;
+  searchParams: Promise<SearchParams>;
 }) {
   const params = await searchParams;
   const entity_type = params.entity_type || undefined;
   const action = params.action || undefined;
+  const page = Math.max(1, Number(params.page ?? "1") || 1);
 
-  const logs = await getAuditLogs({ entity_type, action, limit: 200 });
+  const { rows: logs, total } = await getAuditLogs({
+    entity_type,
+    action,
+    limit: PAGE_SIZE,
+    offset: (page - 1) * PAGE_SIZE,
+  });
+
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  function hrefFor(nextPage: number) {
+    const q = new URLSearchParams();
+    if (entity_type) q.set("entity_type", entity_type);
+    if (action) q.set("action", action);
+    if (nextPage > 1) q.set("page", String(nextPage));
+    const qs = q.toString();
+    return qs ? `/admin/audit-log?${qs}` : "/admin/audit-log";
+  }
 
   return (
     <div>
       <h1 className="text-2xl font-bold">Audit Log</h1>
       <p className="mt-1 text-muted-foreground">
-        Most recent 200 entries. Use filters to narrow down.
+        {total} total entries. Showing page {page} of {totalPages}.
       </p>
 
       <Card className="mt-6">
@@ -99,7 +126,7 @@ export default async function AuditLogPage({
       <Card className="mt-4">
         <CardHeader>
           <CardTitle className="text-base">
-            Entries {logs.length === 0 ? "(none)" : `(${logs.length})`}
+            Entries {logs.length === 0 ? "(none on this page)" : `(${logs.length} of ${total})`}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -173,29 +200,42 @@ export default async function AuditLogPage({
                         </div>
                       </td>
                       <td className="py-3">
-                        {row.old_data || row.new_data ? (
-                          <details>
-                            <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground">
-                              View
-                            </summary>
-                            <pre className="mt-2 max-w-md overflow-auto rounded bg-muted p-2 text-[10px] leading-tight">
-                              {JSON.stringify(
-                                { old: row.old_data, new: row.new_data },
-                                null,
-                                2
-                              )}
-                            </pre>
-                          </details>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">
-                            -
-                          </span>
-                        )}
+                        <DiffView before={row.old_data} after={row.new_data} />
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {totalPages > 1 && (
+            <div className="mt-4 flex items-center justify-between text-sm">
+              <p className="text-muted-foreground">
+                Page {page} of {totalPages}
+              </p>
+              <div className="flex gap-2">
+                <Link
+                  href={hrefFor(Math.max(1, page - 1))}
+                  aria-disabled={page <= 1}
+                  className={cn(
+                    buttonVariants({ variant: "outline", size: "sm" }),
+                    page <= 1 && "pointer-events-none opacity-50"
+                  )}
+                >
+                  Previous
+                </Link>
+                <Link
+                  href={hrefFor(Math.min(totalPages, page + 1))}
+                  aria-disabled={page >= totalPages}
+                  className={cn(
+                    buttonVariants({ variant: "outline", size: "sm" }),
+                    page >= totalPages && "pointer-events-none opacity-50"
+                  )}
+                >
+                  Next
+                </Link>
+              </div>
             </div>
           )}
         </CardContent>

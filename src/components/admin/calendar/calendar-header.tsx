@@ -1,8 +1,10 @@
 "use client";
 
+import { useId, useRef } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { format, addDays, addWeeks, subDays, subWeeks } from "date-fns";
+import { format, addDays, addWeeks, subDays, subWeeks, parseISO } from "date-fns";
 
 interface CalendarHeaderProps {
   date: Date;
@@ -17,6 +19,12 @@ export function CalendarHeader({
   onDateChange,
   onViewChange,
 }: CalendarHeaderProps) {
+  // DEF-030: hidden native date input + clickable title that opens it.
+  // Keeps the compact header layout while giving the user a proper date
+  // jump — better than adding yet another button.
+  const pickerId = useId();
+  const pickerRef = useRef<HTMLInputElement>(null);
+
   function goBack() {
     onDateChange(view === "day" ? subDays(date, 1) : subWeeks(date, 1));
   }
@@ -29,6 +37,20 @@ export function CalendarHeader({
     onDateChange(new Date());
   }
 
+  function openPicker() {
+    const input = pickerRef.current;
+    if (!input) return;
+    // showPicker is supported in all evergreen browsers (2023+); fall back
+    // to focus() on older ones.
+    if (typeof input.showPicker === "function") input.showPicker();
+    else input.focus();
+  }
+
+  function handlePick(e: React.ChangeEvent<HTMLInputElement>) {
+    if (!e.target.value) return;
+    onDateChange(parseISO(e.target.value));
+  }
+
   const title =
     view === "day"
       ? format(date, "EEEE, MMMM d, yyyy")
@@ -37,16 +59,32 @@ export function CalendarHeader({
   return (
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-2">
-        <Button variant="outline" size="sm" onClick={goBack}>
+        <Button variant="outline" size="sm" onClick={goBack} aria-label="Previous">
           <ChevronLeft className="h-4 w-4" />
         </Button>
         <Button variant="outline" size="sm" onClick={goToday}>
           Today
         </Button>
-        <Button variant="outline" size="sm" onClick={goForward}>
+        <Button variant="outline" size="sm" onClick={goForward} aria-label="Next">
           <ChevronRight className="h-4 w-4" />
         </Button>
-        <h2 className="ml-2 text-lg font-semibold">{title}</h2>
+        <button
+          type="button"
+          onClick={openPicker}
+          className="ml-2 rounded-md px-2 py-1 text-lg font-semibold hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label="Jump to date"
+        >
+          {title}
+        </button>
+        <Input
+          id={pickerId}
+          ref={pickerRef}
+          type="date"
+          className="sr-only absolute"
+          tabIndex={-1}
+          value={format(date, "yyyy-MM-dd")}
+          onChange={handlePick}
+        />
       </div>
       <div className="flex items-center gap-1 rounded-md border border-input p-0.5">
         <Button
