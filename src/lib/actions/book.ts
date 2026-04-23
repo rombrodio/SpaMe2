@@ -44,11 +44,13 @@ export interface PublicSlot {
 export type GenderPreference = "male" | "female" | "any";
 
 /**
- * Minimum time a customer must book in advance. 30 minutes is the spa's
- * prep window — any slot starting sooner is either in the past or too
- * close to be useful. Kept as a constant so it's easy to tune later.
+ * Minimum time a customer must book in advance. Bumped from 30 to 60
+ * minutes when /book became a deferred-assignment flow (phase 5) —
+ * the manager needs enough runway after payment to assign a therapist
+ * who can then confirm. Any slot starting sooner is either in the past
+ * or too close to be useful.
  */
-const MIN_LEAD_MINUTES = 30;
+const MIN_LEAD_MINUTES = 60;
 
 export async function getPublicSlots(input: {
   service_id: string;
@@ -140,10 +142,14 @@ export async function createBookingFromBookAction(input: {
 
   const admin = createAdminClient();
 
-  // ── Pick therapist + room server-side ────────────────────
-  // Re-run slot search for the requested date so we get the fresh
-  // set of eligible (therapist, room) pairs. Filter to ones that
-  // match the requested start time exactly.
+  // ── Pick a room (no therapist assignment at booking time) ──
+  // We still need a room because room supply is finite and rooms stay
+  // eagerly assigned per the plan. The therapist is deferred — the
+  // manager picks from eligible candidates via /admin/assignments after
+  // payment lands. Re-running findSlots returns one entry per
+  // (therapist, room) pair; any of those rooms is fine for the customer
+  // since all are free + compatible at this instant. We take the first
+  // one deterministically so the behaviour is reproducible in tests.
   const startDate = parseISO(parsed.data.start_at);
   if (isNaN(startDate.getTime())) {
     return { error: { start_at: ["Invalid date/time format"] } };
@@ -178,8 +184,10 @@ export async function createBookingFromBookAction(input: {
     };
   }
 
-  // Random assignment among eligible therapists.
-  const picked = candidates[Math.floor(Math.random() * candidates.length)];
+  // First free compatible room wins. We don't pin a therapist here —
+  // createBooking's UNASSIGNED mode will verify via the matcher that a
+  // therapist can still be found later.
+  const picked = candidates[0];
 
   // ── Find or create customer by normalized phone ───────────
   const { data: existingCustomer } = await admin
@@ -231,28 +239,23 @@ export async function createBookingFromBookAction(input: {
     });
   }
 
-  // ── Create booking ────────────────────────────────────────
+  // ── Create booking (UNASSIGNED mode) ────────────────────
+  // No therapist_id passed. The engine's unassigned branch validates
+  // the room, runs the matcher to guarantee capacity still fits, and
+  // persists therapist_gender_preference + assignment_status = 'unassigned'.
   const createResult = await engineCreate(admin, {
     customer_id: customerId,
-    therapist_id: picked.therapist_id,
     room_id: picked.room_id,
     service_id: parsed.data.service_id,
     start_at: parsed.data.start_at,
     status: "pending_payment",
+    assignment_status: "unassigned",
+    therapist_gender_preference: input.gender_preference,
     notes: parsed.data.notes || undefined,
   });
   if ("error" in createResult) return createResult;
 
   const bookingRow = createResult.data as { id: string };
-
-  // Persist the gender preference snapshot — createBooking engine
-  // doesn't take it yet (not every caller has one).
-  if (input.gender_preference !== "any") {
-    await admin
-      .from("bookings")
-      .update({ therapist_gender_preference: input.gender_preference })
-      .eq("id", bookingRow.id);
-  }
 
   const token = await issueOrderToken({
     bid: bookingRow.id,
@@ -267,7 +270,7 @@ export async function createBookingFromBookAction(input: {
     newData: {
       source: "book_flow_contact_submit",
       gender_preference: input.gender_preference,
-      assigned_therapist_id: picked.therapist_id,
+      assignment_status: "unassigned",
     },
   });
 

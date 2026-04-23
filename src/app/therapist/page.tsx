@@ -1,18 +1,26 @@
 import { getBookings } from "@/lib/actions/bookings";
+import { getMyPendingConfirmations } from "@/lib/actions/assignments";
 import { getCurrentTherapistId } from "@/lib/auth/current-therapist";
 import { StatusBadge } from "@/components/admin/calendar/booking-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChangePasswordCard } from "@/components/therapist/change-password-card";
+import { PendingConfirmationsCard } from "@/components/therapist/pending-confirmations-card";
 import { formatInTimeZone } from "date-fns-tz";
 import { TZ } from "@/lib/constants";
 
-export default async function TherapistDashboard() {
+interface PageProps {
+  searchParams: Promise<{ bookingId?: string }>;
+}
+
+export default async function TherapistDashboard({ searchParams }: PageProps) {
   const therapistId = await getCurrentTherapistId();
+  const sp = await searchParams;
   const now = new Date().toISOString();
-  const bookings = await getBookings({
-    therapist_id: therapistId,
-    from: now,
-  });
+
+  const [bookings, pending] = await Promise.all([
+    getBookings({ therapist_id: therapistId, from: now }),
+    getMyPendingConfirmations(),
+  ]);
 
   const upcoming = bookings
     .filter((b: { status: string }) => b.status !== "cancelled")
@@ -24,13 +32,20 @@ export default async function TherapistDashboard() {
     );
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold">My Bookings</h1>
-      <p className="mt-1 text-muted-foreground">
-        Your upcoming appointments.
-      </p>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold">My Bookings</h1>
+        <p className="mt-1 text-muted-foreground">
+          Your upcoming appointments.
+        </p>
+      </div>
 
-      <Card className="mt-6">
+      <PendingConfirmationsCard
+        items={pending}
+        highlightBookingId={sp.bookingId}
+      />
+
+      <Card>
         <CardHeader>
           <CardTitle className="text-base">Upcoming</CardTitle>
         </CardHeader>
@@ -106,9 +121,7 @@ export default async function TherapistDashboard() {
         </CardContent>
       </Card>
 
-      <div className="mt-8">
-        <ChangePasswordCard />
-      </div>
+      <ChangePasswordCard />
     </div>
   );
 }
