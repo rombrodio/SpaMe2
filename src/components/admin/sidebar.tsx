@@ -17,6 +17,7 @@ import {
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import { GlobalSearch } from "@/components/admin/global-search";
 
 // NOTE: Inbox is deferred to Phase 6 (WhatsApp conversational channel). Keep
 // the link out of the sidebar until the /admin/inbox route lands, otherwise
@@ -51,6 +52,9 @@ export function AdminSidebar() {
         <Link href="/admin" className="text-lg font-semibold text-foreground">
           SpaMe
         </Link>
+      </div>
+      <div className="border-b border-sidebar-border px-2 py-2">
+        <GlobalSearch />
       </div>
       <nav className="flex-1 space-y-1 px-2 py-3">
         {navItems.map(({ href, label, icon: Icon, exact }) => {
