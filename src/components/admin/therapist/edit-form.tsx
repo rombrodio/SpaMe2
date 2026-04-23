@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -11,6 +11,10 @@ import {
 } from "@/lib/actions/therapists";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { ConfirmButton } from "@/components/ui/confirm-button";
+import {
+  DirtyFormGuard,
+  useFormDirtyOnRef,
+} from "@/components/ui/dirty-form-guard";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -44,6 +48,8 @@ export function TherapistEditForm({
   const [submitting, setSubmitting] = useState(false);
   const [resending, setResending] = useState(false);
   const [resendNotice, setResendNotice] = useState<string | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+  const [dirty, resetDirty] = useFormDirtyOnRef(formRef);
 
   async function handleResendInvite() {
     setResending(true);
@@ -73,6 +79,7 @@ export function TherapistEditForm({
     }
 
     toast.success("Therapist saved.");
+    resetDirty();
     router.refresh();
     setSubmitting(false);
   }
@@ -91,12 +98,13 @@ export function TherapistEditForm({
   }
 
   return (
+    <DirtyFormGuard dirty={dirty && !submitting}>
     <Card>
       <CardHeader>
         <CardTitle>Therapist Details</CardTitle>
       </CardHeader>
       <CardContent>
-        <form action={handleSubmit} className="space-y-4">
+        <form ref={formRef} action={handleSubmit} className="space-y-4">
           <FormErrors errors={errors} />
           {resendNotice && (
             <div className="rounded-md border border-green-300 bg-green-50 p-3 text-sm text-green-900">
@@ -241,5 +249,6 @@ export function TherapistEditForm({
         </form>
       </CardContent>
     </Card>
+    </DirtyFormGuard>
   );
 }

@@ -10,25 +10,56 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { RowLink } from "@/components/admin/row-link";
+import { ListSearchBar } from "@/components/admin/list-search-bar";
+import { Pager } from "@/components/admin/bookings/pager";
 
-export default async function TherapistsListPage() {
-  const therapists = await getTherapists();
+const PAGE_SIZE = 25;
+
+interface SearchParams {
+  q?: string;
+  page?: string;
+}
+
+export default async function TherapistsListPage({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}) {
+  const sp = await searchParams;
+  const page = Math.max(1, Number(sp.page ?? "1") || 1);
+
+  const { rows: therapists, total } = await getTherapists({
+    q: sp.q,
+    limit: PAGE_SIZE,
+    offset: (page - 1) * PAGE_SIZE,
+  });
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Therapists</h1>
-        <Link href="/admin/therapists/new" className={cn(buttonVariants())}>New Therapist</Link>
+        <Link href="/admin/therapists/new" className={cn(buttonVariants())}>
+          New Therapist
+        </Link>
       </div>
+
+      <ListSearchBar
+        basePath="/admin/therapists"
+        placeholder="Name, phone, or email…"
+      />
 
       <Card>
         <CardHeader>
-          <CardTitle>All Therapists</CardTitle>
+          <CardTitle>
+            {total === 0 ? "No therapists match" : `${total} therapists`}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           {therapists.length === 0 ? (
             <p className="text-muted-foreground text-sm">
-              No therapists yet. Create one to get started.
+              {sp.q
+                ? "No therapists match this search."
+                : "No therapists yet. Create one to get started."}
             </p>
           ) : (
             <div className="overflow-x-auto">
@@ -79,6 +110,12 @@ export default async function TherapistsListPage() {
               </table>
             </div>
           )}
+          <Pager
+            page={page}
+            pageSize={PAGE_SIZE}
+            total={total}
+            basePath="/admin/therapists"
+          />
         </CardContent>
       </Card>
     </div>

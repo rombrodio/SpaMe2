@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FormErrors } from "@/components/admin/form-message";
+import { CustomerCombobox } from "@/components/admin/customer/customer-combobox";
 import {
   createBookingAction,
   getServiceConstraints,
@@ -166,20 +167,21 @@ export function BookingForm({ formData }: BookingFormProps) {
             <CardContent className="space-y-4">
               <div>
                 <Label htmlFor="customer_id">Customer</Label>
-                <Select
-                  id="customer_id"
+                <CustomerCombobox
                   name="customer_id"
                   value={customerId}
-                  onChange={(e) => setCustomerId(e.target.value)}
-                  required
-                >
-                  <option value="">Select customer...</option>
-                  {formData.customers.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.full_name} ({c.phone})
-                    </option>
-                  ))}
-                </Select>
+                  onChange={(id) => setCustomerId(id)}
+                  initialCustomers={formData.customers.map((c) => ({
+                    id: c.id,
+                    full_name: c.full_name,
+                    phone: c.phone,
+                    email: null,
+                  }))}
+                />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Type to search by name, phone, or email. Walk-in? Pick
+                  &quot;Create new customer&quot; at the bottom of the list.
+                </p>
               </div>
 
               <div>
