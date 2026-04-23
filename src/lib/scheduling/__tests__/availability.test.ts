@@ -358,6 +358,33 @@ describe("findAvailableSlots", () => {
     }
   });
 
+  it("DEF-006: snaps off-grid rule start times to the 15-minute grid", () => {
+    // Rule starts at 06:34, ends at 22:45. Even with an arbitrary start
+    // minute the slot generator should emit only 15-minute boundaries:
+    // 06:45, 07:00, 07:15, ... — never 06:34, 06:49, 07:04.
+    const date = makeDate("2025-01-01", "12:00");
+    const oddRule: AvailabilityRule = makeRule({
+      start_time: "06:34",
+      end_time: "22:45",
+    });
+    const slots = findAvailableSlots({
+      date,
+      service,
+      therapists: [{ ...therapist, availabilityRules: [oddRule] }],
+      rooms: [room],
+      existingBookings: [],
+    });
+    expect(slots.length).toBeGreaterThan(0);
+    for (const slot of slots) {
+      const minute = toZonedTime(slot.start, TZ).getMinutes();
+      expect(minute % 15).toBe(0);
+    }
+    // First slot should be 06:45 Jerusalem (06:34 rounded up).
+    const first = toZonedTime(slots[0].start, TZ);
+    expect(first.getHours()).toBe(6);
+    expect(first.getMinutes()).toBe(45);
+  });
+
   it("minStart hides past + near-future slots", () => {
     // The availability rule window is 09:00–17:00 Jerusalem time.
     // Setting minStart to 13:00 should hide every 09:00–12:45 grid

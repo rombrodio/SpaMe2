@@ -2,20 +2,33 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { ConfirmButton } from "@/components/ui/confirm-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FormErrors } from "@/components/admin/form-message";
 import { StatusBadge } from "@/components/admin/calendar/booking-card";
+import {
+  SlotPicker,
+  type SlotPickerSelection,
+} from "@/components/admin/booking/slot-picker";
 import {
   cancelBookingAction,
   rescheduleBookingAction,
   updateBookingStatusAction,
 } from "@/lib/actions/bookings";
-import { addMinutes } from "date-fns";
-import { formatInTimeZone } from "date-fns-tz";
+import { addMinutes, format } from "date-fns";
+import { formatInTimeZone, toZonedTime } from "date-fns-tz";
 import { TZ } from "@/lib/constants";
 
 interface BookingDetailProps {
@@ -40,69 +53,174 @@ interface BookingDetailProps {
       price_ils: number;
     } | null;
   };
+  therapists: Array<{ id: string; full_name: string; color: string | null }>;
+  rooms: Array<{ id: string; name: string }>;
 }
 
-export function BookingDetail({ booking }: BookingDetailProps) {
+export function BookingDetail({
+  booking,
+  therapists,
+  rooms,
+}: BookingDetailProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [errors, setErrors] = useState<Record<string, string[]>>({});
-  const [showCancel, setShowCancel] = useState(false);
-  const [showReschedule, setShowReschedule] = useState(false);
-  const [cancelReason, setCancelReason] = useState("");
-  const [newStartAt, setNewStartAt] = useState(
-    formatInTimeZone(new Date(booking.start_at), TZ, "yyyy-MM-dd'T'HH:mm")
-  );
+  const [rescheduleOpen, setRescheduleOpen] = useState(false);
+  const [selection, setSelection] = useState<SlotPickerSelection | null>(null);
 
-  const isCancellable =
-    booking.status !== "cancelled" && booking.status !== "completed";
+  const isTerminal =
+    booking.status === "cancelled" ||
+    booking.status === "completed" ||
+    booking.status === "no_show";
   const isReschedulable =
     booking.status === "pending_payment" || booking.status === "confirmed";
 
-  function handleCancel() {
-    const fd = new FormData();
-    fd.set("booking_id", booking.id);
-    fd.set("cancel_reason", cancelReason);
-
-    startTransition(async () => {
-      const result = await cancelBookingAction(fd);
-      if (result && "error" in result) {
-        setErrors(result.error as Record<string, string[]>);
-      } else {
-        router.refresh();
-        setShowCancel(false);
-      }
-    });
-  }
-
-  function handleReschedule() {
-    const fd = new FormData();
-    fd.set("booking_id", booking.id);
-    fd.set("new_start_at", newStartAt);
-
-    startTransition(async () => {
-      const result = await rescheduleBookingAction(fd);
-      if (result && "error" in result) {
-        setErrors(result.error as Record<string, string[]>);
-      } else {
-        router.refresh();
-        setShowReschedule(false);
-      }
-    });
-  }
-
-  function handleStatusChange(newStatus: string) {
+  function handleStatusChange(newStatus: string, successLabel: string) {
     startTransition(async () => {
       const result = await updateBookingStatusAction(booking.id, newStatus);
       if (result && "error" in result) {
         setErrors(result.error as Record<string, string[]>);
+        toast.error("Couldn't update booking status.");
       } else {
+        toast.success(successLabel);
         router.refresh();
       }
     });
   }
 
+  async function handleCancel(reason: string) {
+    const fd = new FormData();
+    fd.set("booking_id", booking.id);
+    fd.set("cancel_reason", reason);
+
+    const result = await cancelBookingAction(fd);
+    if (result && "error" in result) {
+      const err = result.error as Record<string, string[]>;
+      throw new Error(err._form?.join(" ") ?? "Couldn't cancel booking.");
+    }
+    toast.success("Booking cancelled.");
+    router.refresh();
+  }
+
+  async function handleNoShow() {
+    const result = await updateBookingStatusAction(booking.id, "no_show");
+    if (result && "error" in result) {
+      const err = result.error as Record<string, string[]>;
+      throw new Error(err._form?.join(" ") ?? "Couldn't mark no-show.");
+    }
+    toast.success("Marked as no-show.");
+    router.refresh();
+  }
+
+  function handleRescheduleConfirm() {
+    if (!selection) return;
+    const fd = new FormData();
+    fd.set("booking_id", booking.id);
+    fd.set("new_start_at", selection.start);
+    if (selection.therapist_id) fd.set("new_therapist_id", selection.therapist_id);
+    if (selection.room_id) fd.set("new_room_id", selection.room_id);
+
+    startTransition(async () => {
+      const result = await rescheduleBookingAction(fd);
+      if (result && "error" in result) {
+        const err = result.error as Record<string, string[]>;
+        const message = err._form?.join(" ") ?? "Couldn't reschedule booking.";
+        toast.error(message);
+        setErrors(err);
+      } else {
+        toast.success("Booking rescheduled.");
+        setRescheduleOpen(false);
+        setSelection(null);
+        router.refresh();
+      }
+    });
+  }
+
+  const startZoned = toZonedTime(new Date(booking.start_at), TZ);
+  const currentDateStr = format(startZoned, "yyyy-MM-dd");
+
   return (
     <div className="space-y-6">
+      {/* DEF-010: sticky action bar replaces the four scattered cards. */}
+      <div className="sticky top-0 z-10 -mx-4 flex flex-wrap items-center justify-between gap-2 border-b bg-background/95 px-4 py-3 backdrop-blur sm:mx-0 sm:rounded-md sm:border">
+        <div className="flex items-center gap-2">
+          <StatusBadge status={booking.status} />
+          <span className="text-sm text-muted-foreground">
+            {formatInTimeZone(new Date(booking.start_at), TZ, "EEE MMM d, HH:mm")}
+          </span>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {booking.status === "pending_payment" && (
+            <Button
+              size="sm"
+              onClick={() =>
+                handleStatusChange("confirmed", "Marked as paid & confirmed.")
+              }
+              disabled={isPending}
+            >
+              Confirm (Mark Paid)
+            </Button>
+          )}
+          {booking.status === "confirmed" && (
+            <Button
+              size="sm"
+              onClick={() =>
+                handleStatusChange("completed", "Booking marked completed.")
+              }
+              disabled={isPending}
+            >
+              Mark Completed
+            </Button>
+          )}
+          {booking.status === "confirmed" && (
+            <ConfirmButton
+              size="sm"
+              variant="destructive"
+              title="Mark as no-show"
+              description={
+                <p>
+                  The customer will be flagged as a no-show. This removes the
+                  booking from active lists and is logged in the audit trail.
+                </p>
+              }
+              confirmLabel="Mark no-show"
+              onConfirm={handleNoShow}
+            >
+              Mark No-Show
+            </ConfirmButton>
+          )}
+          {isReschedulable && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setRescheduleOpen(true)}
+              disabled={isPending}
+            >
+              Reschedule
+            </Button>
+          )}
+          {!isTerminal && (
+            <ConfirmButton
+              size="sm"
+              variant="destructive"
+              title="Cancel booking"
+              description={
+                <p>
+                  Cancel this booking? The customer keeps the record but it
+                  drops off the calendar and will not appear in upcoming
+                  bookings.
+                </p>
+              }
+              reasonPrompt="Reason (optional)"
+              confirmLabel="Cancel booking"
+              onConfirm={handleCancel}
+            >
+              Cancel Booking
+            </ConfirmButton>
+          )}
+        </div>
+      </div>
+
       <FormErrors errors={errors} />
 
       <Card>
@@ -190,141 +308,43 @@ export function BookingDetail({ booking }: BookingDetailProps) {
         </CardContent>
       </Card>
 
-      {/* Status transitions */}
-      {booking.status === "pending_payment" && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Payment Status</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="mb-3 text-sm text-muted-foreground">
-              This booking is awaiting payment. Confirm manually or wait for the
-              payment webhook.
-            </p>
-            <Button
-              onClick={() => handleStatusChange("confirmed")}
-              disabled={isPending}
+      {/* DEF-008: reschedule dialog with full SlotPicker */}
+      <AlertDialog open={rescheduleOpen} onOpenChange={setRescheduleOpen}>
+        <AlertDialogContent className="max-w-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reschedule booking</AlertDialogTitle>
+            <AlertDialogDescription>
+              Pick a new date, therapist, room, and slot. Availability already
+              excludes this booking, so you&apos;ll only see conflict-free
+              options.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {booking.services && (
+            <SlotPicker
+              serviceId={booking.services.id}
+              therapists={therapists}
+              rooms={rooms}
+              initialDate={currentDateStr}
+              initialTherapistId={booking.therapists?.id}
+              initialRoomId={booking.rooms?.id}
+              excludeBookingId={booking.id}
+              onChange={setSelection}
+            />
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isPending}>Back</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleRescheduleConfirm();
+              }}
+              disabled={!selection || isPending}
             >
-              {isPending ? "Confirming..." : "Confirm (Mark Paid)"}
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
-      {booking.status === "confirmed" && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Complete Booking</CardTitle>
-          </CardHeader>
-          <CardContent className="flex gap-2">
-            <Button
-              onClick={() => handleStatusChange("completed")}
-              disabled={isPending}
-            >
-              Mark Completed
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => handleStatusChange("no_show")}
-              disabled={isPending}
-            >
-              Mark No-Show
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Reschedule */}
-      {isReschedulable && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Reschedule</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {showReschedule ? (
-              <div className="space-y-3">
-                <div>
-                  <Label htmlFor="new_start_at">New Date & Time</Label>
-                  <Input
-                    id="new_start_at"
-                    type="datetime-local"
-                    value={newStartAt}
-                    onChange={(e) => setNewStartAt(e.target.value)}
-                  />
-                </div>
-                <div className="flex gap-2">
-                  <Button onClick={handleReschedule} disabled={isPending}>
-                    {isPending ? "Rescheduling..." : "Confirm Reschedule"}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowReschedule(false)}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <Button
-                variant="outline"
-                onClick={() => setShowReschedule(true)}
-              >
-                Reschedule Booking
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Cancel */}
-      {isCancellable && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base text-destructive">
-              Cancel Booking
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {showCancel ? (
-              <div className="space-y-3">
-                <div>
-                  <Label htmlFor="cancel_reason">
-                    Reason (optional)
-                  </Label>
-                  <Textarea
-                    id="cancel_reason"
-                    value={cancelReason}
-                    onChange={(e) => setCancelReason(e.target.value)}
-                    rows={2}
-                  />
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="destructive"
-                    onClick={handleCancel}
-                    disabled={isPending}
-                  >
-                    {isPending ? "Cancelling..." : "Confirm Cancellation"}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowCancel(false)}
-                  >
-                    Back
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <Button
-                variant="destructive"
-                onClick={() => setShowCancel(true)}
-              >
-                Cancel Booking
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-      )}
+              {isPending ? "Rescheduling…" : "Confirm reschedule"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

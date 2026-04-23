@@ -3,12 +3,14 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { toast } from "sonner";
 import {
   updateTherapist,
   deleteTherapist,
   resendInvite,
 } from "@/lib/actions/therapists";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { ConfirmButton } from "@/components/ui/confirm-button";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -40,7 +42,6 @@ export function TherapistEditForm({
   const router = useRouter();
   const [errors, setErrors] = useState<Record<string, string[]> | undefined>();
   const [submitting, setSubmitting] = useState(false);
-  const [deleting, setDeleting] = useState(false);
   const [resending, setResending] = useState(false);
   const [resendNotice, setResendNotice] = useState<string | null>(null);
 
@@ -67,27 +68,25 @@ export function TherapistEditForm({
     if (result && 'error' in result) {
       setErrors(result.error);
       setSubmitting(false);
+      toast.error("Couldn't save therapist.");
       return;
     }
 
+    toast.success("Therapist saved.");
     router.refresh();
     setSubmitting(false);
   }
 
   async function handleDelete() {
-    if (!window.confirm("Are you sure you want to delete this therapist?")) {
-      return;
-    }
-
-    setDeleting(true);
     const result = await deleteTherapist(therapist.id);
 
     if (result && 'error' in result) {
-      setErrors(result.error as Record<string, string[]>);
-      setDeleting(false);
-      return;
+      const err = result.error as Record<string, string[]>;
+      const message = err._form?.join(" ") ?? "Couldn't delete therapist.";
+      throw new Error(message);
     }
 
+    toast.success("Therapist deleted.");
     router.push("/admin/therapists");
   }
 
@@ -217,15 +216,27 @@ export function TherapistEditForm({
               {submitting ? "Saving..." : "Save Changes"}
             </Button>
             <Link href="/admin/therapists" className={cn(buttonVariants({ variant: "outline" }))}>Back</Link>
-            <Button
-              type="button"
-              variant="destructive"
-              disabled={deleting}
-              onClick={handleDelete}
-              className="ml-auto"
-            >
-              {deleting ? "Deleting..." : "Delete Therapist"}
-            </Button>
+            <div className="ml-auto">
+              <ConfirmButton
+                title="Delete therapist"
+                description={
+                  <>
+                    <p>
+                      Deleting <strong>{therapist.full_name}</strong> is
+                      permanent. Their past bookings will remain in the
+                      database but this therapist profile, availability rules,
+                      and service assignments will be removed.
+                    </p>
+                    <p>Type the therapist&apos;s full name to confirm.</p>
+                  </>
+                }
+                confirmText={therapist.full_name}
+                confirmLabel="Delete therapist"
+                onConfirm={handleDelete}
+              >
+                Delete Therapist
+              </ConfirmButton>
+            </div>
           </div>
         </form>
       </CardContent>

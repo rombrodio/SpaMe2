@@ -3,12 +3,14 @@
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
+import { toast } from "sonner";
 import {
   getCustomer,
   updateCustomer,
   deleteCustomer,
 } from "@/lib/actions/customers";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { ConfirmButton } from "@/components/ui/confirm-button";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,7 +28,6 @@ export default function EditCustomerPage() {
   const params = useParams<{ id: string }>();
   const [errors, setErrors] = useState<Record<string, string[]> | undefined>();
   const [submitting, setSubmitting] = useState(false);
-  const [deleting, setDeleting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [customer, setCustomer] = useState<{
     id: string;
@@ -61,26 +62,24 @@ export default function EditCustomerPage() {
     if (result && 'error' in result) {
       setErrors(result.error);
       setSubmitting(false);
+      toast.error("Couldn't save customer.");
       return;
     }
 
+    toast.success("Customer saved.");
     router.push("/admin/customers");
   }
 
   async function handleDelete() {
-    if (!window.confirm("Are you sure you want to delete this customer?")) {
-      return;
-    }
-
-    setDeleting(true);
     const result = await deleteCustomer(params.id);
 
     if (result && 'error' in result) {
-      setErrors(result.error as Record<string, string[]>);
-      setDeleting(false);
-      return;
+      const err = result.error as Record<string, string[]>;
+      const message = err._form?.join(" ") ?? "Couldn't delete customer.";
+      throw new Error(message);
     }
 
+    toast.success("Customer deleted.");
     router.push("/admin/customers");
   }
 
@@ -166,15 +165,27 @@ export default function EditCustomerPage() {
                 {submitting ? "Saving..." : "Save Changes"}
               </Button>
               <Link href="/admin/customers" className={cn(buttonVariants({ variant: "outline" }))}>Cancel</Link>
-              <Button
-                type="button"
-                variant="destructive"
-                onClick={handleDelete}
-                disabled={deleting}
-                className="ml-auto"
-              >
-                {deleting ? "Deleting..." : "Delete"}
-              </Button>
+              <div className="ml-auto">
+                <ConfirmButton
+                  title="Delete customer"
+                  description={
+                    <>
+                      <p>
+                        Deleting <strong>{customer.full_name || customer.phone}</strong>{" "}
+                        is permanent. Their booking history stays on the
+                        bookings table as a cached snapshot, but the contact
+                        record (phone, email, notes) will be removed.
+                      </p>
+                      <p>Type the customer name to confirm.</p>
+                    </>
+                  }
+                  confirmText={customer.full_name || customer.phone}
+                  confirmLabel="Delete customer"
+                  onConfirm={handleDelete}
+                >
+                  Delete
+                </ConfirmButton>
+              </div>
             </div>
           </form>
         </CardContent>

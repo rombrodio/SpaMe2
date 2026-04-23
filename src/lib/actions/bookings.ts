@@ -27,14 +27,28 @@ export async function getBookings(filters?: {
   customer_id?: string;
   from?: string;
   to?: string;
+  /** Free-text search across customer name + phone. */
+  q?: string;
+  limit?: number;
+  offset?: number;
 }) {
   const supabase = await createClient();
+  const limit = filters?.limit ?? 25;
+  const offset = filters?.offset ?? 0;
+
+  const hasQuery = !!filters?.q?.trim();
+  const customerJoin = hasQuery
+    ? "customers!inner(id, full_name, phone)"
+    : "customers(id, full_name, phone)";
+
   let query = supabase
     .from("bookings")
     .select(
-      "*, customers(id, full_name, phone), therapists(id, full_name, color), rooms(id, name), services(id, name, duration_minutes)"
+      `*, ${customerJoin}, therapists(id, full_name, color), rooms(id, name), services(id, name, duration_minutes)`,
+      { count: "exact" }
     )
-    .order("start_at", { ascending: false });
+    .order("start_at", { ascending: false })
+    .range(offset, offset + limit - 1);
 
   if (filters?.status) query = query.eq("status", filters.status);
   if (filters?.therapist_id)
@@ -43,10 +57,17 @@ export async function getBookings(filters?: {
     query = query.eq("customer_id", filters.customer_id);
   if (filters?.from) query = query.gte("start_at", filters.from);
   if (filters?.to) query = query.lte("start_at", filters.to);
+  if (hasQuery) {
+    const q = filters!.q!.trim().replace(/[%_]/g, "");
+    query = query.or(
+      `full_name.ilike.%${q}%,phone.ilike.%${q}%`,
+      { referencedTable: "customers" }
+    );
+  }
 
-  const { data, error } = await query;
+  const { data, error, count } = await query;
   if (error) throw new Error(error.message);
-  return data;
+  return { rows: data ?? [], total: count ?? 0 };
 }
 
 export async function getBooking(id: string) {

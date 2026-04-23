@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { createRoomBlock, deleteRoomBlock } from "@/lib/actions/rooms";
 import { Button } from "@/components/ui/button";
+import { ConfirmButton } from "@/components/ui/confirm-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -32,7 +34,6 @@ export function RoomBlocksSection({ roomId, blocks }: RoomBlocksSectionProps) {
   const router = useRouter();
   const [errors, setErrors] = useState<Record<string, string[]> | undefined>();
   const [submitting, setSubmitting] = useState(false);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   async function handleAdd(formData: FormData) {
     setSubmitting(true);
@@ -44,26 +45,24 @@ export function RoomBlocksSection({ roomId, blocks }: RoomBlocksSectionProps) {
     if ("error" in result) {
       setErrors(result.error as Record<string, string[]>);
       setSubmitting(false);
+      toast.error("Couldn't add room block.");
       return;
     }
 
+    toast.success("Room block added.");
     setSubmitting(false);
     router.refresh();
   }
 
   async function handleDelete(blockId: string) {
-    if (!confirm("Delete this block?")) return;
-
-    setDeletingId(blockId);
     const result = await deleteRoomBlock(blockId, roomId);
 
-    if (result && 'error' in result) {
-      setErrors(result.error as Record<string, string[]>);
-      setDeletingId(null);
-      return;
+    if (result && "error" in result) {
+      const err = result.error as Record<string, string[]>;
+      throw new Error(err._form?.join(" ") ?? "Couldn't delete block.");
     }
 
-    setDeletingId(null);
+    toast.success("Block removed.");
     router.refresh();
   }
 
@@ -104,14 +103,22 @@ export function RoomBlocksSection({ roomId, blocks }: RoomBlocksSectionProps) {
                       {block.reason || "\u2014"}
                     </td>
                     <td className="py-3">
-                      <Button
-                        variant="destructive"
+                      <ConfirmButton
                         size="sm"
-                        onClick={() => handleDelete(block.id)}
-                        disabled={deletingId === block.id}
+                        title="Delete room block"
+                        description={
+                          <p>
+                            Remove this block (
+                            {formatDateTime(block.start_at)} –{" "}
+                            {formatDateTime(block.end_at)})? The room becomes
+                            bookable again during this window.
+                          </p>
+                        }
+                        confirmLabel="Delete"
+                        onConfirm={() => handleDelete(block.id)}
                       >
-                        {deletingId === block.id ? "Deleting..." : "Delete"}
-                      </Button>
+                        Delete
+                      </ConfirmButton>
                     </td>
                   </tr>
                 ))}

@@ -1,4 +1,4 @@
-import { getBooking } from "@/lib/actions/bookings";
+import { getBooking, getBookingFormData } from "@/lib/actions/bookings";
 import { BookingDetail } from "@/components/admin/booking/booking-detail";
 import { PaymentPanel } from "@/components/admin/booking/payment-panel";
 import Link from "next/link";
@@ -18,6 +18,9 @@ export default async function BookingDetailPage({
   } catch {
     notFound();
   }
+
+  // Therapists + rooms for the reschedule slot picker (DEF-008).
+  const { therapists, rooms } = await getBookingFormData();
 
   // Extract the fields the PaymentPanel needs; leave `booking` untouched
   // so BookingDetail still receives the richer shape it expects.
@@ -46,7 +49,7 @@ export default async function BookingDetailPage({
       </Link>
       <h1 className="text-2xl font-bold">Booking Details</h1>
       <div className="mt-6 space-y-6">
-        <BookingDetail booking={booking} />
+        <BookingDetail booking={booking} therapists={therapists} rooms={rooms} />
         <PaymentPanel
           bookingId={id}
           bookingStatus={extended.status}

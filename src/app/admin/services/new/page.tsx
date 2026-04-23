@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { toast } from "sonner";
 import { createService } from "@/lib/actions/services";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -31,9 +32,11 @@ export default function NewServicePage() {
     if (result && 'error' in result) {
       setErrors(result.error);
       setSubmitting(false);
+      toast.error("Couldn't create service.");
       return;
     }
 
+    toast.success("Service created.");
     router.push("/admin/services");
   }
 
@@ -84,14 +87,20 @@ export default function NewServicePage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="price_ils">Price (ILS) — in agorot</Label>
+              <Label htmlFor="price_ils">Price (ILS)</Label>
               <Input
                 id="price_ils"
                 name="price_ils"
                 type="number"
                 min={0}
+                step="0.01"
+                placeholder="e.g. 280"
                 required
               />
+              <p className="text-xs text-muted-foreground">
+                Enter the price in whole shekels (e.g. 280 for ₪280.00). Stored
+                internally as agorot (1 ₪ = 100).
+              </p>
             </div>
 
             <div className="flex items-center gap-2">
