@@ -19,13 +19,30 @@ const bookingStatusEnum = z.enum([
 
 export type BookingStatus = z.infer<typeof bookingStatusEnum>;
 
+// Assignment lifecycle is a separate axis from payment status. A booking
+// can be both paid (confirmed) AND unassigned, or assigned AND unpaid.
+// See migration 00018_deferred_assignment.sql.
+export const assignmentStatusEnum = z.enum([
+  "unassigned",
+  "pending_confirmation",
+  "confirmed",
+  "declined",
+]);
+
+export type AssignmentStatus = z.infer<typeof assignmentStatusEnum>;
+
+// therapist_id is optional: omit it (or pass empty string) for the
+// /book customer flow + the admin "leave unassigned" path. The
+// booking engine derives assignment_status from the presence of
+// therapist_id when assignment_status isn't explicit.
 export const createBookingSchema = z.object({
   customer_id: uuidFormat,
-  therapist_id: uuidFormat,
+  therapist_id: uuidFormat.optional(),
   room_id: uuidFormat,
   service_id: uuidFormat,
   start_at: isoDatetime,
   status: bookingStatusEnum.default("pending_payment"),
+  assignment_status: assignmentStatusEnum.optional(),
   notes: z.string().max(1000).optional().default(""),
 });
 

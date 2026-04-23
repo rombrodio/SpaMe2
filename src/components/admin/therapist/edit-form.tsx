@@ -27,6 +27,7 @@ interface Therapist {
   email: string | null;
   color: string | null;
   is_active: boolean;
+  gender: "male" | "female" | null;
 }
 
 export function TherapistEditForm({
@@ -162,6 +163,43 @@ export function TherapistEditForm({
               defaultValue={therapist.color ?? "#6366f1"}
             />
           </div>
+
+          <fieldset className="space-y-2">
+            <Label>
+              Gender
+              {therapist.gender === null && (
+                <span className="ms-2 rounded bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-900">
+                  not set — please pick one
+                </span>
+              )}
+            </Label>
+            <div className="flex gap-4 text-sm">
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="gender"
+                  value="female"
+                  defaultChecked={therapist.gender === "female"}
+                  className="h-4 w-4"
+                />
+                Female
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="gender"
+                  value="male"
+                  defaultChecked={therapist.gender === "male"}
+                  className="h-4 w-4"
+                />
+                Male
+              </label>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Used to match customer gender preferences at booking time.
+              Not displayed to customers.
+            </p>
+          </fieldset>
 
           <div className="flex items-center gap-2">
             <input

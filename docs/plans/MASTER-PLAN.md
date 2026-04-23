@@ -377,33 +377,94 @@ APP_URL
 
 **Depends on:** Phase 2
 
-### Phase 4: Payments (~10 files)
-**Goal:** Hosted payment pages, webhook processing, booking status updates.
+### Phase 4: Payments + Browser-Direct Booking ✅ COMPLETE (merges original Phase 4 + Phase 5)
 
-- [ ] `src/lib/payments/provider.ts` — `PaymentProvider` interface
-- [ ] `src/lib/payments/cardcom.ts` — CardCom hosted page API
-- [ ] `src/lib/payments/mock.ts` — mock (auto-confirms)
-- [ ] `src/lib/services/payment-service.ts` — `initiatePayment()`, `processWebhook()`
-- [ ] `src/lib/actions/payments.ts`
-- [ ] `src/app/api/webhooks/payment/route.ts` — verify signature, idempotent processing
-- [ ] `src/lib/schemas/payment.ts`
-- [ ] "Send Payment Link" button on booking detail
-- [ ] Payment status display on booking list/detail
+**Goal:** Hosted payment pages for four methods, webhook processing, browser-direct
+`/book` flow, Hebrew RTL `/order/<token>` finalization page, admin payment UI, soft-hold
+cron. Original Phase 5 (customer booking flow) was absorbed because `/book` and
+`/order/<token>` tightly share the payment pipeline.
+
+Schema (applies to an existing DB):
+- [x] Migration `00015_payments_and_holds.sql` — payment_method + payment_role enums,
+      payment_status ADD VALUE 'authorized', columns on payments/bookings,
+      service_voucher_mappings table with super_admin RLS
+- [x] Migration `00016_payment_status_authorized_index.sql` — partial unique index
+      enforcing one in-flight payment row per booking+role
+- [x] Migration `00017_therapist_gender.sql` — therapist_gender + gender_preference
+      enums, therapists.gender, bookings.therapist_gender_preference
+
+Payment provider layer:
+- [x] `src/lib/payments/types.ts` — HostedPaymentProvider, PosMoneyVoucherProvider,
+      PosBenefitVoucherProvider interfaces + payment enums
+- [x] `src/lib/payments/cardcom.ts` — SOAP adapter for CreateLowProfileDeal,
+      GetLowProfileIndicator, RevokeLowProfileDeal, LowProfileChargeToken. Supports
+      both BillOnly (capture) and CreateTokenOnly (cash-on-arrival verification)
+- [x] `src/lib/payments/dts.ts` — DTS-Knowledge benefit voucher adapter
+- [x] `src/lib/payments/vpay.ts` — VPay HMAC-authed client (proxy lands in Phase 4.5)
+- [x] `src/lib/payments/mock.ts` — in-memory mocks for all three providers + demo seeds
+- [x] `src/lib/payments/providers.ts` — env-gated real/mock factory
+- [x] `src/lib/payments/policy.ts` — v1 cancellation-fee calculator (5% or 100 ILS cap)
+- [x] `src/lib/payments/jwt.ts` — signed /order/<token> JWT helper
+- [x] `src/lib/payments/hold.ts` — isHoldExpired pure predicate for server components
+
+Orchestration + server actions:
+- [x] `src/lib/payments/engine.ts` — initiatePayment, confirmFromWebhook (pull-through),
+      redeem{Dts,Vpay}Voucher, markCashReceived, applyCancellationFee (stored-token
+      penalty), expireHolds (cron sweeper). Every state change writes audit_logs.
+- [x] `src/lib/actions/payments.ts` — JWT-gated pay-page actions + super_admin actions
+- [x] `src/lib/actions/book.ts` — /book contact form handler (find-or-create customer,
+      random therapist assignment under gender filter, JWT issue)
+- [x] `src/lib/actions/voucher-mappings.ts` — admin CRUD for service_voucher_mappings
+- [x] `src/lib/scheduling/booking-engine.ts` — createBooking now sets hold_expires_at
+      and payment_method; findSlots accepts gender filter
+
+Customer UI (Hebrew RTL, therapist-anonymized per policy):
+- [x] `src/lib/i18n/he.ts` — Hebrew strings + Israel-locale formatters
+- [x] `src/app/book/` — service grid → slot picker (dedupe by time, gender toggle) →
+      contact form → handoff to /order/<token>
+- [x] `src/app/order/[token]/page.tsx` — finalization page: summary + inline edit
+- [x] `src/components/order/method-picker.tsx` — 4-radio method chooser
+- [x] `src/components/order/cardcom-iframe.tsx` — embedded hosted-page iframe for
+      credit_card_full + cash_at_reception
+- [x] `src/components/order/voucher-dts-form.tsx` — 2-step DTS redemption
+- [x] `src/components/order/voucher-vpay-form.tsx` — 2-step VPay redemption with
+      partial-amount support
+- [x] `src/app/order/[token]/return/page.tsx` — bridge from CardCom redirect
+- [x] `src/app/order/[token]/success/page.tsx` — confirmation + idempotent Twilio SMS
+      dispatch via bookings.sms_sent_at
+
+Operational:
+- [x] `src/app/api/webhooks/cardcom/[secret]/route.ts` — shared-secret-gated webhook
+      with pull-through verification via GetLowProfileIndicator
+- [x] `src/app/api/cron/expire-holds/route.ts` — 2-min sweep of expired pending_payment
+      bookings, best-effort RevokeLowProfileDeal
+- [x] `vercel.json` — region pin (fra1), cron schedule, per-route maxDuration
+
+Admin UI additions:
+- [x] Therapist admin: gender field (required on new, warning banner for legacy rows)
+- [x] Service admin: VoucherMappingsSection with add/list/remove
+- [x] Booking detail: PaymentPanel with rows table, "Mark cash received", "Apply
+      cancellation fee"
+
+Messaging:
+- [x] `src/lib/messaging/twilio.ts` — sendSms wrapper, E.164 normalisation
+- [x] `src/lib/messaging/templates/booking-confirmed-sms.ts` — Hebrew template,
+      anonymous (no therapist name)
+
+Quality:
+- [x] Vitest tests — 127 passing across 10 files (61 new for phase 4 + 31 existing
+      scheduling + 8 e2e smoke covering every method end-to-end)
+- [x] `npm run lint` clean, `npm run build` succeeds
+- [x] Dev-only CardCom webhook simulator (amber panel on /return) for end-to-end
+      mock testing without a real provider
 
 **Depends on:** Phase 3
 
-### Phase 5: Customer Booking Flow (~10 files)
-**Goal:** Public-facing self-service booking.
+### Phase 4.5: VPay Proxy on Fly.io (follow-up)
 
-- [ ] `src/app/book/layout.tsx`
-- [ ] `src/app/book/page.tsx` — service selection
-- [ ] `src/app/book/slots/page.tsx` — date picker + slot grid
-- [ ] `src/app/book/confirm/page.tsx` — review + customer details
-- [ ] `src/app/book/payment-return/page.tsx` — post-payment confirmation
-- [ ] `src/components/booking/service-picker.tsx`, `slot-picker.tsx`, `customer-form.tsx`
-- [ ] Server action: find-or-create customer by phone, create booking, initiate payment, redirect
-
-**Depends on:** Phase 4
+Deferred from Phase 4. Ships the real VPay SOAP client under `services/vpay-proxy/`
+with mTLS / static IP as required by Verifone. Detailed plan:
+`.cursor/plans/phase_4_payments_and_booking_*.plan.md` §14.
 
 ### Phase 6: Chatbot Foundation (~15 files)
 **Goal:** AI conversation engine with WhatsApp + web chat.
@@ -473,10 +534,16 @@ APP_URL
 ## 6. Assumptions
 
 ### Confirmed
-- **Payment provider:** CardCom
+- **Payment provider:** CardCom (hosted page) + DTS benefit vouchers + VPay stored-value vouchers
 - **Payment requirement:** Optional for super admin (can confirm directly), required for customer/chatbot bookings
 - **Buffer time:** Configurable per service (`buffer_minutes` on services table)
-- **UI language:** English for admin; Hebrew customer-facing deferred
+- **UI language:** English for admin; Hebrew customer-facing (/book, /order) shipped in Phase 4
+- **Cash-on-arrival:** Secured by CardCom token (CreateTokenOnly with Shva J-validation),
+  NOT a symbolic 1 NIS charge. Penalty captured via LowProfileChargeToken on late
+  cancel / no-show per the 5%-or-100-ILS policy (v1_5pct_or_100ILS_min snapshot).
+- **Therapist identity:** anonymous across customer surfaces (/book, /order, SMS).
+  Admin + therapist portals retain full identity. Customer picks gender preference
+  (male / female / any); server assigns a random eligible therapist at booking time.
 
 ### Still Assuming (flag if wrong)
 1. **Single location** — no multi-branch logic needed

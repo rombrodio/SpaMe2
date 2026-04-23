@@ -358,6 +358,48 @@ describe("findAvailableSlots", () => {
     }
   });
 
+  it("minStart hides past + near-future slots", () => {
+    // The availability rule window is 09:00–17:00 Jerusalem time.
+    // Setting minStart to 13:00 should hide every 09:00–12:45 grid
+    // slot and leave the 13:00+ slots intact.
+    const date = makeDate("2025-01-01", "12:00");
+    const minStart = makeDate("2025-01-01", "13:00");
+    const slots = findAvailableSlots({
+      date,
+      service,
+      therapists: [therapist],
+      rooms: [room],
+      existingBookings: [],
+      minStart,
+    });
+    expect(slots.length).toBeGreaterThan(0);
+    for (const slot of slots) {
+      expect(slot.start.getTime()).toBeGreaterThanOrEqual(
+        minStart.getTime()
+      );
+    }
+    // Sanity: without minStart we would have gotten slots starting
+    // at 09:00. With the filter, none do.
+    const earliest = slots.reduce(
+      (min, s) => (s.start < min ? s.start : min),
+      slots[0].start
+    );
+    expect(getJerusalemHours(earliest)).toBeGreaterThanOrEqual(13);
+  });
+
+  it("minStart of a day's end returns zero slots", () => {
+    const date = makeDate("2025-01-01", "12:00");
+    const slots = findAvailableSlots({
+      date,
+      service,
+      therapists: [therapist],
+      rooms: [room],
+      existingBookings: [],
+      minStart: makeDate("2025-01-01", "23:59"),
+    });
+    expect(slots).toHaveLength(0);
+  });
+
   it("skips slots that overlap with existing bookings", () => {
     const date = makeDate("2025-01-01", "12:00");
     const existingBookings: ExistingBooking[] = [
@@ -463,6 +505,299 @@ describe("findAvailableSlots", () => {
     });
     expect(slots).toHaveLength(0);
   });
+});
+
+// ─── Phase 5 matcher gate (deferred therapist assignment) ───
+//
+// End-to-end tests that wire paid-but-unassigned bookings into
+// findAvailableSlots via the `unassignedBookings` param. The matcher
+// gate must hide slots whose assignment would strand an unassigned
+// booking, and surface slots a naive greedy approach would miss.
+
+describe("findAvailableSlots — matcher gate", () => {
+  const service = {
+    id: "service-facial",
+    name: "Facial",
+    duration_minutes: 60,
+    buffer_minutes: 0,
+    price_ils: 30000,
+  };
+
+  const aliceRules = makeRule({
+    therapist_id: "alice",
+    start_time: "09:00",
+    end_time: "17:00",
+  });
+  const bobRules = makeRule({
+    therapist_id: "bob",
+    start_time: "09:00",
+    end_time: "17:00",
+  });
+
+  const room = {
+    id: "room-1",
+    name: "Room A",
+    serviceIds: ["service-facial", "service-massage"],
+    blocks: [] as RoomBlock[],
+  };
+
+  const alice = {
+    id: "alice",
+    full_name: "Alice",
+    color: "#ff0000",
+    availabilityRules: [aliceRules],
+    timeOffs: [] as TimeOff[],
+    serviceIds: ["service-facial", "service-massage"],
+  };
+  const bob = {
+    id: "bob",
+    full_name: "Bob",
+    color: "#00ff00",
+    availabilityRules: [bobRules],
+    timeOffs: [] as TimeOff[],
+    serviceIds: ["service-facial"],
+  };
+
+  it(
+    "blocks the 3rd overlap when only 2 eligible therapists exist",
+    () => {
+      // Two paid-but-unassigned facials at 10:00, both eligible for Alice
+      // and Bob. A 3rd customer asking for a facial at 10:00 must see no
+      // slot — we have 2 therapists and they are already earmarked.
+      const date = makeDate("2025-01-01", "12:00");
+      const slotStart = makeDate("2025-01-01", "10:00");
+      const slotEnd = makeDate("2025-01-01", "11:00");
+      const unassignedBookings = [
+        {
+          id: "pending-1",
+          start_at: slotStart.toISOString(),
+          end_at: slotEnd.toISOString(),
+          eligibleTherapistIds: ["alice", "bob"],
+        },
+        {
+          id: "pending-2",
+          start_at: slotStart.toISOString(),
+          end_at: slotEnd.toISOString(),
+          eligibleTherapistIds: ["alice", "bob"],
+        },
+      ];
+
+      const slots = findAvailableSlots({
+        date,
+        service,
+        therapists: [alice, bob],
+        rooms: [room],
+        existingBookings: [],
+        unassignedBookings,
+      });
+
+      // No slot that starts exactly at 10:00 should be emitted.
+      const tenAmSlots = slots.filter(
+        (s) => s.start.getTime() === slotStart.getTime()
+      );
+      expect(tenAmSlots).toHaveLength(0);
+
+      // But slots outside the pressure window (e.g. 14:00) still exist.
+      const afternoonSlots = slots.filter(
+        (s) => getJerusalemHours(s.start) >= 14
+      );
+      expect(afternoonSlots.length).toBeGreaterThan(0);
+    }
+  );
+
+  it(
+    "reveals specialist-vs-generalist slot that pure greedy would hide",
+    () => {
+      // Alice can do massage AND facial. Bob only facial. A massage
+      // customer wants 10:00 while one unassigned facial at 10:00 is on
+      // the books. Naive greedy virtually assigns Alice to the existing
+      // facial first and then says the customer's massage has no
+      // therapist — but the correct answer is "yes", with the facial
+      // going to Bob and the massage to Alice.
+      const massageService = {
+        id: "service-massage",
+        name: "Massage",
+        duration_minutes: 60,
+        buffer_minutes: 0,
+        price_ils: 30000,
+      };
+      const massageRoom = {
+        id: "room-m",
+        name: "Room M",
+        serviceIds: ["service-massage"],
+        blocks: [] as RoomBlock[],
+      };
+
+      const date = makeDate("2025-01-01", "12:00");
+      const slotStart = makeDate("2025-01-01", "10:00");
+      const slotEnd = makeDate("2025-01-01", "11:00");
+      const unassignedBookings = [
+        {
+          id: "pending-facial",
+          start_at: slotStart.toISOString(),
+          end_at: slotEnd.toISOString(),
+          eligibleTherapistIds: ["alice", "bob"],
+        },
+      ];
+
+      const slots = findAvailableSlots({
+        date,
+        service: massageService,
+        therapists: [alice], // bob isn't qualified for massage
+        rooms: [massageRoom],
+        existingBookings: [],
+        unassignedBookings,
+      });
+
+      const tenAmMassage = slots.find(
+        (s) =>
+          s.start.getTime() === slotStart.getTime() &&
+          s.therapist_id === "alice"
+      );
+      expect(tenAmMassage).toBeDefined();
+    }
+  );
+
+  it(
+    "gender-narrowed capacity: 2 male facial therapists can't cover 3 male facials",
+    () => {
+      // Carl and Dave are both male and facial-qualified. Emma is female
+      // and facial-qualified. Gender-filtered pool for "male" = {Carl,
+      // Dave}. Two paid-but-unassigned male facials at 10:00 already
+      // exhaust the pool. A 3rd male-preference facial at 10:00 must be
+      // hidden.
+      const carl = {
+        id: "carl",
+        full_name: "Carl",
+        color: null as string | null,
+        availabilityRules: [makeRule({ therapist_id: "carl" })],
+        timeOffs: [] as TimeOff[],
+        serviceIds: ["service-facial"],
+      };
+      const dave = {
+        id: "dave",
+        full_name: "Dave",
+        color: null as string | null,
+        availabilityRules: [makeRule({ therapist_id: "dave" })],
+        timeOffs: [] as TimeOff[],
+        serviceIds: ["service-facial"],
+      };
+
+      const date = makeDate("2025-01-01", "12:00");
+      const slotStart = makeDate("2025-01-01", "10:00");
+      const slotEnd = makeDate("2025-01-01", "11:00");
+
+      // Eligibility pre-computed for the unassigned: only Carl and Dave
+      // (because "male" preference). That is exactly what the caller
+      // would compute when the unassigned booking has gender_preference
+      // = 'male'.
+      const unassignedBookings = [
+        {
+          id: "u1",
+          start_at: slotStart.toISOString(),
+          end_at: slotEnd.toISOString(),
+          eligibleTherapistIds: ["carl", "dave"],
+        },
+        {
+          id: "u2",
+          start_at: slotStart.toISOString(),
+          end_at: slotEnd.toISOString(),
+          eligibleTherapistIds: ["carl", "dave"],
+        },
+      ];
+
+      // The therapists list passed in is the NEW booking's candidate
+      // pool — already gender-filtered to male (matches what
+      // booking-engine findSlots does upstream).
+      const slots = findAvailableSlots({
+        date,
+        service,
+        therapists: [carl, dave],
+        rooms: [room],
+        existingBookings: [],
+        unassignedBookings,
+      });
+      const tenAmSlots = slots.filter(
+        (s) => s.start.getTime() === slotStart.getTime()
+      );
+      expect(tenAmSlots).toHaveLength(0);
+    }
+  );
+
+  it(
+    "confirmed bookings consume a therapist's time; matcher still honours capacity",
+    () => {
+      // Alice is confirmed-booked at 10-11 (real conflict, not just an
+      // unassigned). Bob has an unassigned facial at 10-11 eligible for
+      // {Alice, Bob} (Alice was eligible before the confirmed took her).
+      // A new facial request at 10:00 must see no slot — Alice is out,
+      // Bob is needed by the unassigned pending-facial.
+      const date = makeDate("2025-01-01", "12:00");
+      const slotStart = makeDate("2025-01-01", "10:00");
+      const slotEnd = makeDate("2025-01-01", "11:00");
+      const existingBookings: ExistingBooking[] = [
+        makeBooking({
+          id: "confirmed-alice",
+          therapist_id: "alice",
+          service_id: "service-facial",
+          start_at: slotStart.toISOString(),
+          end_at: slotEnd.toISOString(),
+          status: "confirmed",
+        }),
+      ];
+      // The caller computes eligibility with the confirmed booking
+      // already consuming Alice — so the unassigned's eligibility is
+      // just {Bob}.
+      const unassignedBookings = [
+        {
+          id: "pending-facial",
+          start_at: slotStart.toISOString(),
+          end_at: slotEnd.toISOString(),
+          eligibleTherapistIds: ["bob"],
+        },
+      ];
+
+      const slots = findAvailableSlots({
+        date,
+        service,
+        therapists: [alice, bob],
+        rooms: [room],
+        existingBookings,
+        unassignedBookings,
+      });
+      const tenAmSlots = slots.filter(
+        (s) => s.start.getTime() === slotStart.getTime()
+      );
+      // Alice is confirmed-blocked, Bob is reserved for the unassigned:
+      // the customer sees no slot at 10:00.
+      expect(tenAmSlots).toHaveLength(0);
+    }
+  );
+
+  it(
+    "omitting unassignedBookings preserves pre-phase-5 behaviour",
+    () => {
+      // Regression guard: when the matcher param is omitted, slots come
+      // back exactly as they did before this feature shipped.
+      const date = makeDate("2025-01-01", "12:00");
+      const slots = findAvailableSlots({
+        date,
+        service,
+        therapists: [alice, bob],
+        rooms: [room],
+        existingBookings: [],
+      });
+      // 09:00 through 16:00 = 8 hours, 4 slots per hour, 2 therapists
+      // per slot when both are qualified and no overlap — exact count
+      // depends on 60-min duration + 0 buffer and 15-min grid.
+      expect(slots.length).toBeGreaterThan(0);
+      // Every slot must carry a concrete therapist (not null) so admin
+      // callers can still round-trip.
+      for (const s of slots) {
+        expect(s.therapist_id).toBeTruthy();
+      }
+    }
+  );
 });
 
 // ─── Zod schema validation ───

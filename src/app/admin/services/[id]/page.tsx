@@ -20,6 +20,7 @@ import {
   CardContent,
 } from "@/components/ui/card";
 import { FormErrors } from "@/components/admin/form-message";
+import { VoucherMappingsSection } from "@/components/admin/service/voucher-mappings-section";
 
 interface ServiceRecord {
   id: string;
@@ -183,6 +184,8 @@ export default function EditServicePage() {
           </form>
         </CardContent>
       </Card>
+
+      <VoucherMappingsSection serviceId={params.id} />
     </div>
   );
 }
