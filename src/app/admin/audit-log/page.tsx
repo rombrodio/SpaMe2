@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getAuditLogs } from "@/lib/actions/audit";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatInTimeZone } from "date-fns-tz";
@@ -115,7 +116,6 @@ export default async function AuditLogPage({
                     <th className="pb-2 font-medium">User</th>
                     <th className="pb-2 font-medium">Action</th>
                     <th className="pb-2 font-medium">Entity</th>
-                    <th className="pb-2 font-medium">Entity ID</th>
                     <th className="pb-2 font-medium">Diff</th>
                   </tr>
                 </thead>
@@ -138,9 +138,39 @@ export default async function AuditLogPage({
                           : "system"}
                       </td>
                       <td className="py-3">{row.action}</td>
-                      <td className="py-3">{row.entity_type}</td>
-                      <td className="py-3 font-mono text-xs text-muted-foreground">
-                        {row.entity_id ? row.entity_id.slice(0, 8) : "-"}
+                      <td className="py-3">
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                            {row.entity_type}
+                          </span>
+                          {row.entityHref ? (
+                            <Link
+                              href={row.entityHref}
+                              className="font-medium hover:underline"
+                            >
+                              {row.entityLabel ??
+                                (row.entity_id
+                                  ? row.entity_id.slice(0, 8)
+                                  : "—")}
+                            </Link>
+                          ) : (
+                            <span>
+                              {row.entityLabel ??
+                                (row.entity_id ? (
+                                  <span className="font-mono text-xs text-muted-foreground">
+                                    {row.entity_id.slice(0, 8)}
+                                  </span>
+                                ) : (
+                                  "—"
+                                ))}
+                            </span>
+                          )}
+                          {row.entity_id && row.entityLabel && (
+                            <span className="font-mono text-[10px] text-muted-foreground">
+                              {row.entity_id.slice(0, 8)}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="py-3">
                         {row.old_data || row.new_data ? (

@@ -8,7 +8,6 @@ import {
   Scissors,
   DoorOpen,
   BookOpen,
-  MessageSquare,
   ClipboardList,
   LayoutDashboard,
   LogOut,
@@ -19,6 +18,9 @@ import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 
+// NOTE: Inbox is deferred to Phase 6 (WhatsApp conversational channel). Keep
+// the link out of the sidebar until the /admin/inbox route lands, otherwise
+// clicking it 404s.
 const navItems = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { href: "/admin/calendar", label: "Calendar", icon: Calendar },
@@ -28,7 +30,6 @@ const navItems = [
   { href: "/admin/rooms", label: "Rooms", icon: DoorOpen },
   { href: "/admin/services", label: "Services", icon: Scissors },
   { href: "/admin/customers", label: "Customers", icon: Users },
-  { href: "/admin/inbox", label: "Inbox", icon: MessageSquare },
   { href: "/admin/audit-log", label: "Audit Log", icon: ClipboardList },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];

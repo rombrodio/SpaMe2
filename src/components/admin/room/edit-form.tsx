@@ -3,8 +3,10 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { toast } from "sonner";
 import { updateRoom, deleteRoom } from "@/lib/actions/rooms";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { ConfirmButton } from "@/components/ui/confirm-button";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -30,7 +32,6 @@ export function RoomEditForm({ room }: RoomEditFormProps) {
   const router = useRouter();
   const [errors, setErrors] = useState<Record<string, string[]> | undefined>();
   const [submitting, setSubmitting] = useState(false);
-  const [deleting, setDeleting] = useState(false);
 
   async function handleSubmit(formData: FormData) {
     setSubmitting(true);
@@ -41,25 +42,25 @@ export function RoomEditForm({ room }: RoomEditFormProps) {
     if (result && 'error' in result) {
       setErrors(result.error);
       setSubmitting(false);
+      toast.error("Couldn't save room.");
       return;
     }
 
+    toast.success("Room saved.");
     router.refresh();
     setSubmitting(false);
   }
 
   async function handleDelete() {
-    if (!confirm("Are you sure you want to delete this room?")) return;
-
-    setDeleting(true);
     const result = await deleteRoom(room.id);
 
     if (result && 'error' in result) {
-      setErrors(result.error as Record<string, string[]>);
-      setDeleting(false);
-      return;
+      const err = result.error as Record<string, string[]>;
+      const message = err._form?.join(" ") ?? "Couldn't delete room.";
+      throw new Error(message);
     }
 
+    toast.success("Room deleted.");
     router.push("/admin/rooms");
   }
 
@@ -103,15 +104,22 @@ export function RoomEditForm({ room }: RoomEditFormProps) {
               {submitting ? "Saving..." : "Save Changes"}
             </Button>
             <Link href="/admin/rooms" className={cn(buttonVariants({ variant: "outline" }))}>Back</Link>
-            <Button
-              type="button"
-              variant="destructive"
-              onClick={handleDelete}
-              disabled={deleting}
-              className="ml-auto"
-            >
-              {deleting ? "Deleting..." : "Delete Room"}
-            </Button>
+            <div className="ml-auto">
+              <ConfirmButton
+                title="Delete room"
+                description={
+                  <p>
+                    Delete <strong>{room.name}</strong>? This will remove its
+                    compatibility mapping and any future blocks. Past bookings
+                    that used this room will keep the cached copy.
+                  </p>
+                }
+                confirmLabel="Delete room"
+                onConfirm={handleDelete}
+              >
+                Delete Room
+              </ConfirmButton>
+            </div>
           </div>
         </form>
       </CardContent>

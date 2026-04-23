@@ -17,12 +17,12 @@ export default async function TherapistDashboard({ searchParams }: PageProps) {
   const sp = await searchParams;
   const now = new Date().toISOString();
 
-  const [bookings, pending] = await Promise.all([
-    getBookings({ therapist_id: therapistId, from: now }),
+  const [bookingsResult, pending] = await Promise.all([
+    getBookings({ therapist_id: therapistId, from: now, limit: 200 }),
     getMyPendingConfirmations(),
   ]);
 
-  const upcoming = bookings
+  const upcoming = bookingsResult.rows
     .filter((b: { status: string }) => b.status !== "cancelled")
     .sort(
       (

@@ -3,12 +3,14 @@
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
+import { toast } from "sonner";
 import {
   getService,
   updateService,
   deleteService,
 } from "@/lib/actions/services";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { ConfirmButton } from "@/components/ui/confirm-button";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -38,7 +40,6 @@ export default function EditServicePage() {
   const [service, setService] = useState<ServiceRecord | null>(null);
   const [errors, setErrors] = useState<Record<string, string[]> | undefined>();
   const [submitting, setSubmitting] = useState(false);
-  const [deleting, setDeleting] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -57,24 +58,26 @@ export default function EditServicePage() {
     if (result && 'error' in result) {
       setErrors(result.error);
       setSubmitting(false);
+      toast.error("Couldn't save service.");
       return;
     }
 
+    toast.success("Service saved.");
     router.push("/admin/services");
   }
 
   async function handleDelete() {
-    if (!confirm("Are you sure you want to delete this service?")) return;
-
-    setDeleting(true);
     const result = await deleteService(params.id);
 
     if (result && 'error' in result) {
-      setErrors(result.error as Record<string, string[]>);
-      setDeleting(false);
-      return;
+      const message =
+        result.error && "_form" in result.error && Array.isArray(result.error._form)
+          ? result.error._form.join(" ")
+          : "Couldn't delete service.";
+      throw new Error(message);
     }
 
+    toast.success("Service deleted.");
     router.push("/admin/services");
   }
 
@@ -144,15 +147,20 @@ export default function EditServicePage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="price_ils">Price (ILS) — in agorot</Label>
+              <Label htmlFor="price_ils">Price (ILS)</Label>
               <Input
                 id="price_ils"
                 name="price_ils"
                 type="number"
                 min={0}
-                defaultValue={service.price_ils}
+                step="0.01"
+                defaultValue={(service.price_ils / 100).toFixed(2)}
                 required
               />
+              <p className="text-xs text-muted-foreground">
+                Enter the price in whole shekels (e.g. 280 for ₪280.00). Stored
+                internally as agorot (1 ₪ = 100).
+              </p>
             </div>
 
             <div className="flex items-center gap-2">
@@ -171,15 +179,27 @@ export default function EditServicePage() {
                 {submitting ? "Saving..." : "Save Changes"}
               </Button>
               <Link href="/admin/services" className={cn(buttonVariants({ variant: "outline" }))}>Cancel</Link>
-              <Button
-                type="button"
-                variant="destructive"
-                onClick={handleDelete}
-                disabled={deleting}
-                className="ml-auto"
-              >
-                {deleting ? "Deleting..." : "Delete"}
-              </Button>
+              <div className="ml-auto">
+                <ConfirmButton
+                  title="Delete service"
+                  description={
+                    <>
+                      <p>
+                        Deleting <strong>{service.name}</strong> is permanent
+                        and cannot be undone. Existing bookings that reference
+                        this service will keep the cached copy but you won&apos;t
+                        be able to book it for new customers.
+                      </p>
+                      <p>Type the service name to confirm.</p>
+                    </>
+                  }
+                  confirmText={service.name}
+                  confirmLabel="Delete service"
+                  onConfirm={handleDelete}
+                >
+                  Delete
+                </ConfirmButton>
+              </div>
             </div>
           </form>
         </CardContent>

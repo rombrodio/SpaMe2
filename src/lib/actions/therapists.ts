@@ -406,6 +406,31 @@ export async function createAvailabilityRule(formData: FormData) {
   };
 
   const supabase = await createClient();
+
+  // DEF-007: prevent overlapping rules for the same (therapist, day_of_week).
+  // Two rules overlap when newStart < existingEnd AND newEnd > existingStart.
+  // Fetch the day's existing rules and check in JS — this is a small list.
+  const { data: existing } = await supabase
+    .from("therapist_availability_rules")
+    .select("start_time, end_time")
+    .eq("therapist_id", parsed.data.therapist_id)
+    .eq("day_of_week", parsed.data.day_of_week);
+
+  const overlap = (existing ?? []).find(
+    (r: { start_time: string; end_time: string }) =>
+      parsed.data.start_time < r.end_time &&
+      parsed.data.end_time > r.start_time
+  );
+  if (overlap) {
+    return {
+      error: {
+        start_time: [
+          `Overlaps with the existing ${overlap.start_time}–${overlap.end_time} rule on this day.`,
+        ],
+      },
+    };
+  }
+
   const { error } = await supabase
     .from("therapist_availability_rules")
     .insert(data);

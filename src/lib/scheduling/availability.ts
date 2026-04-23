@@ -39,6 +39,20 @@ export interface UnassignedBookingForMatcher {
 
 const SLOT_INCREMENT_MINUTES = 15;
 
+/**
+ * Round a Date up to the next multiple of `mins` minutes. If `date` already
+ * sits on a boundary, it is returned unchanged.
+ *
+ * Israel timezone offsets are whole hours (UTC+2 / UTC+3), so snapping in UTC
+ * is equivalent to snapping in Asia/Jerusalem local time.
+ */
+function ceilToMinuteBoundary(date: Date, mins: number): Date {
+  const step = mins * 60 * 1000;
+  const ms = date.getTime();
+  const remainder = ms % step;
+  return remainder === 0 ? date : new Date(ms + (step - remainder));
+}
+
 const DAY_MAP: Record<string, number> = {
   sunday: 0,
   monday: 1,
@@ -464,7 +478,10 @@ export function findAvailableSlots(params: {
     );
 
     for (const window of windows) {
-      let slotStart = window.start;
+      // DEF-006: snap the first candidate start up to the next 15-minute grid
+      // boundary so availability rules with off-grid start times (e.g. 06:34)
+      // don't produce irregular slot lists like 06:34, 06:49, 07:04...
+      let slotStart = ceilToMinuteBoundary(window.start, SLOT_INCREMENT_MINUTES);
 
       while (true) {
         const slotEnd = addMinutes(slotStart, totalMinutes);

@@ -137,12 +137,15 @@ export function BookingForm({ formData }: BookingFormProps) {
     });
   }
 
-  const filteredTherapists = formData.therapists.filter(
-    (t) => !serviceId || qualifiedTherapistIds.includes(t.id)
-  );
-  const filteredRooms = formData.rooms.filter(
-    (r) => !serviceId || compatibleRoomIds.includes(r.id)
-  );
+  // DEF-004: therapist/room lists must be empty until a service is picked,
+  // otherwise the dropdowns still render all options even though disabled
+  // (some browsers/OSes let users scroll a disabled <select>).
+  const filteredTherapists = !serviceId
+    ? []
+    : formData.therapists.filter((t) => qualifiedTherapistIds.includes(t.id));
+  const filteredRooms = !serviceId
+    ? []
+    : formData.rooms.filter((r) => compatibleRoomIds.includes(r.id));
 
   const selectedService = formData.services.find((s) => s.id === serviceId);
 
@@ -219,6 +222,19 @@ export function BookingForm({ formData }: BookingFormProps) {
                     </option>
                   ))}
                 </Select>
+                {serviceId && filteredTherapists.length === 0 && !leaveUnassigned && (
+                  <p className="mt-1 text-xs text-destructive">
+                    No active therapist is qualified for this service. Assign
+                    one on the{" "}
+                    <Link
+                      href={`/admin/services/${serviceId}`}
+                      className="font-medium underline underline-offset-2"
+                    >
+                      service page
+                    </Link>
+                    , or mark existing therapists qualified on their profile.
+                  </p>
+                )}
                 <div className="mt-2 space-y-1">
                   <div className="flex items-center gap-2">
                     <input
@@ -280,6 +296,19 @@ export function BookingForm({ formData }: BookingFormProps) {
                     </option>
                   ))}
                 </Select>
+                {serviceId && filteredRooms.length === 0 && (
+                  <p className="mt-1 text-xs text-destructive">
+                    No active room is compatible with this service. Link one
+                    on the{" "}
+                    <Link
+                      href={`/admin/services/${serviceId}`}
+                      className="font-medium underline underline-offset-2"
+                    >
+                      service page
+                    </Link>
+                    .
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
