@@ -77,7 +77,7 @@ src/
 └── middleware.ts      # Auth + role-based routing (renames to proxy.ts in a future Next 16 minor)
 
 supabase/
-├── migrations/       # SQL migration files (00001-00020)
+├── migrations/       # SQL migration files (00001-00021)
 └── seed.sql          # Demo data for local development
 ```
 
@@ -86,6 +86,24 @@ supabase/
 - **Super Admin:** Full access to `/admin/*`. Can manage therapists, rooms, services, bookings, calendar.
 - **Therapist:** Access to `/therapist/*`. Can manage own availability and view own bookings.
 - **Customer:** No login. Identified by phone number.
+
+### Production Supabase dashboard settings
+
+Password-reset emails only work when the hosted Supabase project knows
+our real origin. After deploying to Vercel:
+
+1. **Supabase → Authentication → URL Configuration**
+   - **Site URL:** `https://<your-vercel-domain>` (e.g. `https://spa-me2.vercel.app`)
+   - **Redirect URLs (allow-list):**
+     - `https://<your-vercel-domain>/callback`
+     - `https://<your-vercel-domain>/**` (wildcard, covers `/callback?next=...`)
+2. **Vercel → Project → Environment Variables**
+   - `NEXT_PUBLIC_APP_URL=https://<your-vercel-domain>`
+
+The app's `/callback` route handles both PKCE (`?code=`) and OTP
+(`?token_hash=&type=`) flows and forwards Supabase errors back to the
+login page, so "Email link is invalid or has expired" is surfaced
+instead of silently redirecting.
 
 ## Database Migrations
 
@@ -111,6 +129,7 @@ Migrations are in `supabase/migrations/` and run in order:
 18. Deferred-assignment workflow (unassigned queue + SLA)
 19. Spa settings (on-call manager name + phone)
 20. Business hours + slot granularity (configurable via Settings)
+21. Service durations normalised to 45 min + 15 min buffer (operator decision)
 
 ## Scripts
 
@@ -119,7 +138,7 @@ npm run dev            # Start development server
 npm run build          # Production build
 npm run start          # Start production server
 npm run lint           # Run ESLint
-npm run test           # Vitest one-shot (161 tests across 12 files)
+npm run test           # Vitest one-shot (162 tests across 12 files)
 npm run test:watch     # Vitest in watch mode
 npm run demo:payments  # Seed + exercise payment adapters (tsx)
 ```

@@ -178,7 +178,8 @@ supabase/migrations/
 ├── 00017_therapist_gender.sql               (therapist gender + booking gender preference)
 ├── 00018_deferred_assignment.sql            (unassigned-booking queue, manager alerts, therapist SLA)
 ├── 00019_spa_settings.sql                   (single-row spa_settings: on-call manager name + phone)
-└── 00020_business_hours.sql                 (spa-wide business hours + slot granularity)
+├── 00020_business_hours.sql                 (spa-wide business hours + slot granularity)
+└── 00021_service_durations_45min.sql        (all services → 45 min + 15 min buffer)
 ```
 
 ---
@@ -536,6 +537,37 @@ path works in production as long as the provider env is set to mock.
   the hour only"). 15 and 30 remain allowed values in the schema.
 - `APP_URL` and `NEXT_PUBLIC_APP_URL` are **required** in production —
   no silent localhost fallback anywhere in the actions.
+
+### Phase 4.6.1 — Post-deploy QA fixes
+
+Follow-on fixes inside the same PR once UAT started against the
+deployed preview:
+
+- **Password reset robustness.** `/callback` route now handles both
+  PKCE (`?code=`) and OTP (`?token_hash=&type=`) flows and surfaces
+  Supabase verification errors back to `/login?error=...` instead of
+  silently redirecting. Root `/` page forwards any `code` /
+  `token_hash` / `error` query params into `/callback` so reset emails
+  still work when Supabase's Site URL is misaligned. Login page reads
+  the `?error=` param and shows the real Supabase message. Dashboard
+  ops steps documented in `README.md`.
+- **Delete confirmation uses a stable ASCII keyword.** Therapist,
+  customer, and service delete dialogs now require typing `DELETE`
+  (was the record's Hebrew full name, which was effectively impossible
+  to type correctly on an IL keyboard).
+- **Service durations normalised.** New migration
+  `00021_service_durations_45min.sql` sets every service to
+  `duration_minutes = 45, buffer_minutes = 15`. Customer-facing
+  booking UI shows 45 min treatments; scheduler still occupies a full
+  hour (45 + 15 buffer) per slot. Seed file updated.
+- **Assignments screen: all future unassigned by default.**
+  `getAssignmentScreenData` accepts `scope: "all" | "date"` (default
+  `all`). "All future" groups bookings by day to keep matcher
+  feasibility meaningful per day, then merges into one chronological
+  list. A date filter stays available as optional narrowing.
+- **Booking creation time on the bookings list.** New `Created`
+  column on `/admin/bookings`, tooltip shows full timestamp.
+  Assignments screen also shows each booking's creation time.
 
 ### Phase 5.5: Operator Reality Check & Calendar for 20 Therapists (PRs #15, #17) — COMPLETE
 

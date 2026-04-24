@@ -235,10 +235,12 @@ export function TherapistEditForm({
                       database but this therapist profile, availability rules,
                       and service assignments will be removed.
                     </p>
-                    <p>Type the therapist&apos;s full name to confirm.</p>
+                    <p>
+                      Type <strong>DELETE</strong> to confirm.
+                    </p>
                   </>
                 }
-                confirmText={therapist.full_name}
+                confirmText="DELETE"
                 confirmLabel="Delete therapist"
                 onConfirm={handleDelete}
               >

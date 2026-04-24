@@ -23,8 +23,13 @@ function LoginForm() {
   const next = searchParams.get("next") ?? "/admin";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  // Lazy-init from the URL hash so we don't need an effect to read it.
-  const [error, setError] = useState<string | null>(() => parseHashError());
+  // Lazy-init from both the URL hash (Supabase's own error format) and
+  // the query string (our /callback route bubbles real verify errors
+  // up as ?error=... so the user sees "token expired" instead of a
+  // generic "email link invalid").
+  const [error, setError] = useState<string | null>(
+    () => searchParams.get("error") ?? parseHashError()
+  );
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<"login" | "reset">("login");

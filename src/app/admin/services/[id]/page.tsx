@@ -205,10 +205,12 @@ export default function EditServicePage() {
                         this service will keep the cached copy but you won&apos;t
                         be able to book it for new customers.
                       </p>
-                      <p>Type the service name to confirm.</p>
+                      <p>
+                        Type <strong>DELETE</strong> to confirm.
+                      </p>
                     </>
                   }
-                  confirmText={service.name}
+                  confirmText="DELETE"
                   confirmLabel="Delete service"
                   onConfirm={handleDelete}
                 >

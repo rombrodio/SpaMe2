@@ -1,28 +1,28 @@
-import { addDays } from "date-fns";
-import { formatInTimeZone } from "date-fns-tz";
-import { TZ } from "@/lib/constants";
 import { getAssignmentScreenData } from "@/lib/actions/assignments";
 import { AssignmentList } from "@/components/admin/assignments/assignment-list";
 
 export const dynamic = "force-dynamic";
 
 interface PageProps {
-  searchParams: Promise<{ date?: string; bookingId?: string }>;
+  searchParams: Promise<{
+    date?: string;
+    scope?: "all" | "date";
+    bookingId?: string;
+  }>;
 }
 
 /**
- * Default landing view: tomorrow in the spa's timezone. Using
- * formatInTimeZone here (not new Date().toISOString()) avoids UTC-midnight
- * rollover bugs when the server is in a different TZ than the spa.
+ * Default landing view shows every future unassigned booking so
+ * managers see the full pending queue at a glance. A date filter can
+ * narrow to one day.
  */
-function defaultDate(): string {
-  return formatInTimeZone(addDays(new Date(), 1), TZ, "yyyy-MM-dd");
-}
-
 export default async function AssignmentsPage({ searchParams }: PageProps) {
   const sp = await searchParams;
-  const date = sp.date || defaultDate();
-  const data = await getAssignmentScreenData({ date });
+  const scope = sp.scope === "date" ? "date" : "all";
+  const data = await getAssignmentScreenData({
+    scope,
+    date: scope === "date" ? sp.date ?? null : null,
+  });
 
   return (
     <div>
@@ -38,7 +38,8 @@ export default async function AssignmentsPage({ searchParams }: PageProps) {
 
       <div className="mt-6">
         <AssignmentList
-          initialDate={date}
+          initialScope={data.scope}
+          initialDate={data.date}
           initialData={data.bookings}
           highlightBookingId={sp.bookingId}
         />

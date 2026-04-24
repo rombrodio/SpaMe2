@@ -1,7 +1,7 @@
 "use server";
 
 import { z } from "zod";
-import { startOfDay, endOfDay, parseISO } from "date-fns";
+import { startOfDay, endOfDay, parseISO, subMinutes } from "date-fns";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { writeAuditLog } from "@/lib/audit";
@@ -37,6 +37,7 @@ export interface UnassignedBookingForAdmin {
   id: string;
   start_at: string;
   end_at: string;
+  created_at: string;
   service_id: string;
   service_name: string;
   duration_minutes: number;
@@ -54,8 +55,12 @@ export interface EligibleTherapist {
   color: string | null;
 }
 
+export type AssignmentScope = "all" | "date";
+
 export interface AssignmentScreenData {
-  date: string; // ISO yyyy-MM-dd
+  scope: AssignmentScope;
+  /** Filter date for scope="date", echoed back for UI state. */
+  date: string | null;
   bookings: Array<{
     booking: UnassignedBookingForAdmin;
     eligible: EligibleTherapist[];
@@ -63,19 +68,34 @@ export interface AssignmentScreenData {
 }
 
 /**
- * Fetch every unassigned booking overlapping the given day + the
- * matcher-validated eligible therapist list for each. Eligibility is
- * computed per candidate: a therapist appears in the list only if
- * assigning them to this booking still leaves a valid matching for
- * every other unassigned booking on the day.
+ * Fetch unassigned bookings + the eligible-therapist list for each.
+ *
+ * Two modes:
+ *   - scope="all"  (default): every future non-cancelled unassigned
+ *     booking, ordered by start time ascending. Eligibility is
+ *     computed per booking in isolation (a therapist appears if they
+ *     qualify for the service and are free at that time). The
+ *     cross-booking matcher feasibility check is skipped here because
+ *     it's only meaningful inside a single day's pool.
+ *   - scope="date": same behaviour as before — the day's pool is
+ *     matcher-checked so we never surface a therapist whose pick would
+ *     leave another same-day booking unplaceable.
  */
 export async function getAssignmentScreenData(params: {
-  date: string; // yyyy-MM-dd in Jerusalem tz; we widen to start/end of day in UTC
+  scope?: AssignmentScope;
+  date?: string | null; // yyyy-MM-dd in Jerusalem tz (required when scope="date")
 }): Promise<AssignmentScreenData> {
+  const scope: AssignmentScope = params.scope ?? "all";
   const supabase = await createClient();
-  const targetDate = parseISO(params.date);
+
+  if (scope === "all") {
+    return getAllFutureUnassigned(supabase);
+  }
+
+  const dateStr = params.date ?? "";
+  const targetDate = parseISO(dateStr);
   if (isNaN(targetDate.getTime())) {
-    return { date: params.date, bookings: [] };
+    return { scope: "date", date: dateStr, bookings: [] };
   }
   const dayStart = startOfDay(targetDate);
   const dayEnd = endOfDay(targetDate);
@@ -84,42 +104,19 @@ export async function getAssignmentScreenData(params: {
   const { data: dayBookingsRaw } = await supabase
     .from("bookings")
     .select(
-      "id, therapist_id, service_id, start_at, end_at, status, assignment_status, therapist_gender_preference, notes, customers(full_name, phone), services(id, name, duration_minutes), rooms(id, name)"
+      "id, therapist_id, service_id, start_at, end_at, status, assignment_status, therapist_gender_preference, notes, created_at, customers(full_name, phone), services(id, name, duration_minutes), rooms(id, name)"
     )
     .neq("status", "cancelled")
     .lt("start_at", dayEnd.toISOString())
     .gt("end_at", dayStart.toISOString())
     .order("start_at");
 
-  type Row = {
-    id: string;
-    therapist_id: string | null;
-    service_id: string;
-    start_at: string;
-    end_at: string;
-    status: string;
-    assignment_status:
-      | "unassigned"
-      | "pending_confirmation"
-      | "confirmed"
-      | "declined";
-    therapist_gender_preference: "male" | "female" | "any";
-    notes: string | null;
-    customers: { full_name: string; phone: string } | null;
-    services: {
-      id: string;
-      name: string;
-      duration_minutes: number;
-    } | null;
-    rooms: { id: string; name: string } | null;
-  };
-
-  const allRows = (dayBookingsRaw ?? []) as unknown as Row[];
+  const allRows = (dayBookingsRaw ?? []) as unknown as AssignmentRow[];
   const unassignedRows = allRows.filter(
     (r) => r.assignment_status === "unassigned"
   );
   if (unassignedRows.length === 0) {
-    return { date: params.date, bookings: [] };
+    return { scope: "date", date: dateStr, bookings: [] };
   }
 
   // Pool + confirmed rows for eligibility computation.
@@ -216,23 +213,211 @@ export async function getAssignmentScreenData(params: {
     }
     eligible.sort((a, b) => a.full_name.localeCompare(b.full_name));
 
-    const booking: UnassignedBookingForAdmin = {
-      id: u.id,
-      start_at: u.start_at,
-      end_at: u.end_at,
-      service_id: u.service_id,
-      service_name: u.services?.name ?? "",
-      duration_minutes: u.services?.duration_minutes ?? 0,
-      therapist_gender_preference: u.therapist_gender_preference,
-      customer_full_name: u.customers?.full_name ?? null,
-      customer_phone: u.customers?.phone ?? null,
-      room_name: u.rooms?.name ?? null,
-      notes: u.notes,
-    };
+    const booking: UnassignedBookingForAdmin = toAdminBooking(u);
     return { booking, eligible };
   });
 
-  return { date: params.date, bookings };
+  return { scope: "date", date: dateStr, bookings };
+}
+
+// ─────────────────────────────────────────────────────────────
+// Shared row shape + mapper
+// ─────────────────────────────────────────────────────────────
+
+type AssignmentRow = {
+  id: string;
+  therapist_id: string | null;
+  service_id: string;
+  start_at: string;
+  end_at: string;
+  created_at: string;
+  status: string;
+  assignment_status:
+    | "unassigned"
+    | "pending_confirmation"
+    | "confirmed"
+    | "declined";
+  therapist_gender_preference: "male" | "female" | "any";
+  notes: string | null;
+  customers: { full_name: string; phone: string } | null;
+  services: {
+    id: string;
+    name: string;
+    duration_minutes: number;
+  } | null;
+  rooms: { id: string; name: string } | null;
+};
+
+function toAdminBooking(u: AssignmentRow): UnassignedBookingForAdmin {
+  return {
+    id: u.id,
+    start_at: u.start_at,
+    end_at: u.end_at,
+    created_at: u.created_at,
+    service_id: u.service_id,
+    service_name: u.services?.name ?? "",
+    duration_minutes: u.services?.duration_minutes ?? 0,
+    therapist_gender_preference: u.therapist_gender_preference,
+    customer_full_name: u.customers?.full_name ?? null,
+    customer_phone: u.customers?.phone ?? null,
+    room_name: u.rooms?.name ?? null,
+    notes: u.notes,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────
+// Scope: "all" — every future unassigned booking, newest-slot first
+// ─────────────────────────────────────────────────────────────
+
+async function getAllFutureUnassigned(
+  supabase: Awaited<ReturnType<typeof createClient>>
+): Promise<AssignmentScreenData> {
+  // Allow a small look-back so a booking that just started but hasn't
+  // been assigned yet (slipped through the notification) is still
+  // surfaced, not hidden by end_at.
+  const fromIso = subMinutes(new Date(), 30).toISOString();
+
+  const { data } = await supabase
+    .from("bookings")
+    .select(
+      "id, therapist_id, service_id, start_at, end_at, status, assignment_status, therapist_gender_preference, notes, created_at, customers(full_name, phone), services(id, name, duration_minutes), rooms(id, name)"
+    )
+    .neq("status", "cancelled")
+    .eq("assignment_status", "unassigned")
+    .gte("start_at", fromIso)
+    .order("start_at", { ascending: true })
+    .limit(500);
+
+  const rows = (data ?? []) as unknown as AssignmentRow[];
+  if (rows.length === 0) {
+    return { scope: "all", date: null, bookings: [] };
+  }
+
+  // Group by day so matcher feasibility stays meaningful per-day. The
+  // top-level list is still global; we just compute eligibility in
+  // per-day chunks using the full day pool.
+  const byDay = new Map<string, AssignmentRow[]>();
+  for (const r of rows) {
+    const key = r.start_at.slice(0, 10); // YYYY-MM-DD (UTC key is fine for grouping)
+    const bucket = byDay.get(key) ?? [];
+    bucket.push(r);
+    byDay.set(key, bucket);
+  }
+
+  type OutRow = {
+    booking: UnassignedBookingForAdmin;
+    eligible: EligibleTherapist[];
+  };
+  const out: OutRow[] = [];
+
+  for (const [dayKey, dayUnassigned] of byDay) {
+    const dayStart = startOfDay(parseISO(dayKey));
+    const dayEnd = endOfDay(parseISO(dayKey));
+
+    // For cross-booking feasibility we need the *other* bookings on
+    // this day too, so pull them.
+    const { data: dayAll } = await supabase
+      .from("bookings")
+      .select(
+        "id, therapist_id, service_id, start_at, end_at, status, assignment_status, therapist_gender_preference, notes, created_at, customers(full_name, phone), services(id, name, duration_minutes), rooms(id, name)"
+      )
+      .neq("status", "cancelled")
+      .lt("start_at", dayEnd.toISOString())
+      .gt("end_at", dayStart.toISOString());
+    const dayRows = (dayAll ?? []) as unknown as AssignmentRow[];
+    const confirmedOrPending = dayRows
+      .filter((r) => r.assignment_status !== "unassigned")
+      .map(
+        (r) =>
+          ({
+            id: r.id,
+            therapist_id: r.therapist_id,
+            room_id: r.rooms?.id ?? "",
+            service_id: r.service_id,
+            start_at: r.start_at,
+            end_at: r.end_at,
+            status: r.status,
+          }) as ExistingBooking
+      );
+
+    const pool = await fetchMatcherPool(supabase, dayStart, dayEnd);
+
+    const isolationEligibility = new Map<string, string[]>();
+    for (const u of dayUnassigned) {
+      isolationEligibility.set(
+        u.id,
+        computeUnassignedEligibility(
+          {
+            id: u.id,
+            service_id: u.service_id,
+            start_at: u.start_at,
+            end_at: u.end_at,
+            therapist_gender_preference: u.therapist_gender_preference,
+          },
+          pool,
+          confirmedOrPending
+        )
+      );
+    }
+
+    const candidateIds = Array.from(
+      new Set(Array.from(isolationEligibility.values()).flatMap((ids) => ids))
+    );
+    const { data: therapistRows } = candidateIds.length
+      ? await supabase
+          .from("therapists")
+          .select("id, full_name, gender, color")
+          .in("id", candidateIds)
+      : { data: [] };
+    const therapistById = new Map<string, EligibleTherapist>();
+    for (const t of (therapistRows ?? []) as Array<{
+      id: string;
+      full_name: string;
+      gender: "male" | "female" | null;
+      color: string | null;
+    }>) {
+      therapistById.set(t.id, {
+        id: t.id,
+        full_name: t.full_name,
+        gender: t.gender,
+        color: t.color,
+      });
+    }
+
+    function buildMatcherInputWithPin(
+      pinnedBookingId: string,
+      pinnedTherapistId: string
+    ): MatcherBooking[] {
+      return dayUnassigned.map((u) => ({
+        id: u.id,
+        start: new Date(u.start_at),
+        end: new Date(u.end_at),
+        eligibleTherapistIds:
+          u.id === pinnedBookingId
+            ? [pinnedTherapistId]
+            : isolationEligibility.get(u.id) ?? [],
+      }));
+    }
+
+    for (const u of dayUnassigned) {
+      const candidates = isolationEligibility.get(u.id) ?? [];
+      const eligible: EligibleTherapist[] = [];
+      for (const tid of candidates) {
+        if (canPlaceAll(buildMatcherInputWithPin(u.id, tid))) {
+          const info = therapistById.get(tid);
+          if (info) eligible.push(info);
+        }
+      }
+      eligible.sort((a, b) => a.full_name.localeCompare(b.full_name));
+      out.push({ booking: toAdminBooking(u), eligible });
+    }
+  }
+
+  // Final order: by start_at ascending (Map preserved order but we
+  // re-sort so earliest unassigned is always at the top).
+  out.sort((a, b) => a.booking.start_at.localeCompare(b.booking.start_at));
+
+  return { scope: "all", date: null, bookings: out };
 }
 
 
