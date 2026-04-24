@@ -60,7 +60,14 @@ Replace Biz-Online with a custom web app focused on:
 - Never fabricate availability
 - Never fabricate payment confirmation
 
-## AI allowed actions only
+## AI allowed actions (Phase 6 — not yet implemented)
+
+These are the only tools the chatbot will be allowed to call when Phase 6
+begins; **none exist in the codebase today**. Phase 6 is reshaped for
+SpaMeV3 — the conversational / bot layer will ship as a first-party
+Texter-alike WhatsApp Business platform, not in this repo. See
+`docs/plans/MASTER-PLAN.md`.
+
 - find_available_slots
 - create_tentative_booking
 - create_payment_link
@@ -101,13 +108,8 @@ Do not build in V1:
 - Add README with setup, migrations, seed, env vars, deploy, webhook config
 
 ## Current implementation order
-1. Foundations
-2. Admin CRUD
-3. Scheduling core
-4. Payments
-5. Customer booking flow
-6. Chatbot foundation
-7. Staff inbox and polish
+
+See [`docs/plans/MASTER-PLAN.md`](docs/plans/MASTER-PLAN.md) — single source of truth for phase status. Do not duplicate phase lists here; they drift.
 
 ## Plan Management
 
@@ -122,28 +124,41 @@ Do not build in V1:
 
 ## Session Workflow
 
-- At the start of each session, identify which phase/branch you are on by
-  reading the current git branch name and cross-referencing it with the plan.
-- Summarize what was completed in prior phases (by reading the plan's status
-  markers or checking merged branches) and what remains for the current phase.
+- At session start, run `git log --oneline -10` on `main` plus
+  `gh pr list --state merged --limit 5` to see what shipped recently.
+  Cross-reference against `docs/plans/MASTER-PLAN.md` phase markers to
+  identify the frontier.
+- Feature branches are ephemeral (`main`-only flow, squash-merged, auto-
+  deleted on merge). Don't assume a phase matches the branch name.
 
-## End-of-Session Checklist (MANDATORY before any push or PR)
+## Docs sync (MANDATORY)
 
-Before pushing code or creating a pull request, you MUST walk through this
-checklist with the user and get explicit approval for each item:
+**Before every commit** that introduces a new migration, env var, route,
+feature, SPA-* item, or DEF-* fix, walk the manifest at
+[`docs/DOC-SYNC.md`](docs/DOC-SYNC.md). Update every doc listed for that
+change in the **same commit**. Tick the `## Docs sync` checklist in the PR
+template when you open the PR.
 
-1. List every task/deliverable in the current phase from the plan. Include a non short non technical explanation and outcome.
-2. For each task, confirm: was it implemented? was it tested? Show evidence
-   (test output, manual verification, etc.).
-3. Flag anything that was skipped, deferred, or partially done.
-4. Ask the user: "All phase objectives are accounted for above. Do you approve
-   pushing and opening a PR?" Wait for explicit "yes" before proceeding.
-5. Do NOT push or create a PR without this approval.
+This is not optional. It is the single rule that keeps the plan, the
+README, and the agent-facing docs honest across sessions. Skipping it is
+how we got the last audit's 20 findings.
+
+## Suggested end-of-session checklist
+
+Before opening a PR:
+
+1. Summarize what shipped in the PR description (paste the commits,
+   mention which SPA-* / DEF-* items it closes).
+2. Confirm CI is green locally: `npm run lint && npm run test && npm run build`.
+3. Walk `docs/DOC-SYNC.md` and tick the `## Docs sync` section in the PR
+   body per the manifest.
 
 ## Definition of done per phase
+
 A phase is done only when:
-- code compiles
+- CI gate passes (`tsc --noEmit`, `lint`, `test`, `build` — see
+  `.github/workflows/ci.yml`)
 - schema/migrations are valid
 - key flows work locally
 - edge cases for that phase are handled
-- README is updated if setup changes
+- docs affected by the change are updated per `docs/DOC-SYNC.md`
