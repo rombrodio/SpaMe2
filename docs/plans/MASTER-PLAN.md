@@ -161,16 +161,23 @@ Application layer does a pre-check for better error messages. The exclusion cons
 supabase/migrations/
 ├── 00001_extensions.sql
 ├── 00002_enums.sql
-├── 00003_profiles.sql            (profiles table + trigger on auth.users insert)
-├── 00004_core_tables.sql         (customers, therapists, rooms, services w/ buffer_minutes)
-├── 00005_junction_tables.sql     (therapist_services, room_services)
-├── 00006_scheduling_tables.sql   (availability_rules, time_off, room_blocks)
-├── 00007_bookings.sql            (bookings + exclusion constraints)
+├── 00003_profiles.sql                       (profiles table + trigger on auth.users insert)
+├── 00004_core_tables.sql                    (customers, therapists, rooms, services w/ buffer_minutes)
+├── 00005_junction_tables.sql                (therapist_services, room_services)
+├── 00006_scheduling_tables.sql              (availability_rules, time_off, room_blocks)
+├── 00007_bookings.sql                       (bookings + exclusion constraints)
 ├── 00008_payments.sql
 ├── 00009_conversations.sql
 ├── 00010_audit_log.sql
-├── 00011_triggers.sql            (updated_at trigger applied to all tables)
-└── 00012_rls_policies.sql        (role-based: super_admin full, therapist own-data)
+├── 00011_triggers.sql                       (updated_at trigger applied to all tables)
+├── 00012_rls_policies.sql                   (role-based: super_admin full, therapist own-data)
+├── 00013_fix_advisor_warnings.sql           (Supabase advisor fixes: security_invoker, search_path)
+├── 00014_regenerate_seed_uuids.sql          (deterministic seed UUIDs for reproducible tests)
+├── 00015_payments_and_holds.sql             (payment_method/role enums, authorized status, voucher SKUs)
+├── 00016_payment_status_authorized_index.sql (partial unique index — one in-flight payment per role)
+├── 00017_therapist_gender.sql               (therapist gender + booking gender preference)
+├── 00018_deferred_assignment.sql            (unassigned-booking queue, manager alerts, therapist SLA)
+└── 00019_spa_settings.sql                   (single-row spa_settings: on-call manager name + phone)
 ```
 
 ---
@@ -304,14 +311,7 @@ package.json
 
 ### Key Environment Variables
 
-```
-NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY
-PAYMENT_PROVIDER=cardcom (or 'mock')
-CARDCOM_TERMINAL_NUMBER, CARDCOM_API_NAME, CARDCOM_WEBHOOK_SECRET
-WHATSAPP_PHONE_NUMBER_ID, WHATSAPP_ACCESS_TOKEN, WHATSAPP_VERIFY_TOKEN, WHATSAPP_APP_SECRET
-ANTHROPIC_API_KEY
-APP_URL
-```
+See [`.env.local.example`](../../.env.local.example) — canonical list, kept current. Minimum to boot: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `ORDER_TOKEN_SECRET`. Production also needs `CRON_SECRET`. Real payment credentials only required when flipping `PAYMENTS_*_PROVIDER` off `mock`.
 
 ---
 
@@ -466,8 +466,69 @@ Deferred from Phase 4. Ships the real VPay SOAP client under `services/vpay-prox
 with mTLS / static IP as required by Verifone. Detailed plan:
 `.cursor/plans/phase_4_payments_and_booking_*.plan.md` §14.
 
+### Phase 4 QA: S1-S4 Defect Sweep (PRs #12, #13, #16) — COMPLETE
+
+Closed the 32-item UAT backlog against Phase 4 across three PRs. Shipped in Phase A:
+sonner toast + Radix AlertDialog primitives, `ConfirmButton` wrapper for every
+destructive action, whole-ILS price input with agorot transform, 15-minute grid
+snapping in `findAvailableSlots`, availability-rule schema tightening (end>start,
+min shift, no overlap), reusable `SlotPicker` on reschedule, bookings list filter
+bar + pagination, sticky action bar on booking detail, and audit-log entity
+enrichment with deep links. Phase B added structured diff rendering, `RowLink`
+full-row navigation, `DateTimePicker` replacing native `datetime-local`, voucher
+SKU validation, customer Title-Case + "Add email" CTA, audit-log pagination,
+calendar block customer/service visibility. Phase C added the `Breadcrumbs`
+component across detail pages, clickable-week-header date picker, canonical
+Title-Case status labels, `ActiveBadge` styling. Bumped `next` to `16.2.4` and
+`vite` transitive to `8.0.10` (closed 4 Dependabot alerts). 161 tests green
+across 12 files. PR #16 reverted the therapist avatar component per product call.
+
+### Phase 5: Deferred Assignment (PR #10) — COMPLETE
+
+Paid-but-unassigned bookings now flow through `/admin/assignments`. Customer
+finishes payment → on-call manager receives SMS + WhatsApp alert (best-effort
+fallback when Twilio creds are missing) → manager picks therapist → therapist
+has 2 hours to confirm → manager re-alerted on timeout. Driven by
+`00018_deferred_assignment.sql` migration (assignment_status enum +
+pending_confirmation SLA), `/api/cron/assignment-monitor` cron (15-min),
+`src/lib/messaging/on-call-manager.ts`, `src/lib/actions/assignments.ts`.
+
+### Phase 5.5: Operator Reality Check & Calendar for 20 Therapists (PRs #15, #17) — COMPLETE
+
+11 SPA-* items shipped against the real spa scale (~20 therapists, multiple
+receptionists):
+
+- **SPA-006** Typeahead customer combobox + inline "Create new customer" on
+  New Booking.
+- **SPA-005** Operational dashboard (today's agenda, pending payment,
+  unassigned today, today's revenue).
+- **SPA-003 (lite)** Global `⌘K` search popover in the sidebar — customers,
+  active therapists, bookings.
+- **SPA-030** Resource view on calendar — columns per therapist, filter-first
+  (up to 8 selected therapists become columns).
+- **SPA-008** Per-therapist multi-select filter, URL-synced with
+  `localStorage` default.
+- **SPA-033 (remainder)** Month view with per-day booking counts.
+- **SPA-032** Click any empty half-hour cell on calendar → New Booking form
+  prefilled with date / start time / therapist.
+- **SPA-133** Unsaved-changes guard (`DirtyFormGuard`) on customer / therapist
+  / service / room / settings forms.
+- **SPA-101** Phone E.164 normalization + duplicate-detection warning on
+  customer create.
+- Customer + Therapist list pagination + search applied to both lists.
+- **Vercel Web Analytics** (PR #17) — `@vercel/analytics` in root layout,
+  auto page-view tracking.
+
 ### Phase 6: Chatbot Foundation (~15 files)
-**Goal:** AI conversation engine with WhatsApp + web chat.
+
+**Reshaped for SpaMeV3** — reframed as a first-party WhatsApp Business Cloud
+platform (a "Texter-alike" — see https://texterchat.com for the market
+reference). **Do not implement in this repo.** Twilio SMS confirmations
+shipped in Phase 4 stay in production; the conversational / bot layer lives in
+SpaMeV3.
+
+**Original V2 goal (now deferred):** AI conversation engine with WhatsApp +
+web chat.
 
 - [ ] `src/lib/chatbot/tools.ts` — 6 tool function definitions mapping to server actions
 - [ ] `src/lib/chatbot/prompts.ts` — constraining system prompt
@@ -518,7 +579,7 @@ with mTLS / static IP as required by Verifone. Detailed plan:
 - No i18n framework — hardcode Hebrew strings directly
 - No email notifications — WhatsApp is primary channel
 - Simple role model — all authenticated staff are admins
-- No automated tests Phase 1-2; add integration tests for scheduling in Phase 3
+- 161 Vitest tests across 12 files cover scheduling, payments, availability, and the unassigned-booking matcher. CI (`.github/workflows/ci.yml`) runs typecheck + lint + test + build on every push and PR.
 - Single payment provider, no multi-provider routing
 - No job queue — webhook/WhatsApp processing is synchronous in route handlers
 - Price as integer (agorot) not decimal — UI handles display conversion
@@ -547,7 +608,7 @@ with mTLS / static IP as required by Verifone. Detailed plan:
 
 ### Still Assuming (flag if wrong)
 1. **Single location** — no multi-branch logic needed
-2. **Two roles only** — super_admin (full access) and therapist (own availability + own bookings read-only). No intermediate roles.
+2. **Two roles implemented today** — `super_admin` (full access) and `therapist` (own availability + own bookings read-only). Front-desk receptionists share the `super_admin` role in V1; a dedicated `receptionist` role with limited permissions is deferred (SPA-137).
 3. **Slot granularity** — 15-minute increments
 4. **Operating hours** — per-therapist only (no spa-wide override)
 5. **WhatsApp account** — needs to be set up (build with mock first)

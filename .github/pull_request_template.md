@@ -1,20 +1,15 @@
 ## What
-Describe what this PR changes.
+<describe what this PR changes>
 
 ## Why
-Describe why this change is needed.
+<describe why this change is needed>
 
-## Scope
-- [ ] Foundations
-- [ ] Admin CRUD
-- [ ] Scheduling
-- [ ] Payments
-- [ ] Customer booking
-- [ ] Chatbot
-- [ ] Staff inbox / polish
-- [ ] Bug fix
-- [ ] Refactor
-- [ ] Chore
+## Type
+- [ ] Feature / SPA-*
+- [ ] Bug fix / QA sweep / DEF-*
+- [ ] Chore / deps / infra
+
+**Phase / SPA-ID / DEF-ID reference:**
 
 ## Main changes
 -
@@ -29,11 +24,26 @@ Describe why this change is needed.
 -
 -
 
+## Docs sync
+
+Walked [`docs/DOC-SYNC.md`](../docs/DOC-SYNC.md) — tick every row that applies, or tick `N/A` explicitly.
+
+- [ ] N/A — no docs affected by this change
+- [ ] Added/changed migration → updated `README.md` + `MASTER-PLAN.md` migration lists
+- [ ] Added/changed env var → updated `.env.local.example` + `README.md` (+ `AGENTS.md` if load-bearing)
+- [ ] New route / feature / SPA-* / DEF-* → updated `MASTER-PLAN.md` phase or shipped-list
+- [ ] New / changed UI primitive in `src/components/ui/` → updated `README.md` UI kit line
+- [ ] New dependency → noted in commit body + `README.md` tech stack line if load-bearing
+- [ ] Cron / webhook / secret / hosted integration added → updated `MASTER-PLAN.md` + `AGENTS.md`
+- [ ] Role / RBAC change → updated `MASTER-PLAN.md` Auth & Roles section
+- [ ] Manifest itself missed something → added a row to `docs/DOC-SYNC.md`
+
 ## Testing
-- [ ] App runs locally
-- [ ] Main flow tested manually
-- [ ] No unrelated changes included
-- [ ] README updated if needed
+
+- [ ] `npm run lint` clean
+- [ ] `npm run test` green
+- [ ] `npm run build` compiles
+- [ ] Main flow tested manually (screenshot or short note below)
 
 ## Screenshots / notes
-Add screenshots or notes if relevant.
+<add screenshots or notes if relevant>

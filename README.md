@@ -8,7 +8,7 @@ Spa management and booking system for a Tel Aviv spa.
 - **Language:** TypeScript
 - **Database:** Supabase Postgres
 - **Auth:** Supabase Auth (email/password)
-- **Styling:** Tailwind CSS v4 + shadcn/ui components
+- **Styling:** Tailwind CSS v4 + hand-rolled UI primitives under `src/components/ui/` (CVA + Radix: `alert-dialog`, `popover`, `dropdown-menu`, `command`, plus locally-built `button`, `card`, `input`, `select`, `textarea`, `badge`)
 - **Validation:** Zod
 
 ## Getting Started
@@ -31,7 +31,11 @@ npm install
 cp .env.local.example .env.local
 # Edit .env.local with your Supabase project credentials
 
-# 3. Start Supabase locally (or use a hosted project)
+# 2a. (Alternative path) Use the hosted Supabase project — paste its URL +
+# anon + service-role keys into .env.local and skip steps 3 + 4 entirely.
+# This is how the team actually works day to day; no Docker required.
+
+# 3. Start Supabase locally (Docker required)
 supabase start
 
 # 4. Run migrations
@@ -48,7 +52,14 @@ npm run dev
 
 ### Environment Variables
 
-See `.env.local.example` for all variables. Only Supabase variables are needed for Phase 1.
+See `.env.local.example` for the full reference — canonical and kept current. Minimum to boot the app:
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `ORDER_TOKEN_SECRET` — signs `/order/<token>` JWTs
+
+Production also needs `CRON_SECRET` (Vercel Cron auth header). CardCom / DTS / VPay credentials are only required when flipping the corresponding `PAYMENTS_*_PROVIDER` env var off `mock`.
 
 ## Project Structure
 
@@ -63,10 +74,10 @@ src/
 │   └── admin/        # Admin-specific components
 ├── lib/              # Shared library code
 │   └── supabase/     # Supabase client helpers
-└── middleware.ts      # Auth + role-based routing
+└── middleware.ts      # Auth + role-based routing (renames to proxy.ts in a future Next 16 minor)
 
 supabase/
-├── migrations/       # SQL migration files (00001-00012)
+├── migrations/       # SQL migration files (00001-00019)
 └── seed.sql          # Demo data for local development
 ```
 
@@ -92,12 +103,31 @@ Migrations are in `supabase/migrations/` and run in order:
 10. Audit log
 11. Triggers (auto updated_at)
 12. RLS policies (role-based)
+13. Supabase advisor fixes (security_invoker, search_path hardening)
+14. Deterministic seed UUIDs
+15. Payment methods + holds (CardCom, DTS, VPay)
+16. Authorized-payment unique partial index
+17. Therapist gender + booking gender preference
+18. Deferred-assignment workflow (unassigned queue + SLA)
+19. Spa settings (on-call manager name + phone)
 
 ## Scripts
 
 ```bash
-npm run dev      # Start development server
-npm run build    # Production build
-npm run start    # Start production server
-npm run lint     # Run ESLint
+npm run dev            # Start development server
+npm run build          # Production build
+npm run start          # Start production server
+npm run lint           # Run ESLint
+npm run test           # Vitest one-shot (161 tests across 12 files)
+npm run test:watch     # Vitest in watch mode
+npm run demo:payments  # Seed + exercise payment adapters (tsx)
 ```
+
+## Agent guidance
+
+Read these before making changes — in order:
+
+1. [`AGENTS.md`](./AGENTS.md) — 30-second entrypoint for any AI agent (Claude, Cursor, Codex, v0, Augment, etc.).
+2. [`CLAUDE.md`](./CLAUDE.md) — product goal, stack, engineering rules, non-negotiable architecture constraints.
+3. [`docs/plans/MASTER-PLAN.md`](./docs/plans/MASTER-PLAN.md) — single source of truth for phase status.
+4. [`docs/DOC-SYNC.md`](./docs/DOC-SYNC.md) — **mandatory** pre-commit manifest: *if you change X, update Y*. Walk it before every commit.

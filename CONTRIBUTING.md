@@ -44,24 +44,30 @@ Avoid:
 - `fix`
 - `changes`
 
-## Phase branches for this project
-Build in this order:
-1. `feat/foundations`
-2. `feat/admin-crud`
-3. `feat/scheduling-core`
-4. `feat/payments`
-5. `feat/customer-booking`
-6. `feat/chatbot-foundation`
-7. `feat/staff-inbox-polish`
+## Branch naming in practice
+
+Feature branches use descriptive kebab names:
+
+- `feat/<short-kebab-topic>` — e.g. `feat/operator-reality-check`, `feat/vercel-analytics`
+- `fix/<short-kebab-topic>` — e.g. `fix/payment-webhook-idempotency`
+- `chore/<short-kebab-topic>` — e.g. `chore/remove-therapist-avatars`
+
+Large multi-PR efforts may use a shared prefix (e.g. `feat/phase-4-qa-*`),
+but this is optional. **Phase and SPA-* / DEF-* references live in the PR
+description, not the branch name** — phase tags on branches were found to
+drift as work got reshaped.
 
 ## Definition of done for a branch
+
 Before merging:
-- app runs locally
+
+- CI gate passes (`tsc --noEmit`, `lint`, `test`, `build` — see
+  `.github/workflows/ci.yml`)
 - schema/migrations are valid
-- no obvious TypeScript errors
-- key flow for that branch works end-to-end
-- README updated if setup changed
-- PR description is complete
+- key flow for that branch works end-to-end (manual smoke or automated test)
+- `docs/DOC-SYNC.md` manifest walked — every doc listed for the changes is
+  updated in the same PR
+- PR description is complete and the `## Docs sync` checklist is filled in
 
 ## Rules for Claude Code
 - Claude works only on the current branch
