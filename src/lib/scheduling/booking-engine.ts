@@ -958,6 +958,23 @@ export async function findSlots(
   const dayStart = startOfDay(date);
   const dayEnd = endOfDay(date);
 
+  // Phase 4.6: load spa-wide business hours + slot granularity. Fall back
+  // to the baked-in defaults if the row doesn't exist yet (e.g. during a
+  // migration window or a fresh DB that hasn't had the seed applied).
+  const { data: settingsRow } = await supabase
+    .from("spa_settings")
+    .select("business_hours_start, business_hours_end, slot_granularity_minutes")
+    .eq("id", 1)
+    .maybeSingle();
+  const spaSettings = {
+    businessHoursStart:
+      (settingsRow?.business_hours_start as string | undefined) ?? "09:00",
+    businessHoursEnd:
+      (settingsRow?.business_hours_end as string | undefined) ?? "21:00",
+    slotGranularityMinutes:
+      (settingsRow?.slot_granularity_minutes as number | undefined) ?? 60,
+  };
+
   // Fetch service
   const { data: service, error: svcErr } = await supabase
     .from("services")
@@ -1076,5 +1093,6 @@ export async function findSlots(
     unassignedBookings,
     filterTherapistId: therapistId,
     minStart: options.minStart,
+    spaSettings,
   });
 }

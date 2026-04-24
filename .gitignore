@@ -79,3 +79,4 @@ next-env.d.ts
 .zencoder/
 # Top-level `skills/` is also a symlink shortcut into .agents/skills/.
 /skills/
+.cursor/

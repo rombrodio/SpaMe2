@@ -10,6 +10,7 @@ import { VpayVoucherForm } from "./voucher-vpay-form";
 import { updateOrderDetailsAction } from "@/lib/actions/payments";
 import { he } from "@/lib/i18n/he";
 import type { PaymentMethod } from "@/lib/payments/types";
+import type { PaymentsMockState } from "@/lib/payments/providers";
 
 export interface OrderPageBooking {
   id: string;
@@ -39,6 +40,8 @@ interface OrderPageProps {
   booking: OrderPageBooking;
   customer: OrderPageCustomer;
   service: OrderPageService;
+  /** Phase 4.6: per-provider mock flags surfaced by the server. */
+  mockState: PaymentsMockState;
 }
 
 export function OrderPage(props: OrderPageProps) {
@@ -114,6 +117,7 @@ export function OrderPage(props: OrderPageProps) {
           bookingId={props.booking.id}
           serviceName={props.service.name}
           priceAgorot={props.service.priceAgorot}
+          mockState={props.mockState}
         />
       )}
 
@@ -133,6 +137,7 @@ function MethodForm(props: {
   bookingId: string;
   serviceName: string;
   priceAgorot: number;
+  mockState: PaymentsMockState;
 }) {
   if (
     props.method === "credit_card_full" ||
@@ -145,6 +150,7 @@ function MethodForm(props: {
         method={props.method}
         serviceName={props.serviceName}
         priceAgorot={props.priceAgorot}
+        mockMode={props.mockState.cardcom}
       />
     );
   }
@@ -154,6 +160,7 @@ function MethodForm(props: {
         token={props.token}
         bookingId={props.bookingId}
         serviceName={props.serviceName}
+        mockMode={props.mockState.dts}
       />
     );
   }
@@ -164,6 +171,7 @@ function MethodForm(props: {
         bookingId={props.bookingId}
         serviceName={props.serviceName}
         priceAgorot={props.priceAgorot}
+        mockMode={props.mockState.vpay}
       />
     );
   }

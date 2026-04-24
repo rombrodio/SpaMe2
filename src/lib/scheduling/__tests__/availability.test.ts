@@ -358,6 +358,47 @@ describe("findAvailableSlots", () => {
     }
   });
 
+  it("Phase 4.6: 09:00-21:00 / 60-min grid / 90-min service emits hourly starts 09:00-19:00", () => {
+    // Business-hours window 09:00-21:00, hourly granularity, 90-minute
+    // service (60 duration + no buffer — bumped for the test). The last
+    // legal start is 19:30 on a 30-min grid, but on a 60-min grid it's
+    // 19:00 because 20:00 + 90min = 21:30 which is past closing.
+    const date = makeDate("2025-01-01", "12:00");
+    const hourlyRule: AvailabilityRule = makeRule({
+      start_time: "07:00", // intentionally earlier than business hours
+      end_time: "22:00", // intentionally later than business hours
+    });
+    const longService = {
+      ...service,
+      duration_minutes: 90,
+      buffer_minutes: 0,
+    };
+    const slots = findAvailableSlots({
+      date,
+      service: longService,
+      therapists: [{ ...therapist, availabilityRules: [hourlyRule] }],
+      rooms: [room],
+      existingBookings: [],
+      spaSettings: {
+        businessHoursStart: "09:00",
+        businessHoursEnd: "21:00",
+        slotGranularityMinutes: 60,
+      },
+    });
+    // Every slot start is on the hour.
+    for (const slot of slots) {
+      const zoned = toZonedTime(slot.start, TZ);
+      expect(zoned.getMinutes()).toBe(0);
+    }
+    // First slot 09:00, last slot 19:00 (90 min service fits 19:00-20:30).
+    const firstHour = toZonedTime(slots[0].start, TZ).getHours();
+    const lastHour = toZonedTime(slots[slots.length - 1].start, TZ).getHours();
+    expect(firstHour).toBe(9);
+    expect(lastHour).toBe(19);
+    // Exactly 11 slots: 09:00 through 19:00 inclusive.
+    expect(slots.length).toBe(11);
+  });
+
   it("DEF-006: snaps off-grid rule start times to the 15-minute grid", () => {
     // Rule starts at 06:34, ends at 22:45. Even with an arbitrary start
     // minute the slot generator should emit only 15-minute boundaries:

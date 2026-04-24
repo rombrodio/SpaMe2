@@ -177,7 +177,8 @@ supabase/migrations/
 ├── 00016_payment_status_authorized_index.sql (partial unique index — one in-flight payment per role)
 ├── 00017_therapist_gender.sql               (therapist gender + booking gender preference)
 ├── 00018_deferred_assignment.sql            (unassigned-booking queue, manager alerts, therapist SLA)
-└── 00019_spa_settings.sql                   (single-row spa_settings: on-call manager name + phone)
+├── 00019_spa_settings.sql                   (single-row spa_settings: on-call manager name + phone)
+└── 00020_business_hours.sql                 (spa-wide business hours + slot granularity)
 ```
 
 ---
@@ -492,6 +493,49 @@ has 2 hours to confirm → manager re-alerted on timeout. Driven by
 `00018_deferred_assignment.sql` migration (assignment_status enum +
 pending_confirmation SLA), `/api/cron/assignment-monitor` cron (15-min),
 `src/lib/messaging/on-call-manager.ts`, `src/lib/actions/assignments.ts`.
+
+### Phase 4.6: Testable Deploy Unblockers — COMPLETE
+
+One PR that unlocked `spa-me2.vercel.app` as a testable end-to-end
+environment for admin / therapists / clients without any real payment
+credentials. Three workstreams landed together:
+
+- **Reset-password + localhost sweep.** The forgot-password flow now
+  prefers `NEXT_PUBLIC_APP_URL` over `window.location.origin` so the
+  email redirect is always the deployed domain. Six silent
+  `|| "http://localhost:3000"` fallbacks across the actions were
+  replaced with a hard-fail `getAppUrl()` helper in
+  `src/lib/app-url.ts` — misconfigured prod env vars now throw loud
+  errors instead of baking localhost into outbound emails.
+- **Business hours + slot granularity.** New migration 00020 adds
+  `business_hours_start` / `business_hours_end` / `slot_granularity_
+  minutes` columns to `spa_settings` (defaults `09:00 / 21:00 / 60`).
+  Settings UI exposes all three. `findAvailableSlots` reads spa
+  settings, clips therapist availability windows to the spa-wide
+  business hours, and emits slot starts at the configured granularity.
+  On a 60-min grid with a 90-min service, a 10:00 booking blocks the
+  11:00 slot (would run past 12:00-service-end if placed). First
+  bookable start each day is 09:00; last is 19:00 when the service
+  duration is 90 min.
+- **Mock payment UX.** A first-party test-mode CardCom form replaces
+  the hosted-page iframe when `PAYMENTS_CARDCOM_PROVIDER=mock`: fake
+  16-digit card + expiry + CVV fields, any input accepted, 1-sec
+  spinner, auto-confirm via the existing `simulateCardcomWebhook
+  Action` path. DTS + VPay voucher forms carry TEST MODE banners with
+  demo-card hints. A global amber TEST MODE strip sits at the top of
+  every `/order/[token]/*` page when any provider is mocked.
+
+The `simulateCardcomWebhookAction` guard was loosened from
+`NODE_ENV=production` to `PAYMENTS_CARDCOM_PROVIDER=real` so the mock
+path works in production as long as the provider env is set to mock.
+
+### Confirmed decisions (Phase 4.6)
+
+- Spa operating hours default to **09:00-21:00**, admin-editable.
+- Slot granularity defaults to **60 minutes** ("treatments start on
+  the hour only"). 15 and 30 remain allowed values in the schema.
+- `APP_URL` and `NEXT_PUBLIC_APP_URL` are **required** in production —
+  no silent localhost fallback anywhere in the actions.
 
 ### Phase 5.5: Operator Reality Check & Calendar for 20 Therapists (PRs #15, #17) — COMPLETE
 

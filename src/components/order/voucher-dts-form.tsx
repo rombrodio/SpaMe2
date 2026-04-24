@@ -16,6 +16,8 @@ interface DtsVoucherFormProps {
   token: string;
   bookingId: string;
   serviceName: string;
+  /** Phase 4.6: when true, renders a TEST MODE banner + demo-card hint. */
+  mockMode?: boolean;
 }
 
 interface DtsBalanceItem {
@@ -39,7 +41,24 @@ type Step = "card" | "items" | "redeeming" | "done";
  * For V1 we redeem exactly one unit. The action accepts an array, so a
  * future iteration can extend this to multi-pick.
  */
-export function DtsVoucherForm({
+export function DtsVoucherForm(props: DtsVoucherFormProps) {
+  return (
+    <>
+      {props.mockMode && (
+        <div
+          dir="rtl"
+          className="mb-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900"
+        >
+          <strong>TEST MODE</strong> · כל מספר ברקוד יאשר. לדוגמה:{" "}
+          <span className="font-mono">1234567890</span>
+        </div>
+      )}
+      <DtsVoucherFormInner {...props} />
+    </>
+  );
+}
+
+function DtsVoucherFormInner({
   token,
   bookingId,
   serviceName,

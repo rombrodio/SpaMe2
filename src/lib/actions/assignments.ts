@@ -15,6 +15,7 @@ import {
   notifyManagerReassign,
   notifyTherapistRequest,
 } from "@/lib/messaging/notify";
+import { getAppUrl } from "@/lib/app-url";
 
 /**
  * Manager assignment screen (/admin/assignments) backend.
@@ -404,7 +405,7 @@ export async function assignTherapistAction(formData: FormData) {
   }
 
   // Fire therapist notification (non-fatal if it fails — audit captures).
-  const appUrl = process.env.APP_URL || "http://localhost:3000";
+  const appUrl = getAppUrl();
   const customerFirstName =
     booking.customers?.full_name?.trim().split(/\s+/)[0] ?? "";
   await notifyTherapistRequest({
@@ -606,7 +607,7 @@ export async function declineAssignmentAction(formData: FormData) {
     return { error: { _form: [updErr.message] } };
   }
 
-  const appUrl = process.env.APP_URL || "http://localhost:3000";
+  const appUrl = getAppUrl();
   await notifyManagerReassign({
     bookingId: parsed.data.booking_id,
     therapistName: therapistNameSnapshot,

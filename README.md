@@ -77,7 +77,7 @@ src/
 └── middleware.ts      # Auth + role-based routing (renames to proxy.ts in a future Next 16 minor)
 
 supabase/
-├── migrations/       # SQL migration files (00001-00019)
+├── migrations/       # SQL migration files (00001-00020)
 └── seed.sql          # Demo data for local development
 ```
 
@@ -110,6 +110,7 @@ Migrations are in `supabase/migrations/` and run in order:
 17. Therapist gender + booking gender preference
 18. Deferred-assignment workflow (unassigned queue + SLA)
 19. Spa settings (on-call manager name + phone)
+20. Business hours + slot granularity (configurable via Settings)
 
 ## Scripts
 

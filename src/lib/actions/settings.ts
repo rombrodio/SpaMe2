@@ -18,6 +18,9 @@ import { writeAuditLog } from "@/lib/audit";
 export interface SpaSettingsRow {
   on_call_manager_name: string | null;
   on_call_manager_phone: string | null;
+  business_hours_start: string;
+  business_hours_end: string;
+  slot_granularity_minutes: number;
   updated_at: string;
 }
 
@@ -25,7 +28,9 @@ export async function getSpaSettings(): Promise<SpaSettingsRow | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("spa_settings")
-    .select("on_call_manager_name, on_call_manager_phone, updated_at")
+    .select(
+      "on_call_manager_name, on_call_manager_phone, business_hours_start, business_hours_end, slot_granularity_minutes, updated_at"
+    )
     .eq("id", 1)
     .maybeSingle();
   if (error || !data) return null;
@@ -43,6 +48,15 @@ export async function updateSpaSettings(formData: FormData) {
       typeof raw.on_call_manager_phone === "string"
         ? raw.on_call_manager_phone.trim()
         : "",
+    business_hours_start:
+      typeof raw.business_hours_start === "string"
+        ? raw.business_hours_start
+        : undefined,
+    business_hours_end:
+      typeof raw.business_hours_end === "string"
+        ? raw.business_hours_end
+        : undefined,
+    slot_granularity_minutes: raw.slot_granularity_minutes,
   });
 
   if (!parsed.success) {
@@ -70,19 +84,26 @@ export async function updateSpaSettings(formData: FormData) {
 
   const { data: oldRow } = await supabase
     .from("spa_settings")
-    .select("on_call_manager_name, on_call_manager_phone")
+    .select(
+      "on_call_manager_name, on_call_manager_phone, business_hours_start, business_hours_end, slot_granularity_minutes"
+    )
     .eq("id", 1)
     .maybeSingle();
 
+  const newData = {
+    on_call_manager_name:
+      parsed.data.on_call_manager_name === ""
+        ? null
+        : parsed.data.on_call_manager_name,
+    on_call_manager_phone: normalizedPhone,
+    business_hours_start: parsed.data.business_hours_start,
+    business_hours_end: parsed.data.business_hours_end,
+    slot_granularity_minutes: parsed.data.slot_granularity_minutes,
+  };
+
   const { error } = await supabase
     .from("spa_settings")
-    .update({
-      on_call_manager_name:
-        parsed.data.on_call_manager_name === ""
-          ? null
-          : parsed.data.on_call_manager_name,
-      on_call_manager_phone: normalizedPhone,
-    })
+    .update(newData)
     .eq("id", 1);
   if (error) {
     return { error: { _form: [error.message] } };
@@ -94,13 +115,7 @@ export async function updateSpaSettings(formData: FormData) {
     entityType: "spa_settings",
     entityId: "1",
     oldData: oldRow ?? undefined,
-    newData: {
-      on_call_manager_name:
-        parsed.data.on_call_manager_name === ""
-          ? null
-          : parsed.data.on_call_manager_name,
-      on_call_manager_phone: normalizedPhone,
-    },
+    newData,
   });
 
   revalidatePath("/admin/settings");

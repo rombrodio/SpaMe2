@@ -37,7 +37,22 @@ export interface UnassignedBookingForMatcher {
   eligibleTherapistIds: readonly string[];
 }
 
-const SLOT_INCREMENT_MINUTES = 15;
+/**
+ * Legacy default — kept only so tests that don't pass `spaSettings`
+ * still produce a deterministic grid. Real runtime resolves granularity
+ * via spa_settings.slot_granularity_minutes.
+ */
+const DEFAULT_SLOT_INCREMENT_MINUTES = 15;
+
+/** Runtime-effective spa settings the slot engine reads. */
+export interface SpaSettingsForEngine {
+  /** HH:MM */
+  businessHoursStart: string;
+  /** HH:MM */
+  businessHoursEnd: string;
+  /** 15, 30, or 60 */
+  slotGranularityMinutes: number;
+}
 
 /**
  * Round a Date up to the next multiple of `mins` minutes. If `date` already
@@ -51,6 +66,31 @@ function ceilToMinuteBoundary(date: Date, mins: number): Date {
   const ms = date.getTime();
   const remainder = ms % step;
   return remainder === 0 ? date : new Date(ms + (step - remainder));
+}
+
+/**
+ * Clip each availability window to the business-hours bounds for the same
+ * calendar day. Windows fully outside [businessStart, businessEnd] are
+ * dropped. Used in `findAvailableSlots` so a therapist rule like 07:00–22:00
+ * collapses to the spa-wide 09:00–21:00 window.
+ */
+function clipWindowsToBusinessHours(
+  date: Date,
+  windows: Array<{ start: Date; end: Date }>,
+  businessHoursStart: string,
+  businessHoursEnd: string
+): Array<{ start: Date; end: Date }> {
+  const bizStart = timeToDate(date, businessHoursStart);
+  const bizEnd = timeToDate(date, businessHoursEnd);
+  const clipped: Array<{ start: Date; end: Date }> = [];
+  for (const w of windows) {
+    const start = isAfter(w.start, bizStart) ? w.start : bizStart;
+    const endD = isBefore(w.end, bizEnd) ? w.end : bizEnd;
+    if (isBefore(start, endD)) {
+      clipped.push({ start, end: endD });
+    }
+  }
+  return clipped;
 }
 
 const DAY_MAP: Record<string, number> = {
@@ -432,6 +472,12 @@ export function findAvailableSlots(params: {
    * past and near-future slots don't appear on "today".
    */
   minStart?: Date;
+  /**
+   * Spa-wide config: the outer business-hours window and the granularity
+   * at which slot starts are emitted. When omitted, defaults are used
+   * (09:00–21:00, 15 min) so existing tests keep working.
+   */
+  spaSettings?: SpaSettingsForEngine;
 }): AvailableSlot[] {
   const {
     date,
@@ -442,9 +488,12 @@ export function findAvailableSlots(params: {
     unassignedBookings,
     filterTherapistId,
     minStart,
+    spaSettings,
   } = params;
   const totalMinutes = service.duration_minutes + service.buffer_minutes;
   const slots: AvailableSlot[] = [];
+  const slotStepMinutes =
+    spaSettings?.slotGranularityMinutes ?? DEFAULT_SLOT_INCREMENT_MINUTES;
 
   // Filter therapists who can perform this service
   const qualifiedTherapists = therapists.filter((t) => {
@@ -471,17 +520,31 @@ export function findAvailableSlots(params: {
       : [];
 
   for (const therapist of qualifiedTherapists) {
-    const windows = getTherapistWindows(
+    let windows = getTherapistWindows(
       date,
       therapist.availabilityRules,
       therapist.timeOffs
     );
 
+    // Phase 4.6: clip therapist windows to the spa-wide business hours
+    // so a rule ending at 22:00 can't emit slots past the spa's closing
+    // time. When no spaSettings is supplied we skip the clip to preserve
+    // the pre-4.6 test behaviour.
+    if (spaSettings) {
+      windows = clipWindowsToBusinessHours(
+        date,
+        windows,
+        spaSettings.businessHoursStart,
+        spaSettings.businessHoursEnd
+      );
+    }
+
     for (const window of windows) {
-      // DEF-006: snap the first candidate start up to the next 15-minute grid
-      // boundary so availability rules with off-grid start times (e.g. 06:34)
-      // don't produce irregular slot lists like 06:34, 06:49, 07:04...
-      let slotStart = ceilToMinuteBoundary(window.start, SLOT_INCREMENT_MINUTES);
+      // DEF-006 + Phase 4.6: snap the first candidate start up to the
+      // configured granularity so a 60-min grid emits 09:00, 10:00, ...
+      // and a 15-min grid emits 09:00, 09:15, ... regardless of the
+      // raw rule start time.
+      let slotStart = ceilToMinuteBoundary(window.start, slotStepMinutes);
 
       while (true) {
         const slotEnd = addMinutes(slotStart, totalMinutes);
@@ -490,7 +553,7 @@ export function findAvailableSlots(params: {
         // Skip slots that start before the caller-specified minimum.
         // Used by /book to hide past + near-future times on "today".
         if (minStart && isBefore(slotStart, minStart)) {
-          slotStart = addMinutes(slotStart, SLOT_INCREMENT_MINUTES);
+          slotStart = addMinutes(slotStart, slotStepMinutes);
           continue;
         }
 
@@ -553,7 +616,7 @@ export function findAvailableSlots(params: {
           }
         }
 
-        slotStart = addMinutes(slotStart, SLOT_INCREMENT_MINUTES);
+        slotStart = addMinutes(slotStart, slotStepMinutes);
       }
     }
   }

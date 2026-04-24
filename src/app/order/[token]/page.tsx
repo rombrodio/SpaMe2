@@ -6,6 +6,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { he } from "@/lib/i18n/he";
 import { OrderPage } from "@/components/order/order-page";
+import { getPaymentsMockState } from "@/lib/payments/providers";
 
 export const dynamic = "force-dynamic";
 
@@ -115,6 +116,7 @@ export default async function OrderTokenPage({ params }: PageProps) {
         durationMinutes: booking.services.duration_minutes,
         priceAgorot: booking.services.price_ils,
       }}
+      mockState={getPaymentsMockState()}
     />
   );
 }

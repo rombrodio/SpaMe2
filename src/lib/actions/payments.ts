@@ -28,17 +28,17 @@ import { writeAuditLog } from "@/lib/audit";
 import { DtsError } from "@/lib/payments/dts";
 import { VpayProxyError } from "@/lib/payments/vpay";
 import { CardComError } from "@/lib/payments/cardcom";
+import { getAppUrl } from "@/lib/app-url";
 
 // ────────────────────────────────────────────────────────────
 // Helpers
 // ────────────────────────────────────────────────────────────
 
 function returnUrlBase(): string {
-  return (
-    process.env.CARDCOM_RETURN_URL_BASE ??
-    process.env.NEXT_PUBLIC_APP_URL ??
-    "http://localhost:3000"
-  );
+  // Explicit CardCom override > shared app URL. No silent localhost fallback.
+  const explicit = process.env.CARDCOM_RETURN_URL_BASE;
+  if (explicit) return explicit.replace(/\/+$/, "");
+  return getAppUrl();
 }
 
 /**
@@ -369,9 +369,13 @@ export async function getPaymentsForBooking(bookingId: string) {
 }
 
 // ────────────────────────────────────────────────────────────
-// Dev-only: simulate a CardCom webhook for the mock provider so the
-// /order/<token> flow can be driven end-to-end without a real iframe
-// submit. Guarded by NODE_ENV + PAYMENTS_CARDCOM_PROVIDER=mock.
+// Simulate a CardCom webhook for the mock provider so the /order/<token>
+// flow can be driven end-to-end without a real iframe submit.
+//
+// Phase 4.6: the guard was tightened from NODE_ENV to provider-env only.
+// The "testable deploy" goal requires this to work in production as long
+// as PAYMENTS_CARDCOM_PROVIDER=mock — otherwise the hosted test site
+// can't complete a payment.
 // ────────────────────────────────────────────────────────────
 
 export async function simulateCardcomWebhookAction(input: {
@@ -379,9 +383,6 @@ export async function simulateCardcomWebhookAction(input: {
   booking_id: string;
   outcome: "succeeded" | "failed";
 }) {
-  if (process.env.NODE_ENV === "production") {
-    return { error: { _form: ["Not available in production"] } };
-  }
   if (process.env.PAYMENTS_CARDCOM_PROVIDER === "real") {
     return { error: { _form: ["Real CardCom provider is active"] } };
   }

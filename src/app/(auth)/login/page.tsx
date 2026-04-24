@@ -56,9 +56,14 @@ function LoginForm() {
     setLoading(true);
 
     const supabase = createClient();
+    // Prefer the deterministic prod URL so the email always opens the live
+    // site — `window.location.origin` would bake `localhost:3000` into the
+    // email forever if the user triggered reset from a dev session.
+    const baseUrl =
+      process.env.NEXT_PUBLIC_APP_URL ?? window.location.origin;
     const { error: resetError } = await supabase.auth.resetPasswordForEmail(
       email,
-      { redirectTo: `${window.location.origin}/callback?next=/set-password` }
+      { redirectTo: `${baseUrl}/callback?next=/set-password` }
     );
 
     setLoading(false);
