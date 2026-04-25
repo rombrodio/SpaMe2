@@ -8,7 +8,7 @@ import { CardComPaymentForm } from "./cardcom-iframe";
 import { DtsVoucherForm } from "./voucher-dts-form";
 import { VpayVoucherForm } from "./voucher-vpay-form";
 import { updateOrderDetailsAction } from "@/lib/actions/payments";
-import { he } from "@/lib/i18n/he";
+import { useTranslations } from "next-intl";
 import type { PaymentMethod } from "@/lib/payments/types";
 import type { PaymentsMockState } from "@/lib/payments/providers";
 
@@ -46,6 +46,7 @@ interface OrderPageProps {
 
 export function OrderPage(props: OrderPageProps) {
   const router = useRouter();
+  const t = useTranslations();
   const [saving, startSave] = useTransition();
   const [fullName, setFullName] = useState(props.customer.fullName);
   const [email, setEmail] = useState(props.customer.email);
@@ -70,7 +71,7 @@ export function OrderPage(props: OrderPageProps) {
 
       if ("error" in result && result.error) {
         const msgs = Object.values(result.error).flat().filter(Boolean);
-        setEditError(msgs[0] ?? he.common.errorGeneric);
+        setEditError(msgs[0] ?? t("common.errorGeneric"));
         return;
       }
 
@@ -81,7 +82,7 @@ export function OrderPage(props: OrderPageProps) {
   return (
     <div className="space-y-6">
       <header className="text-center">
-        <h1 className="text-2xl font-bold">{he.order.pageTitle}</h1>
+        <h1 className="text-2xl font-bold">{t("customer.order.pageTitle")}</h1>
       </header>
 
       <BookingSummary
@@ -180,14 +181,11 @@ function MethodForm(props: {
 }
 
 function CancellationPolicyNote() {
+  const t = useTranslations("customer.order.cancellationPolicy");
   return (
     <section className="rounded-md border border-stone-200 bg-white p-4 text-sm">
-      <h2 className="font-medium text-stone-900">
-        {he.order.cancellationPolicy.heading}
-      </h2>
-      <p className="mt-1 text-stone-600">
-        {he.order.cancellationPolicy.summary}
-      </p>
+      <h2 className="font-medium text-stone-900">{t("heading")}</h2>
+      <p className="mt-1 text-stone-600">{t("summary")}</p>
     </section>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { he } from "@/lib/i18n/he";
+import { useTranslations } from "next-intl";
 import type { PaymentMethod } from "@/lib/payments/types";
 
 interface MethodPickerProps {
@@ -15,34 +15,33 @@ interface MethodOption {
 }
 
 export function MethodPicker({ selected, onSelect }: MethodPickerProps) {
+  const t = useTranslations("customer.order.methodPicker");
   const options: MethodOption[] = [
     {
       id: "credit_card_full",
-      title: he.order.methodPicker.creditCardFull.title,
-      subtitle: he.order.methodPicker.creditCardFull.subtitle,
+      title: t("creditCardFull.title"),
+      subtitle: t("creditCardFull.subtitle"),
     },
     {
       id: "cash_at_reception",
-      title: he.order.methodPicker.cashAtReception.title,
-      subtitle: he.order.methodPicker.cashAtReception.subtitle,
+      title: t("cashAtReception.title"),
+      subtitle: t("cashAtReception.subtitle"),
     },
     {
       id: "voucher_dts",
-      title: he.order.methodPicker.voucherDts.title,
-      subtitle: he.order.methodPicker.voucherDts.subtitle,
+      title: t("voucherDts.title"),
+      subtitle: t("voucherDts.subtitle"),
     },
     {
       id: "voucher_vpay",
-      title: he.order.methodPicker.voucherVpay.title,
-      subtitle: he.order.methodPicker.voucherVpay.subtitle,
+      title: t("voucherVpay.title"),
+      subtitle: t("voucherVpay.subtitle"),
     },
   ];
 
   return (
     <section>
-      <h2 className="mb-3 text-lg font-semibold">
-        {he.order.methodPicker.heading}
-      </h2>
+      <h2 className="mb-3 text-lg font-semibold">{t("heading")}</h2>
       <div role="radiogroup" className="space-y-2">
         {options.map((opt) => {
           const isSelected = opt.id === selected;

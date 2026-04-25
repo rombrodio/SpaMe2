@@ -4,7 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyOrderToken } from "@/lib/payments/jwt";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { he } from "@/lib/i18n/he";
+import { getTranslations } from "next-intl/server";
 import { DevCardcomSimulator } from "@/components/order/dev-cardcom-simulator";
 
 export const dynamic = "force-dynamic";
@@ -36,26 +36,27 @@ interface PageProps {
 export default async function ReturnPage({ params, searchParams }: PageProps) {
   const { token } = await params;
   const { r, pid } = await searchParams;
+  const t = await getTranslations();
 
   const verified = await verifyOrderToken(token);
   if (!verified.ok) {
     return renderShell(
-      he.order.holdExpired.heading,
+      t("customer.order.holdExpired.heading"),
       verified.reason === "expired"
-        ? he.order.errors.tokenExpired
-        : he.order.errors.tokenInvalid
+        ? t("customer.order.errors.tokenExpired")
+        : t("customer.order.errors.tokenInvalid")
     );
   }
 
   if (r === "cancel") {
     return renderShell(
-      he.order.errors.paymentFailed,
-      he.order.errors.paymentFailed,
+      t("customer.order.errors.paymentFailed"),
+      t("customer.order.errors.paymentFailed"),
       <Link
         href={`/order/${token}`}
         className={cn(buttonVariants({ variant: "default" }))}
       >
-        {he.common.tryAgain}
+        {t("common.tryAgain")}
       </Link>
     );
   }
@@ -82,13 +83,13 @@ export default async function ReturnPage({ params, searchParams }: PageProps) {
       .maybeSingle();
     if (payment?.status === "failed") {
       return renderShell(
-        he.order.errors.paymentFailed,
-        he.order.errors.paymentFailed,
+        t("customer.order.errors.paymentFailed"),
+        t("customer.order.errors.paymentFailed"),
         <Link
           href={`/order/${token}`}
           className={cn(buttonVariants({ variant: "default" }))}
         >
-          {he.common.tryAgain}
+          {t("common.tryAgain")}
         </Link>
       );
     }
@@ -107,8 +108,8 @@ export default async function ReturnPage({ params, searchParams }: PageProps) {
     (process.env.PAYMENTS_CARDCOM_PROVIDER ?? "mock") !== "real";
 
   return renderShell(
-    he.order.cardcom.waiting,
-    he.order.cardcom.waiting,
+    t("customer.order.cardcom.waiting"),
+    t("customer.order.cardcom.waiting"),
     isMockMode ? (
       <DevCardcomSimulator token={token} bookingId={verified.claims.bid} />
     ) : null,

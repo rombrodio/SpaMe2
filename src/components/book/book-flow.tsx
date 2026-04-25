@@ -12,7 +12,9 @@ import {
   type PublicSlot,
   type GenderPreference,
 } from "@/lib/actions/book";
-import { he, formatDateTimeILFull } from "@/lib/i18n/he";
+import { useTranslations, useLocale } from "next-intl";
+import { formatDateTimeILFull } from "@/lib/i18n/format";
+import type { Locale } from "@/i18n/config";
 import { Button } from "@/components/ui/button";
 
 export interface BookService {
@@ -31,6 +33,7 @@ interface BookFlowProps {
 
 export function BookFlow({ services }: BookFlowProps) {
   const router = useRouter();
+  const t = useTranslations();
   const [step, setStep] = useState<Step>("service");
 
   const [selectedService, setSelectedService] = useState<BookService | null>(
@@ -123,7 +126,7 @@ export function BookFlow({ services }: BookFlowProps) {
         return;
       }
       if (!("data" in result)) {
-        setFormErrors({ _form: [he.common.errorGeneric] });
+        setFormErrors({ _form: [t("common.errorGeneric")] });
         return;
       }
 
@@ -181,10 +184,11 @@ export function BookFlow({ services }: BookFlowProps) {
 // ── Subcomponents in-file for locality ──
 
 function StepIndicator({ step }: { step: Step }) {
+  const t = useTranslations("customer.book");
   const steps: Array<{ id: Step; label: string }> = [
-    { id: "service", label: he.book.stepService.heading },
-    { id: "slot", label: he.book.stepSlot.heading },
-    { id: "contact", label: he.book.stepContact.heading },
+    { id: "service", label: t("stepService.heading") },
+    { id: "slot", label: t("stepSlot.heading") },
+    { id: "contact", label: t("stepContact.heading") },
   ];
   return (
     <ol className="flex justify-between text-xs font-medium text-stone-600">
@@ -217,10 +221,11 @@ function ServicesList({
   services: BookService[];
   onPick: (s: BookService) => void;
 }) {
+  const t = useTranslations("customer.order.errors");
   if (services.length === 0) {
     return (
       <div className="rounded-md border border-stone-200 bg-white p-6 text-center text-stone-600">
-        {he.order.errors.bookingNotFound}
+        {t("bookingNotFound")}
       </div>
     );
   }
@@ -240,16 +245,19 @@ function SelectedServiceBanner({
   service: BookService;
   onChange: () => void;
 }) {
+  const t = useTranslations();
   return (
     <div className="flex items-center justify-between rounded-md border border-stone-200 bg-white px-4 py-3 text-sm">
       <div>
         <div className="font-medium">{service.name}</div>
         <div className="text-stone-600">
-          {he.book.stepService.minutes(service.duration_minutes)}
+          {t("customer.book.stepService.minutes", {
+            count: service.duration_minutes,
+          })}
         </div>
       </div>
       <Button type="button" variant="ghost" size="sm" onClick={onChange}>
-        {he.common.edit}
+        {t("common.edit")}
       </Button>
     </div>
   );
@@ -268,12 +276,14 @@ function SelectedSummary({
   onChangeSlot: () => void;
   onChangeService: () => void;
 }) {
+  const t = useTranslations();
+  const locale = useLocale() as Locale;
   const genderLabel =
     genderPreference === "any"
-      ? he.book.stepSlot.gender.any
+      ? t("customer.book.stepSlot.gender.any")
       : genderPreference === "female"
-      ? he.book.stepSlot.gender.female
-      : he.book.stepSlot.gender.male;
+        ? t("customer.book.stepSlot.gender.female")
+        : t("customer.book.stepSlot.gender.male");
 
   return (
     <div className="rounded-md border border-stone-200 bg-white p-4 text-sm">
@@ -281,7 +291,9 @@ function SelectedSummary({
         <div>
           <div className="font-medium">{service.name}</div>
           <div className="text-stone-600">
-            {he.book.stepService.minutes(service.duration_minutes)}
+            {t("customer.book.stepService.minutes", {
+              count: service.duration_minutes,
+            })}
           </div>
         </div>
         <Button
@@ -290,19 +302,19 @@ function SelectedSummary({
           size="sm"
           onClick={onChangeService}
         >
-          {he.common.edit}
+          {t("common.edit")}
         </Button>
       </div>
       <hr className="my-3 border-stone-200" />
       <div className="flex items-center justify-between">
         <div>
-          <div>{formatDateTimeILFull(slot.start)}</div>
+          <div>{formatDateTimeILFull(slot.start, locale)}</div>
           <div className="text-stone-600">
-            {he.book.stepSlot.gender.heading}: {genderLabel}
+            {t("customer.book.stepSlot.gender.heading")}: {genderLabel}
           </div>
         </div>
         <Button type="button" variant="ghost" size="sm" onClick={onChangeSlot}>
-          {he.common.edit}
+          {t("common.edit")}
         </Button>
       </div>
     </div>

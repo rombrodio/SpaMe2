@@ -10,7 +10,7 @@ import {
   lookupVoucherBalanceAction,
   redeemDtsVoucherAction,
 } from "@/lib/actions/payments";
-import { he } from "@/lib/i18n/he";
+import { useTranslations } from "next-intl";
 
 interface DtsVoucherFormProps {
   token: string;
@@ -63,6 +63,7 @@ function DtsVoucherFormInner({
   bookingId,
   serviceName,
 }: DtsVoucherFormProps) {
+  const t = useTranslations();
   const router = useRouter();
   const [step, setStep] = useState<Step>("card");
   const [cardNumber, setCardNumber] = useState("");
@@ -82,12 +83,12 @@ function DtsVoucherFormInner({
     if ("error" in result && result.error) {
       const msg =
         Object.values(result.error).flat().filter(Boolean)[0] ??
-        he.common.errorGeneric;
+        t("common.errorGeneric");
       setError(msg);
       return false;
     }
     if (!("data" in result)) {
-      setError(he.common.errorGeneric);
+      setError(t("common.errorGeneric"));
       return false;
     }
     return true;
@@ -110,12 +111,12 @@ function DtsVoucherFormInner({
       if ("error" in result && result.error) {
         const msg =
           Object.values(result.error).flat().filter(Boolean)[0] ??
-          he.common.errorGeneric;
+          t("common.errorGeneric");
         setError(msg);
         return;
       }
       if (!("data" in result)) {
-        setError(he.common.errorGeneric);
+        setError(t("common.errorGeneric"));
         return;
       }
 
@@ -126,7 +127,7 @@ function DtsVoucherFormInner({
       const normalized = dataItems.map(normalizeItem);
       setItems(normalized);
       if (normalized.length === 0) {
-        setError(he.order.voucherDts.noItems);
+        setError(t("customer.order.voucherDts.noItems"));
         return;
       }
       setSelectedKey(itemKey(normalized[0]));
@@ -163,7 +164,7 @@ function DtsVoucherFormInner({
       if ("error" in result && result.error) {
         const msg =
           Object.values(result.error).flat().filter(Boolean)[0] ??
-          he.common.errorGeneric;
+          t("common.errorGeneric");
         setError(msg);
         setStep("items");
         return;
@@ -182,7 +183,7 @@ function DtsVoucherFormInner({
     return (
       <section className="rounded-md border border-stone-200 bg-white p-4 space-y-3">
         <div>
-          <Label htmlFor="dts_card">{he.order.voucherDts.cardNumberLabel}</Label>
+          <Label htmlFor="dts_card">{t("customer.order.voucherDts.cardNumberLabel")}</Label>
           <Input
             id="dts_card"
             type="text"
@@ -203,7 +204,7 @@ function DtsVoucherFormInner({
           onClick={handleLookup}
           disabled={busy || cardNumber.length < 4}
         >
-          {busy ? he.common.loading : he.order.voucherDts.lookupCta}
+          {busy ? t("common.loading") : t("customer.order.voucherDts.lookupCta")}
         </Button>
       </section>
     );
@@ -212,7 +213,7 @@ function DtsVoucherFormInner({
   return (
     <section className="rounded-md border border-stone-200 bg-white p-4 space-y-3">
       <h3 className="text-base font-semibold">
-        {he.order.voucherDts.pickItemsHeading}
+        {t("customer.order.voucherDts.pickItemsHeading")}
       </h3>
       <div role="radiogroup" className="space-y-2">
         {items.map((item) => {
@@ -244,7 +245,7 @@ function DtsVoucherFormInner({
                   </div>
                 </div>
                 <div className="text-xs text-stone-600">
-                  {he.order.voucherDts.qtyLabel}: {item.quantity}
+                  {t("customer.order.voucherDts.qtyLabel")}: {item.quantity}
                 </div>
               </div>
             </label>
@@ -260,8 +261,8 @@ function DtsVoucherFormInner({
         disabled={!selectedKey || busy || step === "redeeming"}
       >
         {busy || step === "redeeming"
-          ? he.common.loading
-          : he.order.voucherDts.redeemCta}
+          ? t("common.loading")
+          : t("customer.order.voucherDts.redeemCta")}
       </Button>
     </section>
   );

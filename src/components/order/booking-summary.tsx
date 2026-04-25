@@ -4,11 +4,12 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { useTranslations, useLocale } from "next-intl";
 import {
-  he,
   formatIlsFromAgorot,
   formatDateTimeILFull,
-} from "@/lib/i18n/he";
+} from "@/lib/i18n/format";
+import type { Locale } from "@/i18n/config";
 import type {
   OrderPageBooking,
   OrderPageCustomer,
@@ -46,41 +47,52 @@ export function BookingSummary({
   onEmailChange,
   onNotesChange,
 }: BookingSummaryProps) {
+  const t = useTranslations();
+  const locale = useLocale() as Locale;
   const genderLabel =
     booking.genderPreference === "any"
-      ? he.book.stepSlot.gender.any
+      ? t("customer.book.stepSlot.gender.any")
       : booking.genderPreference === "female"
-      ? he.book.stepSlot.gender.female
-      : he.book.stepSlot.gender.male;
+        ? t("customer.book.stepSlot.gender.female")
+        : t("customer.book.stepSlot.gender.male");
 
   return (
     <section className="rounded-md border border-stone-200 bg-white p-4">
       <h2 className="mb-3 text-lg font-semibold">
-        {he.order.summary.heading}
+        {t("customer.order.summary.heading")}
       </h2>
 
       <dl className="grid grid-cols-[minmax(0,7rem)_minmax(0,1fr)] gap-y-2 text-sm">
-        <dt className="text-stone-600">{he.order.summary.serviceLabel}</dt>
+        <dt className="text-stone-600">
+          {t("customer.order.summary.serviceLabel")}
+        </dt>
         <dd className="font-medium">
           {service.name}{" "}
           <span className="text-stone-500">
-            · {he.book.stepService.minutes(service.durationMinutes)}
+            ·{" "}
+            {t("customer.book.stepService.minutes", {
+              count: service.durationMinutes,
+            })}
           </span>
         </dd>
 
-        <dt className="text-stone-600">{he.order.summary.dateTimeLabel}</dt>
-        <dd className="font-medium">{formatDateTimeILFull(booking.startAt)}</dd>
+        <dt className="text-stone-600">
+          {t("customer.order.summary.dateTimeLabel")}
+        </dt>
+        <dd className="font-medium">
+          {formatDateTimeILFull(booking.startAt, locale)}
+        </dd>
 
         <dt className="text-stone-600">
-          {he.book.stepSlot.gender.heading}
+          {t("customer.book.stepSlot.gender.heading")}
         </dt>
         <dd>{genderLabel}</dd>
 
         <dt className="text-stone-600 self-center">
-          {he.book.stepService.priceLabel}
+          {t("customer.book.stepService.priceLabel")}
         </dt>
         <dd className="font-semibold">
-          {formatIlsFromAgorot(service.priceAgorot)}
+          {formatIlsFromAgorot(service.priceAgorot, locale)}
         </dd>
       </dl>
 
@@ -88,7 +100,7 @@ export function BookingSummary({
 
       <EditableField
         id="full_name"
-        label={he.order.summary.customerLabel}
+        label={t("customer.order.summary.customerLabel")}
         value={customer.fullName}
         dir="rtl"
         onSave={onNameChange}
@@ -96,7 +108,9 @@ export function BookingSummary({
       />
 
       <div className="mt-3 text-sm">
-        <div className="text-stone-600">{he.order.summary.phoneLabel}</div>
+        <div className="text-stone-600">
+          {t("customer.order.summary.phoneLabel")}
+        </div>
         <div dir="ltr" className="font-medium">
           {customer.phone}
         </div>
@@ -104,7 +118,7 @@ export function BookingSummary({
 
       <EditableField
         id="email"
-        label={he.order.summary.emailLabel}
+        label={t("customer.order.summary.emailLabel")}
         value={customer.email}
         dir="ltr"
         type="email"
@@ -155,6 +169,7 @@ function EditableField({
   emptyLabel,
   onSave,
 }: EditableFieldProps) {
+  const t = useTranslations("common");
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
 
@@ -180,7 +195,7 @@ function EditableField({
               setEditing(true);
             }}
           >
-            {he.common.edit}
+            {t("edit")}
           </Button>
         ) : (
           <div className="flex gap-1">
@@ -191,7 +206,7 @@ function EditableField({
               onClick={commit}
               disabled={saving}
             >
-              {he.common.save}
+              {t("save")}
             </Button>
             <Button
               type="button"
@@ -200,7 +215,7 @@ function EditableField({
               onClick={() => setEditing(false)}
               disabled={saving}
             >
-              {he.common.cancel}
+              {t("cancel")}
             </Button>
           </div>
         )}
@@ -233,6 +248,7 @@ function EditableNotes({
   onSave: (v: string) => void;
   saving: boolean;
 }) {
+  const t = useTranslations();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
 
@@ -246,7 +262,7 @@ function EditableNotes({
     <div className="mt-3 text-sm">
       <div className="flex items-center justify-between">
         <label className="text-stone-600">
-          {he.order.summary.notesLabel}
+          {t("customer.order.summary.notesLabel")}
         </label>
         {!editing ? (
           <Button
@@ -258,7 +274,7 @@ function EditableNotes({
               setEditing(true);
             }}
           >
-            {he.common.edit}
+            {t("common.edit")}
           </Button>
         ) : (
           <div className="flex gap-1">
@@ -269,7 +285,7 @@ function EditableNotes({
               onClick={commit}
               disabled={saving}
             >
-              {he.common.save}
+              {t("common.save")}
             </Button>
             <Button
               type="button"
@@ -278,7 +294,7 @@ function EditableNotes({
               onClick={() => setEditing(false)}
               disabled={saving}
             >
-              {he.common.cancel}
+              {t("common.cancel")}
             </Button>
           </div>
         )}

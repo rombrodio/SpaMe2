@@ -1,8 +1,9 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { he, formatTimeIL } from "@/lib/i18n/he";
+import { formatTimeIL } from "@/lib/i18n/format";
 import type { PublicSlot, GenderPreference } from "@/lib/actions/book";
 
 interface SlotGridProps {
@@ -24,11 +25,12 @@ export function SlotGrid({
   loading,
   onPick,
 }: SlotGridProps) {
+  const t = useTranslations();
   return (
     <div className="space-y-4">
       <div>
         <Label htmlFor="slot-date" className="text-sm">
-          {he.book.stepSlot.dateLabel}
+          {t("customer.book.stepSlot.dateLabel")}
         </Label>
         <Input
           id="slot-date"
@@ -43,20 +45,20 @@ export function SlotGrid({
 
       {loading && (
         <div className="py-6 text-center text-stone-600">
-          {he.common.loading}
+          {t("common.loading")}
         </div>
       )}
 
       {!loading && slots.length === 0 && (
         <div className="rounded-md border border-dashed border-stone-300 bg-white p-6 text-center text-stone-600">
-          {he.book.stepSlot.noSlots}
+          {t("customer.book.stepSlot.noSlots")}
         </div>
       )}
 
       {!loading && slots.length > 0 && (
         <div>
           <div className="mb-2 text-sm font-medium text-stone-700">
-            {he.book.stepSlot.timesHeading}
+            {t("customer.book.stepSlot.timesHeading")}
           </div>
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
             {slots.map((s) => (
@@ -83,15 +85,16 @@ function GenderToggle({
   value: GenderPreference;
   onChange: (g: GenderPreference) => void;
 }) {
+  const t = useTranslations("customer.book.stepSlot.gender");
   const options: Array<{ id: GenderPreference; label: string }> = [
-    { id: "any", label: he.book.stepSlot.gender.any },
-    { id: "female", label: he.book.stepSlot.gender.female },
-    { id: "male", label: he.book.stepSlot.gender.male },
+    { id: "any", label: t("any") },
+    { id: "female", label: t("female") },
+    { id: "male", label: t("male") },
   ];
   return (
     <fieldset>
       <legend className="mb-1 text-sm font-medium text-stone-700">
-        {he.book.stepSlot.gender.heading}
+        {t("heading")}
       </legend>
       <div
         role="radiogroup"

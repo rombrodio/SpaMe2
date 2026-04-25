@@ -6,11 +6,12 @@ import { buildBookingConfirmedSms } from "@/lib/messaging/templates/booking-conf
 import { notifyManagerUnassigned } from "@/lib/messaging/notify";
 import { writeAuditLog } from "@/lib/audit";
 import { getAppUrl } from "@/lib/app-url";
+import { getTranslations, getLocale } from "next-intl/server";
 import {
-  he,
   formatDateTimeILFull,
   formatIlsFromAgorot,
-} from "@/lib/i18n/he";
+} from "@/lib/i18n/format";
+import type { Locale } from "@/i18n/config";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -34,15 +35,19 @@ interface PageProps {
  */
 export default async function OrderSuccessPage({ params }: PageProps) {
   const { token } = await params;
+  const t = await getTranslations();
+  const locale = (await getLocale()) as Locale;
 
   const verified = await verifyOrderToken(token);
   if (!verified.ok) {
     return shell({
-      heading: he.order.holdExpired.heading,
+      t,
+      locale,
+      heading: t("customer.order.holdExpired.heading"),
       body:
         verified.reason === "expired"
-          ? he.order.errors.tokenExpired
-          : he.order.errors.tokenInvalid,
+          ? t("customer.order.errors.tokenExpired")
+          : t("customer.order.errors.tokenInvalid"),
     });
   }
 
@@ -57,8 +62,10 @@ export default async function OrderSuccessPage({ params }: PageProps) {
 
   if (!booking) {
     return shell({
-      heading: he.order.holdExpired.heading,
-      body: he.order.errors.bookingNotFound,
+      t,
+      locale,
+      heading: t("customer.order.holdExpired.heading"),
+      body: t("customer.order.errors.bookingNotFound"),
     });
   }
 
@@ -81,14 +88,16 @@ export default async function OrderSuccessPage({ params }: PageProps) {
 
   if (row.status !== "confirmed" && row.status !== "completed") {
     return shell({
-      heading: he.order.cardcom.waiting,
-      body: he.order.cardcom.waiting,
+      t,
+      locale,
+      heading: t("customer.order.cardcom.waiting"),
+      body: t("customer.order.cardcom.waiting"),
       cta: (
         <Link
           href={`/order/${token}/return`}
           className={cn(buttonVariants({ variant: "default" }))}
         >
-          {he.common.tryAgain}
+          {t("common.tryAgain")}
         </Link>
       ),
     });
@@ -153,8 +162,10 @@ export default async function OrderSuccessPage({ params }: PageProps) {
   }
 
   return shell({
-    heading: he.order.success.heading,
-    body: he.order.success.body,
+    t,
+    locale,
+    heading: t("customer.order.success.heading"),
+    body: t("customer.order.success.body"),
     summary: row.services
       ? {
           serviceName: row.services.name,
@@ -166,7 +177,12 @@ export default async function OrderSuccessPage({ params }: PageProps) {
   });
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type TFn = (key: string, values?: Record<string, any>) => string;
+
 interface ShellProps {
+  t: TFn;
+  locale: Locale;
   heading: string;
   body: string;
   summary?: {
@@ -178,7 +194,7 @@ interface ShellProps {
   cta?: React.ReactNode;
 }
 
-function shell({ heading, body, summary, cta }: ShellProps) {
+function shell({ t, locale, heading, body, summary, cta }: ShellProps) {
   return (
     <div className="space-y-6">
       <header className="text-center">
@@ -204,20 +220,29 @@ function shell({ heading, body, summary, cta }: ShellProps) {
       {summary && (
         <section className="rounded-md border border-stone-200 bg-white p-4">
           <dl className="grid grid-cols-[minmax(0,7rem)_minmax(0,1fr)] gap-y-2 text-sm">
-            <dt className="text-stone-600">{he.order.summary.serviceLabel}</dt>
+            <dt className="text-stone-600">
+              {t("customer.order.summary.serviceLabel")}
+            </dt>
             <dd className="font-medium">
               {summary.serviceName}{" "}
               <span className="text-stone-500">
-                · {he.book.stepService.minutes(summary.durationMinutes)}
+                ·{" "}
+                {t("customer.book.stepService.minutes", {
+                  count: summary.durationMinutes,
+                })}
               </span>
             </dd>
-            <dt className="text-stone-600">{he.order.summary.dateTimeLabel}</dt>
+            <dt className="text-stone-600">
+              {t("customer.order.summary.dateTimeLabel")}
+            </dt>
             <dd className="font-medium">
-              {formatDateTimeILFull(summary.startAt)}
+              {formatDateTimeILFull(summary.startAt, locale)}
             </dd>
-            <dt className="text-stone-600">{he.book.stepService.priceLabel}</dt>
+            <dt className="text-stone-600">
+              {t("customer.book.stepService.priceLabel")}
+            </dt>
             <dd className="font-semibold">
-              {formatIlsFromAgorot(summary.priceAgorot)}
+              {formatIlsFromAgorot(summary.priceAgorot, locale)}
             </dd>
           </dl>
         </section>
