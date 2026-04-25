@@ -1,6 +1,8 @@
 "use client";
 
-import { he, formatIlsFromAgorot } from "@/lib/i18n/he";
+import { useTranslations, useLocale } from "next-intl";
+import { formatIlsFromAgorot } from "@/lib/i18n/format";
+import type { Locale } from "@/i18n/config";
 import type { BookService } from "./book-flow";
 
 interface ServiceCardProps {
@@ -9,6 +11,8 @@ interface ServiceCardProps {
 }
 
 export function ServiceCard({ service, onPick }: ServiceCardProps) {
+  const t = useTranslations();
+  const locale = useLocale() as Locale;
   return (
     <button
       type="button"
@@ -19,15 +23,17 @@ export function ServiceCard({ service, onPick }: ServiceCardProps) {
         <div>
           <h3 className="text-lg font-semibold">{service.name}</h3>
           <p className="text-sm text-stone-600">
-            {he.book.stepService.minutes(service.duration_minutes)}
+            {t("customer.book.stepService.minutes", {
+              count: service.duration_minutes,
+            })}
           </p>
         </div>
         <div className="text-start">
           <div className="text-lg font-semibold">
-            {formatIlsFromAgorot(service.price_ils)}
+            {formatIlsFromAgorot(service.price_ils, locale)}
           </div>
           <div className="mt-1 text-xs text-stone-500 group-hover:text-stone-700">
-            {he.common.continue} ←
+            {t("common.continue")} ←
           </div>
         </div>
       </div>

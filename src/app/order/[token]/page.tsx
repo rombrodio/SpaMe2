@@ -4,7 +4,7 @@ import { verifyOrderToken } from "@/lib/payments/jwt";
 import { isHoldExpired } from "@/lib/payments/hold";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { he } from "@/lib/i18n/he";
+import { getTranslations } from "next-intl/server";
 import { OrderPage } from "@/components/order/order-page";
 import { getPaymentsMockState } from "@/lib/payments/providers";
 
@@ -26,13 +26,14 @@ interface PageProps {
  */
 export default async function OrderTokenPage({ params }: PageProps) {
   const { token } = await params;
+  const t = await getTranslations();
 
   const verified = await verifyOrderToken(token);
   if (!verified.ok) {
-    return renderExpired(
+    return await renderExpired(
       verified.reason === "expired"
-        ? he.order.errors.tokenExpired
-        : he.order.errors.tokenInvalid
+        ? t("customer.order.errors.tokenExpired")
+        : t("customer.order.errors.tokenInvalid")
     );
   }
 
@@ -46,7 +47,7 @@ export default async function OrderTokenPage({ params }: PageProps) {
     .single();
 
   if (error || !data) {
-    return renderExpired(he.order.errors.bookingNotFound);
+    return await renderExpired(t("customer.order.errors.bookingNotFound"));
   }
 
   // Narrow the joined shape. Supabase typing defaults to array-of-joined
@@ -81,16 +82,16 @@ export default async function OrderTokenPage({ params }: PageProps) {
   };
 
   if (!booking.customers || !booking.services) {
-    return renderExpired(he.common.errorGeneric);
+    return await renderExpired(t("common.errorGeneric"));
   }
 
   // Status / hold guards. Keep the message generic to avoid leaking
   // booking-lifecycle details to anonymous callers.
   if (booking.status !== "pending_payment") {
-    return renderExpired(he.order.holdExpired.body);
+    return await renderExpired(t("customer.order.holdExpired.body"));
   }
   if (isHoldExpired(booking.hold_expires_at)) {
-    return renderExpired(he.order.holdExpired.body);
+    return await renderExpired(t("customer.order.holdExpired.body"));
   }
 
   return (
@@ -121,16 +122,17 @@ export default async function OrderTokenPage({ params }: PageProps) {
   );
 }
 
-function renderExpired(message: string) {
+async function renderExpired(message: string) {
+  const t = await getTranslations("customer.order.holdExpired");
   return (
     <div className="space-y-6 text-center">
-      <h1 className="text-2xl font-bold">{he.order.holdExpired.heading}</h1>
+      <h1 className="text-2xl font-bold">{t("heading")}</h1>
       <p className="text-stone-700">{message}</p>
       <Link
         href="/book"
         className={cn(buttonVariants({ variant: "default" }), "inline-flex")}
       >
-        {he.order.holdExpired.ctaRestart}
+        {t("ctaRestart")}
       </Link>
     </div>
   );

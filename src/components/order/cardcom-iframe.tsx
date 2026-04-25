@@ -8,7 +8,9 @@ import {
   initiatePaymentAction,
   simulateCardcomWebhookAction,
 } from "@/lib/actions/payments";
-import { he, formatIlsFromAgorot } from "@/lib/i18n/he";
+import { useTranslations, useLocale } from "next-intl";
+import { formatIlsFromAgorot } from "@/lib/i18n/format";
+import type { Locale } from "@/i18n/config";
 
 interface CardComPaymentFormProps {
   token: string;
@@ -40,6 +42,8 @@ export function CardComPaymentForm({
   priceAgorot,
   mockMode = false,
 }: CardComPaymentFormProps) {
+  const t = useTranslations();
+  const locale = useLocale() as Locale;
   const [state, setState] = useState<FormState>("idle");
   const [url, setUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -72,13 +76,13 @@ export function CardComPaymentForm({
     if ("error" in result && result.error) {
       const msg =
         Object.values(result.error).flat().filter(Boolean)[0] ??
-        he.common.errorGeneric;
+        t("common.errorGeneric");
       setError(msg);
       setState("error");
       return;
     }
     if (!("data" in result)) {
-      setError(he.common.errorGeneric);
+      setError(t("common.errorGeneric"));
       setState("error");
       return;
     }
@@ -86,7 +90,7 @@ export function CardComPaymentForm({
     const hostedPage = (result.data as { hostedPage?: { url: string } })
       .hostedPage;
     if (!hostedPage?.url) {
-      setError(he.common.errorGeneric);
+      setError(t("common.errorGeneric"));
       setState("error");
       return;
     }
@@ -99,7 +103,7 @@ export function CardComPaymentForm({
     return (
       <section className="rounded-md border border-stone-200 bg-white p-3">
         <p className="mb-2 text-xs text-stone-600">
-          {he.order.cardcom.waiting}
+          {t("customer.order.cardcom.waiting")}
         </p>
         <div className="aspect-[3/5] w-full overflow-hidden rounded-md border border-stone-100">
           <iframe
@@ -137,14 +141,14 @@ export function CardComPaymentForm({
         disabled={state === "initiating"}
       >
         {state === "initiating"
-          ? he.common.loading
+          ? t("common.loading")
           : isVerification
-          ? he.order.methodPicker.cashAtReception.title
-          : `${he.book.stepContact.submitLabel} ${formatIlsFromAgorot(priceAgorot)}`}
+            ? t("customer.order.methodPicker.cashAtReception.title")
+            : `${t("customer.book.stepContact.submitLabel")} ${formatIlsFromAgorot(priceAgorot, locale)}`}
       </Button>
 
       <p className="mt-3 text-xs text-stone-500">
-        {he.order.cardcom.loadingIframe}
+        {t("customer.order.cardcom.loadingIframe")}
       </p>
     </section>
   );
@@ -174,6 +178,8 @@ function MockCardComTestForm({
   serviceName: string;
   priceAgorot: number;
 }) {
+  const t = useTranslations();
+  const locale = useLocale() as Locale;
   const [cardNumber, setCardNumber] = useState("");
   const [expiry, setExpiry] = useState("");
   const [cvv, setCvv] = useState("");
@@ -202,7 +208,7 @@ function MockCardComTestForm({
     if ("error" in initResult && initResult.error) {
       const msg =
         Object.values(initResult.error).flat().filter(Boolean)[0] ??
-        he.common.errorGeneric;
+        t("common.errorGeneric");
       setError(msg);
       setState("error");
       return;
@@ -216,7 +222,7 @@ function MockCardComTestForm({
     if ("error" in simResult && simResult.error) {
       const msg =
         Object.values(simResult.error).flat().filter(Boolean)[0] ??
-        he.common.errorGeneric;
+        t("common.errorGeneric");
       setError(msg);
       setState("error");
       return;
@@ -308,12 +314,12 @@ function MockCardComTestForm({
         disabled={disabled}
       >
         {state === "submitting"
-          ? "מאשר..."
+          ? t("common.loading")
           : state === "done"
-          ? "אושר!"
-          : isVerification
-          ? he.order.methodPicker.cashAtReception.title
-          : `${he.book.stepContact.submitLabel} ${formatIlsFromAgorot(priceAgorot)}`}
+            ? t("customer.order.success.heading")
+            : isVerification
+              ? t("customer.order.methodPicker.cashAtReception.title")
+              : `${t("customer.book.stepContact.submitLabel")} ${formatIlsFromAgorot(priceAgorot, locale)}`}
       </Button>
       <p className="text-xs text-stone-600">
         זהו מצב בדיקה — לא יחויב כסף אמיתי. כל מספר כרטיס בן 12 ספרות
@@ -330,14 +336,16 @@ function CtaSummary({
   isVerification: boolean;
   priceAgorot: number;
 }) {
+  const t = useTranslations();
+  const locale = useLocale() as Locale;
   if (isVerification) {
     return (
       <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
         <div className="font-semibold">
-          {he.order.methodPicker.cashAtReception.title}
+          {t("customer.order.methodPicker.cashAtReception.title")}
         </div>
         <p className="mt-1">
-          {he.order.methodPicker.cashAtReception.subtitle}
+          {t("customer.order.methodPicker.cashAtReception.subtitle")}
         </p>
       </div>
     );
@@ -345,10 +353,10 @@ function CtaSummary({
   return (
     <div className="mb-4 flex items-center justify-between rounded-md border border-stone-200 bg-stone-50 p-3 text-sm">
       <span className="text-stone-700">
-        {he.book.stepService.priceLabel}
+        {t("customer.book.stepService.priceLabel")}
       </span>
       <span className="text-base font-semibold">
-        {formatIlsFromAgorot(priceAgorot)}
+        {formatIlsFromAgorot(priceAgorot, locale)}
       </span>
     </div>
   );

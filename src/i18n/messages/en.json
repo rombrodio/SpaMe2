@@ -127,7 +127,8 @@
         "tokenInvalid": "Payment window is invalid.",
         "bookingNotFound": "Booking not found.",
         "paymentFailed": "Payment failed. Try again or contact reception."
-      }
+      },
+      "testMode": "TEST MODE · all payments are in test mode. Any card / barcode will auto-confirm the booking."
     }
   }
 }

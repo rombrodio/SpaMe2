@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { he } from "@/lib/i18n/he";
+import { useTranslations } from "next-intl";
 
 interface ContactFormProps {
   errors: Record<string, string[]>;
@@ -19,6 +19,7 @@ interface ContactFormProps {
 }
 
 export function ContactForm({ errors, submitting, onSubmit }: ContactFormProps) {
+  const t = useTranslations();
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -40,7 +41,7 @@ export function ContactForm({ errors, submitting, onSubmit }: ContactFormProps) 
     <form onSubmit={handleSubmit} className="space-y-4" noValidate>
       <div>
         <Label htmlFor="full_name">
-          {he.book.stepContact.nameLabel}
+          {t("customer.book.stepContact.nameLabel")}
           <span className="mr-1 text-red-600">*</span>
         </Label>
         <Input
@@ -49,7 +50,7 @@ export function ContactForm({ errors, submitting, onSubmit }: ContactFormProps) 
           type="text"
           required
           autoComplete="name"
-          placeholder={he.book.stepContact.namePlaceholder}
+          placeholder={t("customer.book.stepContact.namePlaceholder")}
           value={fullName}
           onChange={(e) => setFullName(e.target.value)}
           className="mt-1"
@@ -59,7 +60,7 @@ export function ContactForm({ errors, submitting, onSubmit }: ContactFormProps) 
 
       <div>
         <Label htmlFor="phone">
-          {he.book.stepContact.phoneLabel}
+          {t("customer.book.stepContact.phoneLabel")}
           <span className="mr-1 text-red-600">*</span>
         </Label>
         <Input
@@ -69,7 +70,7 @@ export function ContactForm({ errors, submitting, onSubmit }: ContactFormProps) 
           required
           inputMode="tel"
           autoComplete="tel"
-          placeholder={he.book.stepContact.phonePlaceholder}
+          placeholder={t("customer.book.stepContact.phonePlaceholder")}
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
           className="mt-1"
@@ -79,7 +80,9 @@ export function ContactForm({ errors, submitting, onSubmit }: ContactFormProps) 
       </div>
 
       <div>
-        <Label htmlFor="email">{he.book.stepContact.emailLabel}</Label>
+        <Label htmlFor="email">
+          {t("customer.book.stepContact.emailLabel")}
+        </Label>
         <Input
           id="email"
           name="email"
@@ -94,7 +97,9 @@ export function ContactForm({ errors, submitting, onSubmit }: ContactFormProps) 
       </div>
 
       <div>
-        <Label htmlFor="notes">{he.book.stepContact.notesLabel}</Label>
+        <Label htmlFor="notes">
+          {t("customer.book.stepContact.notesLabel")}
+        </Label>
         <Textarea
           id="notes"
           name="notes"
@@ -113,7 +118,9 @@ export function ContactForm({ errors, submitting, onSubmit }: ContactFormProps) 
       )}
 
       <Button type="submit" size="lg" className="w-full" disabled={submitting}>
-        {submitting ? he.common.loading : he.book.stepContact.submitLabel}
+        {submitting
+          ? t("common.loading")
+          : t("customer.book.stepContact.submitLabel")}
       </Button>
     </form>
   );

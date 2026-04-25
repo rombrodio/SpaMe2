@@ -10,7 +10,9 @@ import {
   lookupVoucherBalanceAction,
   redeemVpayVoucherAction,
 } from "@/lib/actions/payments";
-import { he, formatIlsFromAgorot } from "@/lib/i18n/he";
+import { useTranslations, useLocale } from "next-intl";
+import { formatIlsFromAgorot } from "@/lib/i18n/format";
+import type { Locale } from "@/i18n/config";
 
 interface VpayVoucherFormProps {
   token: string;
@@ -55,6 +57,8 @@ function VpayVoucherFormInner({
   serviceName,
   priceAgorot,
 }: VpayVoucherFormProps) {
+  const t = useTranslations();
+  const locale = useLocale() as Locale;
   const router = useRouter();
   const [step, setStep] = useState<Step>("card");
   const [busy, setBusy] = useState(false);
@@ -77,12 +81,12 @@ function VpayVoucherFormInner({
     if ("error" in result && result.error) {
       const msg =
         Object.values(result.error).flat().filter(Boolean)[0] ??
-        he.common.errorGeneric;
+        t("common.errorGeneric");
       setError(msg);
       return false;
     }
     if (!("data" in result)) {
-      setError(he.common.errorGeneric);
+      setError(t("common.errorGeneric"));
       return false;
     }
     return true;
@@ -91,7 +95,7 @@ function VpayVoucherFormInner({
   async function handleLookup() {
     setError(null);
     if (cvv.length < 3) {
-      setError(he.common.errorGeneric);
+      setError(t("common.errorGeneric"));
       return;
     }
     setBusy(true);
@@ -110,12 +114,12 @@ function VpayVoucherFormInner({
       if ("error" in result && result.error) {
         const msg =
           Object.values(result.error).flat().filter(Boolean)[0] ??
-          he.common.errorGeneric;
+          t("common.errorGeneric");
         setError(msg);
         return;
       }
       if (!("data" in result)) {
-        setError(he.common.errorGeneric);
+        setError(t("common.errorGeneric"));
         return;
       }
 
@@ -141,11 +145,11 @@ function VpayVoucherFormInner({
     setError(null);
     const amountAgorot = Math.round(Number(amountIls) * 100);
     if (!Number.isFinite(amountAgorot) || amountAgorot <= 0) {
-      setError(he.common.errorGeneric);
+      setError(t("common.errorGeneric"));
       return;
     }
     if (amountAgorot > balanceAgorot) {
-      setError(he.common.errorGeneric);
+      setError(t("common.errorGeneric"));
       return;
     }
 
@@ -163,7 +167,7 @@ function VpayVoucherFormInner({
       if ("error" in result && result.error) {
         const msg =
           Object.values(result.error).flat().filter(Boolean)[0] ??
-          he.common.errorGeneric;
+          t("common.errorGeneric");
         setError(msg);
         setStep("amount");
         return;
@@ -181,7 +185,7 @@ function VpayVoucherFormInner({
     return (
       <section className="rounded-md border border-stone-200 bg-white p-4 space-y-3">
         <div>
-          <Label htmlFor="vpay_card">{he.order.voucherVpay.cardNumberLabel}</Label>
+          <Label htmlFor="vpay_card">{t("customer.order.voucherVpay.cardNumberLabel")}</Label>
           <Input
             id="vpay_card"
             type="text"
@@ -197,7 +201,7 @@ function VpayVoucherFormInner({
           />
         </div>
         <div>
-          <Label htmlFor="vpay_cvv">{he.order.voucherVpay.cvvLabel}</Label>
+          <Label htmlFor="vpay_cvv">{t("customer.order.voucherVpay.cvvLabel")}</Label>
           <Input
             id="vpay_cvv"
             type="text"
@@ -220,7 +224,7 @@ function VpayVoucherFormInner({
           onClick={handleLookup}
           disabled={busy || cardNumber.length < 4 || cvv.length < 3}
         >
-          {busy ? he.common.loading : he.order.voucherVpay.lookupCta}
+          {busy ? t("common.loading") : t("customer.order.voucherVpay.lookupCta")}
         </Button>
       </section>
     );
@@ -237,7 +241,7 @@ function VpayVoucherFormInner({
       <div className="rounded-md border border-stone-200 bg-stone-50 p-3 text-sm">
         <div className="flex items-center justify-between">
           <span className="text-stone-600">
-            {he.order.voucherVpay.cardNumberLabel}
+            {t("customer.order.voucherVpay.cardNumberLabel")}
           </span>
           <span dir="ltr" className="font-medium">
             {maskedCard}
@@ -245,17 +249,17 @@ function VpayVoucherFormInner({
         </div>
         <div className="mt-1 flex items-center justify-between">
           <span className="text-stone-600">
-            {he.order.voucherVpay.balanceLabel}
+            {t("customer.order.voucherVpay.balanceLabel")}
           </span>
           <span className="font-semibold">
-            {formatIlsFromAgorot(balanceAgorot)}
+            {formatIlsFromAgorot(balanceAgorot, locale)}
           </span>
         </div>
       </div>
 
       <div>
         <Label htmlFor="vpay_amount">
-          {he.order.voucherVpay.payAmountLabel}
+          {t("customer.order.voucherVpay.payAmountLabel")}
         </Label>
         <Input
           id="vpay_amount"
@@ -272,9 +276,9 @@ function VpayVoucherFormInner({
 
       {isPartial && remainingAgorot > 0 && (
         <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-          {he.order.voucherVpay.remainingNote(
-            formatIlsFromAgorot(remainingAgorot)
-          )}
+          {t("customer.order.voucherVpay.remainingNote", {
+            amount: formatIlsFromAgorot(remainingAgorot, locale),
+          })}
         </div>
       )}
 
@@ -288,8 +292,8 @@ function VpayVoucherFormInner({
         disabled={busy || step === "redeeming" || amountAgorotInput <= 0}
       >
         {busy || step === "redeeming"
-          ? he.common.loading
-          : he.order.voucherVpay.redeemCta}
+          ? t("common.loading")
+          : t("customer.order.voucherVpay.redeemCta")}
       </Button>
     </section>
   );
