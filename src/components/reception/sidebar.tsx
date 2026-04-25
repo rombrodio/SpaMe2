@@ -3,41 +3,38 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Calendar,
-  Users,
-  Scissors,
-  DoorOpen,
-  BookOpen,
-  ClipboardList,
   LayoutDashboard,
+  CalendarPlus,
+  Clock,
+  BookOpen,
   LogOut,
-  Settings,
-  UserCheck,
-  Headphones,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
-import { GlobalSearch } from "@/components/admin/global-search";
 
-// NOTE: Inbox is deferred to Phase 6 (WhatsApp conversational channel). Keep
-// the link out of the sidebar until the /admin/inbox route lands, otherwise
-// clicking it 404s.
+// Inbox link lands with Phase 8 (WhatsApp conversational layer). Kept
+// out of the sidebar until then to avoid 404s.
 const navItems = [
-  { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
-  { href: "/admin/calendar", label: "Calendar", icon: Calendar },
-  { href: "/admin/bookings", label: "Bookings", icon: BookOpen },
-  { href: "/admin/assignments", label: "Assignments", icon: UserCheck },
-  { href: "/admin/therapists", label: "Therapists", icon: Users },
-  { href: "/admin/receptionists", label: "Receptionists", icon: Headphones },
-  { href: "/admin/rooms", label: "Rooms", icon: DoorOpen },
-  { href: "/admin/services", label: "Services", icon: Scissors },
-  { href: "/admin/customers", label: "Customers", icon: Users },
-  { href: "/admin/audit-log", label: "Audit Log", icon: ClipboardList },
-  { href: "/admin/settings", label: "Settings", icon: Settings },
+  { href: "/reception", label: "Dashboard", icon: LayoutDashboard, exact: true },
+  {
+    href: "/reception/bookings/new",
+    label: "New booking",
+    icon: CalendarPlus,
+  },
+  {
+    href: "/reception/bookings",
+    label: "Bookings",
+    icon: BookOpen,
+  },
+  {
+    href: "/reception/availability",
+    label: "My on-duty hours",
+    icon: Clock,
+  },
 ];
 
-export function AdminSidebar() {
+export function ReceptionSidebar() {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -51,12 +48,12 @@ export function AdminSidebar() {
   return (
     <aside className="flex h-full w-56 flex-col border-r border-sidebar-border bg-sidebar-background">
       <div className="flex h-14 items-center border-b border-sidebar-border px-4">
-        <Link href="/admin" className="text-lg font-semibold text-foreground">
-          SpaMe
+        <Link
+          href="/reception"
+          className="text-lg font-semibold text-foreground"
+        >
+          SpaMe · Reception
         </Link>
-      </div>
-      <div className="border-b border-sidebar-border px-2 py-2">
-        <GlobalSearch />
       </div>
       <nav className="flex-1 space-y-1 px-2 py-3">
         {navItems.map(({ href, label, icon: Icon, exact }) => {

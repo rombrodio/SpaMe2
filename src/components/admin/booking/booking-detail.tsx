@@ -14,6 +14,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { SourceBadge } from "@/components/admin/booking/source-badge";
 import { ConfirmButton } from "@/components/ui/confirm-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FormErrors } from "@/components/admin/form-message";
@@ -42,6 +43,12 @@ interface BookingDetailProps {
     cancel_reason: string | null;
     cancelled_at: string | null;
     created_at: string;
+    source?:
+      | "customer_web"
+      | "admin_manual"
+      | "receptionist_manual"
+      | "chatbot"
+      | null;
     customers: { id: string; full_name: string; phone: string } | null;
     therapists: { id: string; full_name: string; color: string | null } | null;
     rooms: { id: string; name: string } | null;
@@ -304,6 +311,14 @@ export function BookingDetail({
                 {formatInTimeZone(new Date(booking.created_at), TZ, "MMM d, yyyy HH:mm")}
               </dd>
             </div>
+            {booking.source && (
+              <div>
+                <dt className="text-sm text-muted-foreground">Source</dt>
+                <dd className="mt-1">
+                  <SourceBadge source={booking.source} />
+                </dd>
+              </div>
+            )}
           </dl>
         </CardContent>
       </Card>

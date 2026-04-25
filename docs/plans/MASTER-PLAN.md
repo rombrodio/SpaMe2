@@ -232,23 +232,25 @@ supabase/migrations/
 ├── 00018_deferred_assignment.sql            (unassigned-booking queue, manager alerts, therapist SLA)
 ├── 00019_spa_settings.sql                   (single-row spa_settings: on-call manager name + phone)
 ├── 00020_business_hours.sql                 (spa-wide business hours + slot granularity)
-└── 00021_service_durations_45min.sql        (all services → 45 min + 15 min buffer)
+├── 00021_service_durations_45min.sql        (all services → 45 min + 15 min buffer)
+├── 00022_receptionist_role_enum.sql         (user_role += 'receptionist')
+├── 00023_receptionist_tables.sql            (receptionists + receptionist_availability_rules
+│                                              + RLS extended for the receptionist role)
+└── 00024_booking_source.sql                 (bookings.source: customer_web | admin_manual |
+                                              receptionist_manual | chatbot)
 ```
 
 ### Pending migrations (by phase)
 
 ```
-Phase 6 — Roles
-  00022_receptionist_role.sql                (profiles.role adds 'receptionist';
-                                              receptionist_availability_rules table)
 Phase 7 — Localization
-  00023_language_columns.sql                 (profiles.language, customers.language,
+  00025_language_columns.sql                 (profiles.language, customers.language,
                                               defaults 'he')
 Phase 8 — Conversational platform
-  00024_conversations_extensions.sql         (conversation_messages.ai_draft_of,
+  00026_conversations_extensions.sql         (conversation_messages.ai_draft_of,
                                               approval state enum, translations table)
 Phase 9 — Customer profile + reports
-  00025_customer_gender.sql                  (customers.gender enum, required at
+  00027_customer_gender.sql                  (customers.gender enum, required at
                                               booking time going forward)
 ```
 
@@ -688,25 +690,31 @@ receptionists):
 - **Vercel Web Analytics** (PR #17) — `@vercel/analytics` in root layout,
   auto page-view tracking.
 
-### Phase 6: Receptionist role (~12 files)
+### Phase 6: Receptionist role + portal — COMPLETE
 
-**Goal:** Promote receptionist from a backlog ticket (SPA-137) to a real role with its own portal. This is the gating prerequisite for Phases 7 and 8 — i18n only makes sense across three roles, and the WhatsApp inbox needs somewhere to live.
+Promoted the receptionist from a deferred backlog ticket (SPA-137) to a
+first-class role with its own portal. Gates Phase 7 (i18n across three
+roles) and Phase 8 (the Texter inbox lives at `/reception/inbox`).
 
-- [ ] Migration `00022_receptionist_role.sql`:
-  - `profiles.role` enum adds `'receptionist'`
-  - New `receptionist_availability_rules` table (same shape as `therapist_availability_rules` but FK to the receptionist profile; single availability mode covers both chat + phone coverage)
-  - RLS policies: receptionist can SELECT/UPDATE own availability; read-only on bookings + customers; no access to therapists / services / rooms / settings / audit log
-- [ ] `src/middleware.ts` — route guard: `/admin/*` super_admin only; `/reception/*` receptionist or super_admin; `/therapist/*` therapist only
-- [ ] `src/app/reception/layout.tsx` — sidebar shell for receptionist portal
-- [ ] `src/app/reception/page.tsx` — dashboard (today's calendar read-only, pending payments, unassigned queue, own on-duty window)
-- [ ] `src/app/reception/availability/page.tsx` — submit own on-duty chat + phone windows
-- [ ] `src/app/reception/bookings/new/page.tsx` — create booking on behalf of a customer (may pick therapist or leave unassigned)
-- [ ] `src/app/admin/users/page.tsx` or extend `/admin/therapists` — super admin invites / deactivates receptionist accounts
-- [ ] Update login post-auth redirect and role-router in `middleware.ts`
-- [ ] Vitest coverage for role-guard paths
-- [ ] Docs: AGENTS.md + README.md + CLAUDE.md role lists; DOC-SYNC row for `receptionist_availability_rules`
+Shipped in one PR:
 
-**Depends on:** Phases 2, 3, 4, 5.5.
+- **Migration 00022** — `user_role` enum adds `'receptionist'` (standalone so the new value is usable in subsequent migrations; Postgres rejects enum ADD VALUE + use in the same transaction).
+- **Migration 00023** — `receptionists` entity + `profiles.receptionist_id` FK + `receptionist_availability_rules` table + `get_user_receptionist_id()` helper + RLS policies. `bookings` + `customers` + `therapists` + `rooms` + `services` + junction/scheduling tables' USING clauses extended to allow receptionists to read (customers also allow insert/update so receptionists can register walk-ins).
+- **Migration 00024** — `booking_source` enum (`customer_web` / `admin_manual` / `receptionist_manual` / `chatbot`) + `bookings.source` column + back-fill for existing rows.
+- **Server actions** — `src/lib/actions/receptionists.ts` (CRUD + invite flow that explicitly sets `profiles.role='receptionist'` after `inviteUserByEmail` since the default-trigger role is `'therapist'`) + own-availability CRUD + `createReceptionistBookingAction` pinning `source='receptionist_manual'`. `src/lib/actions/book.ts` pins `customer_web`; `src/lib/actions/bookings.ts` (admin) pins `admin_manual`.
+- **Middleware** — three-role guard using the extracted `src/lib/roles.ts` helpers (`portalForRole`, `allowedOrRedirect`). `/reception/*` accepts receptionist + super_admin per the vision (super admin has full visibility).
+- **Admin UI** — `/admin/receptionists` list + new + detail (mirrors therapist shape, simpler schema), sidebar entry, `Source` column on `/admin/bookings` list, provenance badge on booking detail.
+- **Reception portal** — `/reception` dashboard (pending-payment / unassigned / today tiles + own on-duty rules), `/reception/availability` (own rules), `/reception/bookings/new` (reuses `BookingForm` with `submitAction` + `successRedirect` props), `/reception/bookings` (read-only list with source badges).
+- **BookingForm reuse** — `src/components/admin/booking/booking-form.tsx` now accepts `submitAction` + `successRedirect` props so the same form renders for admin and reception with no duplication.
+- **Vitest** — 24 new tests (186 total): role × portal matrix via `allowedOrRedirect`, receptionist Zod schemas (entity + availability rule edge cases).
+
+**Explicit non-goals (deferred to later phases):**
+
+- Receptionist inbox UI (Phase 8)
+- AI-draft approval rail (Phase 8)
+- Localization — new strings are in English, to be extracted into catalogs in Phase 7
+- Multi-mode on-duty window (chat vs phone separately) — V1 is one combined window
+- Shift-swap / approval / payroll-adjacent flows
 
 ### Phase 7: Localization (HE / EN / RU) (~20 files)
 

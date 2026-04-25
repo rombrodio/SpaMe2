@@ -59,6 +59,12 @@ interface RoomServiceJoinRow {
   } | null;
 }
 
+export type BookingSource =
+  | "customer_web"
+  | "admin_manual"
+  | "receptionist_manual"
+  | "chatbot";
+
 interface BookingRow {
   id: string;
   customer_id: string;
@@ -73,6 +79,7 @@ interface BookingRow {
   price_ils: number;
   notes: string | null;
   created_by: string | null;
+  source: BookingSource;
   cancelled_at: string | null;
   cancel_reason: string | null;
   created_at: string;
@@ -391,6 +398,20 @@ export async function createBooking(
     created_by?: string;
     payment_method?: PaymentMethod;
     hold_minutes?: number;
+    /**
+     * Provenance — who drove this booking. Defaults to 'admin_manual'
+     * (the pre-Phase-6 behaviour, matching the DB column default).
+     * Callers should set:
+     *   - 'customer_web'          from /book
+     *   - 'admin_manual'          from /admin/bookings/new
+     *   - 'receptionist_manual'   from /reception/bookings/new
+     *   - 'chatbot'               (Phase 8, reserved)
+     */
+    source?:
+      | "customer_web"
+      | "admin_manual"
+      | "receptionist_manual"
+      | "chatbot";
   }
 ): Promise<ActionResult> {
   const startDate = parseISO(input.start_at);
@@ -660,6 +681,7 @@ export async function createBooking(
       hold_expires_at: holdExpiresAtIso,
       assignment_status: assignmentStatus,
       therapist_gender_preference: genderPref,
+      source: input.source ?? "admin_manual",
     })
     .select("*")
     .single();

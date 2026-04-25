@@ -252,6 +252,7 @@ export async function createBookingFromBookAction(input: {
     assignment_status: "unassigned",
     therapist_gender_preference: input.gender_preference,
     notes: parsed.data.notes || undefined,
+    source: "customer_web",
   });
   if ("error" in createResult) return createResult;
 

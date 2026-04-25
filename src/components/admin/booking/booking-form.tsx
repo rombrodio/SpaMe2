@@ -48,9 +48,31 @@ interface BookingFormProps {
     start?: string;
     therapistId?: string;
   };
+  /**
+   * Server action to invoke on submit. Defaults to the super-admin
+   * `createBookingAction` (source='admin_manual'). The reception
+   * portal passes `createReceptionistBookingAction`
+   * (source='receptionist_manual') so the same form renders for both.
+   * Return shape is loose on purpose — both server actions resolve
+   * to either a success envelope or a Zod field-error envelope.
+   */
+  submitAction?: (formData: globalThis.FormData) => Promise<
+    | { success: boolean; bookingId: string }
+    | { error: unknown }
+  >;
+  /**
+   * Where to navigate after a successful create. Defaults to
+   * /admin/bookings; reception overrides to /reception.
+   */
+  successRedirect?: string;
 }
 
-export function BookingForm({ formData, prefill }: BookingFormProps) {
+export function BookingForm({
+  formData,
+  prefill,
+  submitAction,
+  successRedirect,
+}: BookingFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [errors, setErrors] = useState<Record<string, string[]>>({});
@@ -141,15 +163,18 @@ export function BookingForm({ formData, prefill }: BookingFormProps) {
     if (!roomId) setRoomId(slot.room_id);
   }
 
+  const action = submitAction ?? createBookingAction;
+  const redirectTo = successRedirect ?? "/admin/bookings";
+
   function handleSubmit(formDataObj: globalThis.FormData) {
     startTransition(async () => {
-      const result = await createBookingAction(formDataObj);
+      const result = await action(formDataObj);
       if (result && "error" in result) {
         setErrors(result.error as Record<string, string[]>);
         toast.error("Couldn't create booking. See errors below.");
       } else if (result?.success) {
         toast.success("Booking created.");
-        router.push("/admin/bookings");
+        router.push(redirectTo);
       }
     });
   }

@@ -105,7 +105,18 @@ export async function getBookingsForRange(from: string, to: string) {
 
 // ── Booking Mutations ──
 
-export async function createBookingAction(formData: FormData) {
+/**
+ * Shared staff-booking implementation used by both the admin and
+ * reception portals. The provenance column on the resulting row
+ * comes from the `source` parameter — middleware keeps the two
+ * callers separated, so a receptionist can't accidentally land in
+ * the admin entry point and create an `admin_manual` row.
+ */
+async function createStaffBooking(
+  formData: FormData,
+  source: "admin_manual" | "receptionist_manual",
+  revalidatePaths: string[]
+) {
   const raw = Object.fromEntries(formData.entries());
   // Phase 5 deferred-assignment: "Leave unassigned" checkbox comes
   // through as form field `leave_unassigned`. When set, coerce
@@ -127,8 +138,6 @@ export async function createBookingAction(formData: FormData) {
   }
 
   const supabase = await createClient();
-
-  // Get current user for created_by
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -137,13 +146,29 @@ export async function createBookingAction(formData: FormData) {
     ...parsed.data,
     notes: parsed.data.notes || undefined,
     created_by: user?.id,
+    source,
   });
 
   if ("error" in result) return result;
 
-  revalidatePath("/admin/bookings");
-  revalidatePath("/admin/calendar");
+  for (const path of revalidatePaths) revalidatePath(path);
   return { success: true, bookingId: result.data.id as string };
+}
+
+export async function createBookingAction(formData: FormData) {
+  return createStaffBooking(formData, "admin_manual", [
+    "/admin/bookings",
+    "/admin/calendar",
+  ]);
+}
+
+export async function createReceptionistBookingAction(formData: FormData) {
+  return createStaffBooking(formData, "receptionist_manual", [
+    "/reception",
+    "/reception/bookings",
+    "/admin/bookings",
+    "/admin/calendar",
+  ]);
 }
 
 export async function rescheduleBookingAction(formData: FormData) {
