@@ -236,16 +236,15 @@ supabase/migrations/
 ├── 00022_receptionist_role_enum.sql         (user_role += 'receptionist')
 ├── 00023_receptionist_tables.sql            (receptionists + receptionist_availability_rules
 │                                              + RLS extended for the receptionist role)
-└── 00024_booking_source.sql                 (bookings.source: customer_web | admin_manual |
-                                              receptionist_manual | chatbot)
+├── 00024_booking_source.sql                 (bookings.source: customer_web | admin_manual |
+│                                              receptionist_manual | chatbot)
+└── 00025_language_columns.sql               (language_code enum + profiles.language +
+                                              customers.language — Phase 7a i18n foundation)
 ```
 
 ### Pending migrations (by phase)
 
 ```
-Phase 7 — Localization
-  00025_language_columns.sql                 (profiles.language, customers.language,
-                                              defaults 'he')
 Phase 8 — Conversational platform
   00026_conversations_extensions.sql         (conversation_messages.ai_draft_of,
                                               approval state enum, translations table)
@@ -716,25 +715,35 @@ Shipped in one PR:
 - Multi-mode on-duty window (chat vs phone separately) — V1 is one combined window
 - Shift-swap / approval / payroll-adjacent flows
 
-### Phase 7: Localization (HE / EN / RU) (~20 files)
+### Phase 7: Localization (HE / EN / RU) — split into 7a + 7b
 
-**Goal:** Hebrew default with first-class English and Russian support across every surface. Per-user toggle for staff; customer language auto-detected on first inbound message and persisted on the customer record.
+Scope of the originally-planned single phase was too large to ship as one reviewable PR once the admin portal string count materialised. Split into:
 
-- [ ] Pick + install i18n framework (candidate: `next-intl` for App Router compatibility)
-- [ ] Migration `00023_language_columns.sql` — `profiles.language` + `customers.language` enums, default `'he'`
-- [ ] `src/lib/i18n/` — loader, per-locale JSON catalogs, `useTranslations()` hooks, locale router
-- [ ] Extract existing HE strings from `src/lib/i18n/he.ts` into the catalog
-- [ ] Extract existing EN admin strings (currently hardcoded in components) into the EN catalog
-- [ ] Author RU catalog for admin + therapist + reception + customer surfaces (≈ N keys — scoped when we extract)
-- [ ] Per-user language toggle in navbar for staff; persist to `profiles.language`
-- [ ] Customer language detection on first inbound message (heuristic on character set + greeting phrases), written to `customers.language`; manual override in customer detail
-- [ ] RTL groundwork — `dir="rtl"` toggled per-user based on active locale; Tailwind logical properties where needed
-- [ ] All error messages / toasts / emails / SMS templates / PDF receipts translated
-- [ ] CI lint rule: no literal user-facing strings outside the catalog (via a custom ESLint rule or `no-literal-string` plugin)
-- [ ] Vitest snapshot tests for each locale on the booking flow
-- [ ] Docs: DOC-SYNC row added — *"if you add a user-facing string, add it to all three locale catalogs in the same commit"*
+#### Phase 7a — i18n foundation — SHIPPED
 
-**Depends on:** Phase 6 (three roles is what justifies the framework overhead).
+- [x] `next-intl` installed in **cookie-only** mode (no `[locale]` URL segment); `src/i18n/{config,request}.ts`, `next.config.ts` wrap
+- [x] Migration `00025_language_columns.sql` — `language_code` enum (`he`/`en`/`ru`), `profiles.language NOT NULL DEFAULT 'he'`, `customers.language` nullable (Phase 8 fills on first inbound message), widens `profiles_access` RLS WITH CHECK so non-super-admins can self-update their own language
+- [x] Per-locale JSON catalogs under `src/i18n/messages/{he,en,ru}.json` — full `common.*` + `customer.*` namespaces (Hebrew seeded from the pre-existing `src/lib/i18n/he.ts`, English source authored, Russian AI-drafted)
+- [x] `setLocaleAction` server action (writes `NEXT_LOCALE` cookie + `profiles.language`) + `LocaleSwitcher` component mounted in admin / reception / therapist sidebars
+- [x] `detectLanguage(text)` helper + 15 unit tests (Hebrew / Cyrillic / Latin char-range detection, majority wins, HE tie-break) — ready for Phase 8 to auto-set `customers.language` on first inbound WhatsApp / web-chat message
+- [x] Root layout sets `<html lang dir>` dynamically from active locale; `dir` flips to `rtl` for Hebrew
+- [x] `src/lib/i18n/format.ts` — locale-aware formatters (`formatIlsFromAgorot`, `formatDateIL`, `formatTimeIL`, `formatDateTimeILFull`) extracted from the old `he.ts`
+
+#### Phase 7b — Staff + customer literal swaps — NEXT
+
+The actual content translation work. Deliberately separated so the framework PR stays reviewable and each subsequent surface migration can ship independently.
+
+- [ ] Customer flow: migrate `/book` + `/order/*` (17 files) from `he.ts` to `useTranslations()`; drop the transitional hardcoded `dir="rtl"` on customer layouts; delete `src/lib/i18n/he.ts`
+- [ ] Reception portal: extract strings, draft HE + RU
+- [ ] Therapist portal: extract strings, draft HE + RU
+- [ ] Admin portal (biggest surface): extract strings in 2-3 commits grouped by sub-area (bookings / people / catalog / reports), draft HE + RU
+- [ ] Server-action error envelope refactor: `{key, params}` instead of English strings; `FormErrors` component calls `t(key, params)`
+- [ ] SMS + email templates read `customers.language` and render from `sms.*` catalog
+- [ ] ESLint `no-literal-user-facing-strings` rule (warning, then error in a follow-up)
+- [ ] Snapshot tests: `/book` and `/admin` rendered in each of HE / EN / RU
+- [ ] Flag low-confidence AI translations with review comments for operator sign-off
+
+**Depends on:** Phase 7a (shipped).
 
 ### Phase 8: Conversational platform (WhatsApp + Web Chat + AI) (~30 files)
 

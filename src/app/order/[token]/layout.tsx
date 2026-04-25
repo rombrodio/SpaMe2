@@ -7,8 +7,12 @@ export const metadata: Metadata = {
 };
 
 /**
- * Hebrew RTL layout scoped to /order/[token]/**. Matches the /book
- * layout so a customer walking through /book → /order feels continuous.
+ * Customer-facing order layout.
+ *
+ * Phase 7a transitional: keeps `dir="rtl"` + `lang="he"` hardcoded —
+ * the page contents still import Hebrew strings from `src/lib/i18n/he.ts`.
+ * Phase 7b migration drops these and lets the root layout's dynamic
+ * attributes drive direction from the active locale.
  *
  * Phase 4.6: renders a global TEST MODE strip at the top when any
  * payment provider is mocked — covers /order/[token], /return, and

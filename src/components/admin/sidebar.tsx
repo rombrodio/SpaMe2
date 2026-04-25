@@ -12,6 +12,7 @@ import {
   pickActiveHref,
   visibleSections,
 } from "@/lib/nav";
+import { LocaleSwitcher } from "@/components/locale-switcher";
 
 export function AdminSidebar() {
   const pathname = usePathname();
@@ -80,7 +81,8 @@ export function AdminSidebar() {
           </div>
         ))}
       </nav>
-      <div className="border-t border-sidebar-border p-2">
+      <div className="border-t border-sidebar-border p-2 space-y-2">
+        <LocaleSwitcher size="compact" className="w-full" />
         <button
           onClick={handleSignOut}
           className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
