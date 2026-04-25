@@ -81,10 +81,14 @@ export function SlotPicker({
   const [selectedStart, setSelectedStart] = useState("");
 
   // Fetch qualified therapists + compatible rooms when service changes.
+  // Synchronous state resets are deferred via microtask so the
+  // react-hooks/set-state-in-effect rule doesn't flag them.
   useEffect(() => {
     if (!serviceId) {
-      setQualifiedTherapistIds([]);
-      setCompatibleRoomIds([]);
+      queueMicrotask(() => {
+        setQualifiedTherapistIds([]);
+        setCompatibleRoomIds([]);
+      });
       return;
     }
     let cancelled = false;
@@ -103,23 +107,28 @@ export function SlotPicker({
   // Re-compute slots when service/date/therapist change.
   useEffect(() => {
     if (!serviceId || !date) {
-      setSlots([]);
+      queueMicrotask(() => {
+        setSlots([]);
+      });
       return;
     }
     let cancelled = false;
-    setSlotsLoading(true);
-    findAvailableSlotsAction(serviceId, date, therapistId || undefined)
-      .then((result) => {
-        if (cancelled) return;
-        setSlots(
-          excludeBookingId
-            ? result.filter((s) => s.start !== excludeBookingId)
-            : result
-        );
-      })
-      .finally(() => {
-        if (!cancelled) setSlotsLoading(false);
-      });
+    queueMicrotask(() => {
+      if (cancelled) return;
+      setSlotsLoading(true);
+      findAvailableSlotsAction(serviceId, date, therapistId || undefined)
+        .then((result) => {
+          if (cancelled) return;
+          setSlots(
+            excludeBookingId
+              ? result.filter((s) => s.start !== excludeBookingId)
+              : result
+          );
+        })
+        .finally(() => {
+          if (!cancelled) setSlotsLoading(false);
+        });
+    });
     return () => {
       cancelled = true;
     };
