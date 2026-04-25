@@ -1,0 +1,133 @@
+{
+  "common": {
+    "appName": "SpaMe",
+    "back": "Back",
+    "cancel": "Cancel",
+    "close": "Close",
+    "confirm": "Confirm",
+    "continue": "Continue",
+    "edit": "Edit",
+    "save": "Save",
+    "loading": "Loading…",
+    "required": "Required",
+    "errorGeneric": "Something went wrong. Please try again.",
+    "tryAgain": "Try again"
+  },
+  "customer": {
+    "book": {
+      "pageTitle": "Book a treatment",
+      "stepService": {
+        "heading": "Choose a treatment",
+        "subheading": "Which treatment suits you today?",
+        "minutes": "{count} min",
+        "priceLabel": "Price"
+      },
+      "stepSlot": {
+        "heading": "Choose date and time",
+        "noSlots": "No available times this day. Try another date.",
+        "dateLabel": "Date",
+        "timesHeading": "Available times",
+        "gender": {
+          "heading": "Therapist gender preference",
+          "any": "No preference",
+          "female": "Female therapist",
+          "male": "Male therapist"
+        }
+      },
+      "stepContact": {
+        "heading": "Contact details",
+        "subheading": "We'll contact you and send an SMS confirmation",
+        "nameLabel": "Full name",
+        "namePlaceholder": "As it appears on your ID",
+        "phoneLabel": "Mobile phone",
+        "phonePlaceholder": "050-1234567",
+        "emailLabel": "Email (optional)",
+        "notesLabel": "Notes for the therapist (optional)",
+        "submitLabel": "Continue to payment",
+        "errors": {
+          "name": "Please enter your full name",
+          "phone": "Please enter a valid Israeli phone number",
+          "email": "Invalid email address"
+        }
+      },
+      "slotHeld": "Your slot is held for {minutes} min. Complete payment to confirm."
+    },
+    "order": {
+      "pageTitle": "Complete your booking",
+      "summary": {
+        "heading": "Booking details",
+        "serviceLabel": "Treatment",
+        "therapistLabel": "Therapist",
+        "roomLabel": "Room",
+        "dateTimeLabel": "Date and time",
+        "customerLabel": "Customer",
+        "phoneLabel": "Phone",
+        "emailLabel": "Email",
+        "notesLabel": "Notes",
+        "editName": "Edit name",
+        "editEmail": "Edit email",
+        "editNotes": "Edit notes"
+      },
+      "holdExpired": {
+        "heading": "Time expired",
+        "body": "Your booking has expired. Please start over.",
+        "ctaRestart": "Start over"
+      },
+      "methodPicker": {
+        "heading": "How would you like to pay?",
+        "creditCardFull": {
+          "title": "Credit card — full payment now",
+          "subtitle": "Charged immediately on a secure page"
+        },
+        "cashAtReception": {
+          "title": "Cash at reception",
+          "subtitle": "Card verification only to hold your slot. No charge now. Late cancel / no-show may incur a cancellation fee."
+        },
+        "voucherDts": {
+          "title": "Benefit voucher",
+          "subtitle": "DTS credit-equivalent — unit-for-unit redemption"
+        },
+        "voucherVpay": {
+          "title": "Stored-value voucher",
+          "subtitle": "VPay multi-wallet card — partial payment supported"
+        }
+      },
+      "cancellationPolicy": {
+        "heading": "Cancellation policy",
+        "summary": "Free cancellation up to 24 hours before. Late cancel or no-show — cancellation fee of 5% of the price or 100 ₪, whichever is lower."
+      },
+      "cardcom": {
+        "waiting": "Waiting for bank approval… this page updates automatically.",
+        "loadingIframe": "Loading secure payment form…"
+      },
+      "voucherDts": {
+        "cardNumberLabel": "Voucher card number",
+        "lookupCta": "Check balance",
+        "pickItemsHeading": "Choose the benefit to redeem",
+        "qtyLabel": "Quantity",
+        "redeemCta": "Redeem voucher",
+        "noItems": "No available benefits on this card"
+      },
+      "voucherVpay": {
+        "cardNumberLabel": "Card number",
+        "cvvLabel": "CVV",
+        "lookupCta": "Check balance",
+        "balanceLabel": "Card balance",
+        "payAmountLabel": "Amount to charge from voucher",
+        "remainingNote": "This amount is lower than the treatment price. The remaining {amount} will be charged by another payment method.",
+        "redeemCta": "Pay"
+      },
+      "success": {
+        "heading": "Thank you! Your booking is confirmed.",
+        "body": "We've sent you an SMS confirmation. See you at your treatment!",
+        "backToWhatsapp": "Back to WhatsApp"
+      },
+      "errors": {
+        "tokenExpired": "Payment window expired. Please start over.",
+        "tokenInvalid": "Payment window is invalid.",
+        "bookingNotFound": "Booking not found.",
+        "paymentFailed": "Payment failed. Try again or contact reception."
+      }
+    }
+  }
+}

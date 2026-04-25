@@ -96,7 +96,13 @@ export function CalendarShell({
   }, [date, view]);
 
   useEffect(() => {
-    fetchBookings();
+    // Defer via microtask so `fetchBookings` (which begins with a
+    // synchronous setLoading(true)) is not called directly in the
+    // effect body — that trips the react-hooks/set-state-in-effect
+    // rule. The microtask hop is a single tick and invisible to users.
+    queueMicrotask(() => {
+      void fetchBookings();
+    });
   }, [fetchBookings]);
 
   // Filter bookings by the current therapist selection. Empty selection

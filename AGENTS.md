@@ -32,7 +32,7 @@ Next.js 16 (App Router) on Vercel, Supabase Postgres + Auth, Tailwind v4, TypeSc
 
 ## Hosted services you'll hit
 
-- **Supabase** — project `avnsuyiyhcnihsnisgig`. Migrations in `supabase/migrations/` are the source of truth; `00001_*` through `00024_*` are applied.
+- **Supabase** — project `avnsuyiyhcnihsnisgig`. Migrations in `supabase/migrations/` are the source of truth; `00001_*` through `00025_*` are applied.
 - **Vercel** — project `spa-me2` under team `roman-8776's projects` (Pro plan). Production alias `spa-me2.vercel.app`. Auto-deploys on push to `main`; PRs get preview URLs.
 - **CardCom** — payment provider. `PAYMENTS_CARDCOM_PROVIDER=mock` by default; flip to `real` only with valid terminal credentials.
 - **DTS + VPay** — voucher providers. Both default to `mock`. VPay client will live in `services/vpay-proxy/` deployed to Fly.io (mTLS + static IP) — single repo, separate deploy target.
@@ -66,7 +66,8 @@ Production also needs `CRON_SECRET` + `NEXT_PUBLIC_APP_URL` (covers reset-passwo
 See [`docs/plans/MASTER-PLAN.md`](./docs/plans/MASTER-PLAN.md) for the full phase list. In flight or next up:
 
 - **Phase 6 — Receptionist role + portal** — SHIPPED (migrations 00022-00024, `/reception/*` portal, booking provenance)
-- **Phase 7 — HE / EN / RU localization** for every surface
+- **Phase 7a — i18n foundation** — SHIPPED (next-intl cookie-only mode, migration 00025 `language_code` enum + columns, catalogs in `src/i18n/messages/`, locale switcher, language-detect helper for Phase 8)
+- **Phase 7b — Staff + customer literal swaps** — NEXT (migrate admin / therapist / reception / customer components from hardcoded strings to `useTranslations()`; error-envelope refactor; SMS templates; ESLint no-literal-strings rule)
 - **Phase 8 — Conversational platform** (WhatsApp + web chat + AI agent + Texter-style receptionist inbox + AI writing-assist + no-show scoring), all in this repo
 - **Phase 9 — Customer profile (gender), booking history, fixed reports + CSV**
 

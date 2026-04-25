@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Calendar, Clock, CalendarOff, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
+import { LocaleSwitcher } from "@/components/locale-switcher";
 
 const navItems = [
   { href: "/therapist", label: "My Bookings", icon: Calendar, exact: true },
@@ -63,7 +64,8 @@ export default function TherapistLayout({
             );
           })}
         </nav>
-        <div className="border-t border-sidebar-border p-2">
+        <div className="border-t border-sidebar-border p-2 space-y-2">
+          <LocaleSwitcher size="compact" className="w-full" />
           <button
             onClick={handleSignOut}
             className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"

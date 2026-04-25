@@ -95,7 +95,7 @@ services/              # Same-repo, separate-deploy workstreams
 └── vpay-proxy/        # Fly.io mTLS + static-IP proxy (Phase 4.5)
 
 supabase/
-├── migrations/       # SQL migration files (00001-00024)
+├── migrations/       # SQL migration files (00001-00025)
 └── seed.sql          # Demo data for local development
 ```
 
@@ -154,6 +154,20 @@ Migrations are in `supabase/migrations/` and run in order:
 22. `user_role` enum adds `'receptionist'` (Phase 6)
 23. `receptionists` entity + `receptionist_availability_rules` + RLS extended for receptionist role
 24. `booking_source` enum + `bookings.source` column (customer_web / admin_manual / receptionist_manual / chatbot)
+25. `language_code` enum + `profiles.language` + `customers.language` (Phase 7 — HE/EN/RU localization)
+
+## Localization
+
+Phase 7 ships the i18n framework. Current state:
+
+- **Framework:** [next-intl](https://next-intl.dev/) in cookie-only mode (no `[locale]` URL segment). Locale is resolved per request via `NEXT_LOCALE` cookie → falls back to Hebrew.
+- **Supported locales:** Hebrew (default, RTL), English, Russian. Defined in [`src/i18n/config.ts`](src/i18n/config.ts).
+- **Catalogs:** one JSON file per locale under [`src/i18n/messages/`](src/i18n/messages/) (`he.json`, `en.json`, `ru.json`). Namespaced as `common.*`, `customer.*`, plus per-portal namespaces (`admin.*`, `reception.*`, `therapist.*`) added by Phase 7b when staff-portal literals migrate.
+- **Persistence:** staff preference persists on `profiles.language`; customer preference on `customers.language` (auto-detected on first inbound message starting in Phase 8).
+- **Switcher:** [`src/components/locale-switcher.tsx`](src/components/locale-switcher.tsx), mounted in admin, reception, and therapist sidebars.
+- **RTL:** root layout sets `<html dir>` based on active locale. Customer `/book` + `/order` pages retain transitional hardcoded `dir="rtl"` until Phase 7b migrates their content strings to `useTranslations()`.
+
+**To add a new user-facing string:** edit all three JSON files in `src/i18n/messages/` under the same key path, then call `t('namespace.key')` in the component (use `useTranslations(ns)` in client components, `getTranslations(ns)` in server components).
 
 ## Scripts
 

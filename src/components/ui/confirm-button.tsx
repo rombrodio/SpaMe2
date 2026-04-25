@@ -72,13 +72,18 @@ export function ConfirmButton({
 
   const typedOk = !confirmText || typed.trim() === confirmText.trim();
 
-  React.useEffect(() => {
-    if (!open) {
+  // Reset form state when the dialog closes. Done in the onOpenChange
+  // handler rather than a useEffect(open) so state setters aren't
+  // called synchronously inside an effect body (which the
+  // react-hooks/set-state-in-effect rule flags).
+  function handleOpenChange(next: boolean) {
+    if (!next) {
       setTyped("");
       setReason("");
       setPending(false);
     }
-  }, [open]);
+    setOpen(next);
+  }
 
   const handleConfirm = async (e: React.MouseEvent) => {
     if (!typedOk) {
@@ -100,7 +105,7 @@ export function ConfirmButton({
   };
 
   return (
-    <AlertDialog open={open} onOpenChange={setOpen}>
+    <AlertDialog open={open} onOpenChange={handleOpenChange}>
       <AlertDialogTrigger asChild>
         <Button
           type="button"

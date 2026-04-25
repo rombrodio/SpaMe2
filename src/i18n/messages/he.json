@@ -1,0 +1,133 @@
+{
+  "common": {
+    "appName": "ספאמי",
+    "back": "חזרה",
+    "cancel": "ביטול",
+    "close": "סגירה",
+    "confirm": "אישור",
+    "continue": "המשך",
+    "edit": "עריכה",
+    "save": "שמירה",
+    "loading": "טוען...",
+    "required": "שדה חובה",
+    "errorGeneric": "אירעה שגיאה. נסו שוב.",
+    "tryAgain": "נסו שוב"
+  },
+  "customer": {
+    "book": {
+      "pageTitle": "הזמנת טיפול",
+      "stepService": {
+        "heading": "בחרו טיפול",
+        "subheading": "איזה טיפול מתאים לכם היום?",
+        "minutes": "{count} דקות",
+        "priceLabel": "מחיר"
+      },
+      "stepSlot": {
+        "heading": "בחרו תאריך ושעה",
+        "noSlots": "אין זמנים פנויים ליום זה. נסו תאריך אחר.",
+        "dateLabel": "תאריך",
+        "timesHeading": "שעות פנויות",
+        "gender": {
+          "heading": "העדפת מין המטפל/ת",
+          "any": "ללא העדפה",
+          "female": "מטפלת",
+          "male": "מטפל"
+        }
+      },
+      "stepContact": {
+        "heading": "פרטי התקשרות",
+        "subheading": "ניצור איתכם קשר ונשלח לכם אישור ב-SMS",
+        "nameLabel": "שם מלא",
+        "namePlaceholder": "כפי שמופיע בתעודת הזהות",
+        "phoneLabel": "טלפון נייד",
+        "phonePlaceholder": "050-1234567",
+        "emailLabel": "דוא״ל (לא חובה)",
+        "notesLabel": "הערות למטפל/ת (לא חובה)",
+        "submitLabel": "המשך לתשלום",
+        "errors": {
+          "name": "אנא הזינו שם מלא",
+          "phone": "אנא הזינו מספר טלפון ישראלי תקין",
+          "email": "כתובת דוא״ל לא תקינה"
+        }
+      },
+      "slotHeld": "הזמן שלכם שמור למשך {minutes} דקות. השלימו את התשלום כדי לאשר."
+    },
+    "order": {
+      "pageTitle": "סיום הזמנה",
+      "summary": {
+        "heading": "פרטי ההזמנה",
+        "serviceLabel": "טיפול",
+        "therapistLabel": "מטפל/ת",
+        "roomLabel": "חדר",
+        "dateTimeLabel": "תאריך ושעה",
+        "customerLabel": "לקוח/ה",
+        "phoneLabel": "טלפון",
+        "emailLabel": "דוא״ל",
+        "notesLabel": "הערות",
+        "editName": "עריכת שם",
+        "editEmail": "עריכת דוא״ל",
+        "editNotes": "עריכת הערות"
+      },
+      "holdExpired": {
+        "heading": "פג תוקף",
+        "body": "ההזמנה שלכם פגה. אנא התחילו מחדש.",
+        "ctaRestart": "התחל מחדש"
+      },
+      "methodPicker": {
+        "heading": "כיצד תרצו לשלם?",
+        "creditCardFull": {
+          "title": "כרטיס אשראי — תשלום מלא מיידי",
+          "subtitle": "חיוב מלא עכשיו בעמוד מאובטח"
+        },
+        "cashAtReception": {
+          "title": "מזומן בקבלה",
+          "subtitle": "נדרש אימות כרטיס אשראי בלבד לשריון התור. לא מתבצע חיוב כעת. במקרה של אי-הגעה או ביטול מאוחר ייתכן חיוב של דמי ביטול"
+        },
+        "voucherDts": {
+          "title": "שובר הטבות",
+          "subtitle": "DTS שווה-כסף — יחידה מול יחידה"
+        },
+        "voucherVpay": {
+          "title": "שובר טעונה",
+          "subtitle": "כרטיס רב-ארנק — ניתן גם לתשלום חלקי"
+        }
+      },
+      "cancellationPolicy": {
+        "heading": "מדיניות ביטול",
+        "summary": "ביטול חינם עד 24 שעות לפני הטיפול. ביטול מאוחר או אי-הגעה — דמי ביטול של 5% מהמחיר או 100 ₪, הנמוך מביניהם."
+      },
+      "cardcom": {
+        "waiting": "ממתינים לאישור הבנק... העמוד יתעדכן אוטומטית.",
+        "loadingIframe": "טוען טופס תשלום מאובטח..."
+      },
+      "voucherDts": {
+        "cardNumberLabel": "מספר כרטיס שובר",
+        "lookupCta": "בדיקת יתרה",
+        "pickItemsHeading": "בחרו את ההטבה למימוש",
+        "qtyLabel": "כמות",
+        "redeemCta": "מימוש השובר",
+        "noItems": "לא נמצאו הטבות זמינות בכרטיס זה"
+      },
+      "voucherVpay": {
+        "cardNumberLabel": "מספר כרטיס",
+        "cvvLabel": "CVV",
+        "lookupCta": "בדיקת יתרה",
+        "balanceLabel": "יתרה בכרטיס",
+        "payAmountLabel": "סכום לחיוב מהשובר",
+        "remainingNote": "סכום זה נמוך ממחיר הטיפול. יתרה של {amount} תגבה באמצעי תשלום אחר.",
+        "redeemCta": "ביצוע תשלום"
+      },
+      "success": {
+        "heading": "תודה! ההזמנה אושרה",
+        "body": "שלחנו אישור ב-SMS. נתראה בטיפול!",
+        "backToWhatsapp": "חזרה לוואטסאפ"
+      },
+      "errors": {
+        "tokenExpired": "חלון התשלום פג. אנא התחילו מחדש.",
+        "tokenInvalid": "חלון התשלום אינו תקין.",
+        "bookingNotFound": "ההזמנה לא נמצאה.",
+        "paymentFailed": "התשלום נכשל. נסו שוב או פנו לקבלה."
+      }
+    }
+  }
+}

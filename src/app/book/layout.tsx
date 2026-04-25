@@ -7,8 +7,13 @@ export const metadata: Metadata = {
 };
 
 /**
- * Hebrew RTL layout scoped to /book/**. Admin and therapist portals stay
- * LTR/English via the root layout in src/app/layout.tsx.
+ * Customer-facing booking layout.
+ *
+ * Phase 7a transitional: keeps `dir="rtl"` + `lang="he"` hardcoded
+ * because the page contents still import Hebrew strings directly from
+ * `src/lib/i18n/he.ts`. Once Phase 7b migrates the customer
+ * components to `useTranslations()`, drop this wrapper's dir/lang
+ * so the root layout's dynamic attributes take over per-locale.
  */
 export default function BookLayout({
   children,
