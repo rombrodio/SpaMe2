@@ -9,6 +9,7 @@ import {
 } from "@/lib/schemas/therapist";
 import { revalidatePath } from "next/cache";
 import { writeAuditLog } from "@/lib/audit";
+import { getAppUrl } from "@/lib/app-url";
 
 // ── Therapist CRUD ──
 
@@ -79,7 +80,7 @@ async function sendTherapistInvite(
       return { ok: true };
     }
 
-    const siteUrl = process.env.APP_URL || "http://localhost:3000";
+    const siteUrl = getAppUrl();
     const { data: inviteData, error: inviteError } =
       await admin.auth.admin.inviteUserByEmail(email, {
         data: { therapist_id: therapistId },

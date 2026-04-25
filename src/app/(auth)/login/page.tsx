@@ -23,8 +23,13 @@ function LoginForm() {
   const next = searchParams.get("next") ?? "/admin";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  // Lazy-init from the URL hash so we don't need an effect to read it.
-  const [error, setError] = useState<string | null>(() => parseHashError());
+  // Lazy-init from both the URL hash (Supabase's own error format) and
+  // the query string (our /callback route bubbles real verify errors
+  // up as ?error=... so the user sees "token expired" instead of a
+  // generic "email link invalid").
+  const [error, setError] = useState<string | null>(
+    () => searchParams.get("error") ?? parseHashError()
+  );
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<"login" | "reset">("login");
@@ -56,9 +61,14 @@ function LoginForm() {
     setLoading(true);
 
     const supabase = createClient();
+    // Prefer the deterministic prod URL so the email always opens the live
+    // site — `window.location.origin` would bake `localhost:3000` into the
+    // email forever if the user triggered reset from a dev session.
+    const baseUrl =
+      process.env.NEXT_PUBLIC_APP_URL ?? window.location.origin;
     const { error: resetError } = await supabase.auth.resetPasswordForEmail(
       email,
-      { redirectTo: `${window.location.origin}/callback?next=/set-password` }
+      { redirectTo: `${baseUrl}/callback?next=/set-password` }
     );
 
     setLoading(false);

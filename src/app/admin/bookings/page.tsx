@@ -87,6 +87,7 @@ export default async function BookingsPage({
                     <th className="pb-2 font-medium">Therapist</th>
                     <th className="pb-2 font-medium">Room</th>
                     <th className="pb-2 font-medium">Status</th>
+                    <th className="pb-2 font-medium">Created</th>
                     <th className="pb-2 font-medium text-right">Actions</th>
                   </tr>
                 </thead>
@@ -128,6 +129,21 @@ export default async function BookingsPage({
                       <td className="py-3">{booking.rooms?.name || "-"}</td>
                       <td className="py-3">
                         <StatusBadge status={booking.status} />
+                      </td>
+                      <td className="py-3 text-muted-foreground">
+                        <span
+                          title={formatInTimeZone(
+                            new Date(booking.created_at),
+                            TZ,
+                            "MMM d, yyyy HH:mm:ss"
+                          )}
+                        >
+                          {formatInTimeZone(
+                            new Date(booking.created_at),
+                            TZ,
+                            "MMM d, HH:mm"
+                          )}
+                        </span>
                       </td>
                       <td className="py-3 text-right">
                         <Link

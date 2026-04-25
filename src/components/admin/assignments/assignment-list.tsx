@@ -11,6 +11,7 @@ import { TZ } from "@/lib/constants";
 import {
   assignTherapistAction,
   getAssignmentScreenData,
+  type AssignmentScope,
   type EligibleTherapist,
   type UnassignedBookingForAdmin,
 } from "@/lib/actions/assignments";
@@ -28,18 +29,21 @@ interface Row {
 }
 
 interface AssignmentListProps {
-  initialDate: string;
+  initialScope: AssignmentScope;
+  initialDate: string | null;
   initialData: Row[];
   highlightBookingId?: string;
 }
 
 export function AssignmentList({
+  initialScope,
   initialDate,
   initialData,
   highlightBookingId,
 }: AssignmentListProps) {
   const router = useRouter();
-  const [date, setDate] = useState(initialDate);
+  const [scope, setScope] = useState<AssignmentScope>(initialScope);
+  const [date, setDate] = useState(initialDate ?? "");
   const [data, setData] = useState(initialData);
   const [isPending, startTransition] = useTransition();
   const highlightRef = useRef<HTMLDivElement | null>(null);
@@ -53,19 +57,47 @@ export function AssignmentList({
     }
   }, [highlightBookingId]);
 
-  function handleDateChange(newDate: string) {
-    setDate(newDate);
+  function refresh(nextScope: AssignmentScope, nextDate: string) {
     startTransition(async () => {
-      const fresh = await getAssignmentScreenData({ date: newDate });
+      const fresh = await getAssignmentScreenData({
+        scope: nextScope,
+        date: nextScope === "date" ? nextDate : null,
+      });
       setData(fresh.bookings);
-      // Keep the URL in sync without a full navigation.
-      router.replace(`/admin/assignments?date=${newDate}`);
+      const qs =
+        nextScope === "date" && nextDate
+          ? `?scope=date&date=${nextDate}`
+          : "";
+      router.replace(`/admin/assignments${qs}`);
     });
+  }
+
+  function handleShowAll() {
+    setScope("all");
+    setDate("");
+    refresh("all", "");
+  }
+
+  function handleDateChange(newDate: string) {
+    setScope("date");
+    setDate(newDate);
+    refresh("date", newDate);
   }
 
   return (
     <div className="space-y-4">
-      <div className="flex items-end gap-3">
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant={scope === "all" ? "default" : "outline"}
+            size="sm"
+            onClick={handleShowAll}
+          >
+            All future
+          </Button>
+          <span className="text-sm text-muted-foreground">or filter by</span>
+        </div>
         <div>
           <Label htmlFor="assignments-date">Date</Label>
           <Input
@@ -78,10 +110,13 @@ export function AssignmentList({
         {isPending && (
           <span className="text-sm text-muted-foreground">Loading...</span>
         )}
+        <div className="ml-auto text-sm text-muted-foreground">
+          {data.length} unassigned
+        </div>
       </div>
 
       {data.length === 0 ? (
-        <EmptyState date={date} />
+        <EmptyState scope={scope} date={date} />
       ) : (
         <div className="space-y-3">
           {data.map((row) => (
@@ -92,7 +127,7 @@ export function AssignmentList({
               highlightRef={
                 row.booking.id === highlightBookingId ? highlightRef : undefined
               }
-              onAssignedAndRefresh={() => handleDateChange(date)}
+              onAssignedAndRefresh={() => refresh(scope, date)}
             />
           ))}
         </div>
@@ -103,13 +138,23 @@ export function AssignmentList({
 
 // ─────────────────────────────────────────────────────────────
 
-function EmptyState({ date }: { date: string }) {
-  // parseISO gives a valid Date for yyyy-MM-dd strings; formatInTimeZone
-  // then prints it in the spa's timezone without a DST surprise.
-  const parsed = parseISO(date);
-  const prettyDate = isNaN(parsed.getTime())
-    ? date
-    : formatInTimeZone(parsed, TZ, "MMM d, yyyy");
+function EmptyState({
+  scope,
+  date,
+}: {
+  scope: AssignmentScope;
+  date: string;
+}) {
+  const parsed = date ? parseISO(date) : null;
+  const prettyDate =
+    parsed && !isNaN(parsed.getTime())
+      ? formatInTimeZone(parsed, TZ, "MMM d, yyyy")
+      : date;
+
+  const headline =
+    scope === "all"
+      ? "No unassigned bookings"
+      : `No unassigned bookings for ${prettyDate}`;
 
   return (
     <Card>
@@ -118,9 +163,7 @@ function EmptyState({ date }: { date: string }) {
           <UserCheck className="h-6 w-6" />
         </div>
         <div className="space-y-1">
-          <p className="text-base font-medium">
-            No unassigned bookings for {prettyDate}
-          </p>
+          <p className="text-base font-medium">{headline}</p>
           <p className="mx-auto max-w-md text-sm text-muted-foreground">
             Paid-but-unassigned bookings show up here automatically. The
             on-call manager receives SMS + WhatsApp the moment a customer
@@ -226,6 +269,14 @@ function AssignmentRow({
                 {booking.room_name}
               </div>
             )}
+            <div className="text-xs text-muted-foreground">
+              Booked{" "}
+              {formatInTimeZone(
+                new Date(booking.created_at),
+                TZ,
+                "MMM d, HH:mm"
+              )}
+            </div>
             {booking.notes && (
               <div className="pt-1 text-muted-foreground">{booking.notes}</div>
             )}

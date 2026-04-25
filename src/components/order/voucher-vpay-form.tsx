@@ -17,6 +17,8 @@ interface VpayVoucherFormProps {
   bookingId: string;
   serviceName: string;
   priceAgorot: number;
+  /** Phase 4.6: when true, renders a TEST MODE banner + demo-card hint. */
+  mockMode?: boolean;
 }
 
 type Step = "card" | "amount" | "redeeming";
@@ -29,7 +31,25 @@ type Step = "card" | "amount" | "redeeming";
  *      to min(balance, servicePrice)). Partial-redemption note appears
  *      when the chosen amount is below the service price.
  */
-export function VpayVoucherForm({
+export function VpayVoucherForm(props: VpayVoucherFormProps) {
+  return (
+    <>
+      {props.mockMode && (
+        <div
+          dir="rtl"
+          className="mb-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900"
+        >
+          <strong>TEST MODE</strong> · כל מספר כרטיס וכל CVV יאשרו.
+          לדוגמה: <span className="font-mono">8010019852923235</span> · CVV{" "}
+          <span className="font-mono">123</span>
+        </div>
+      )}
+      <VpayVoucherFormInner {...props} />
+    </>
+  );
+}
+
+function VpayVoucherFormInner({
   token,
   bookingId,
   serviceName,

@@ -5,6 +5,7 @@ import { sendSms } from "@/lib/messaging/twilio";
 import { buildBookingConfirmedSms } from "@/lib/messaging/templates/booking-confirmed-sms";
 import { notifyManagerUnassigned } from "@/lib/messaging/notify";
 import { writeAuditLog } from "@/lib/audit";
+import { getAppUrl } from "@/lib/app-url";
 import {
   he,
   formatDateTimeILFull,
@@ -139,7 +140,7 @@ export default async function OrderSuccessPage({ params }: PageProps) {
       .eq("id", row.id)
       .is("manager_alerted_at", null);
 
-    const appUrl = process.env.APP_URL || "http://localhost:3000";
+    const appUrl = getAppUrl();
     await notifyManagerUnassigned({
       bookingId: row.id,
       serviceName: row.services.name,

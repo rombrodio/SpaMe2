@@ -193,10 +193,12 @@ export default function EditCustomerPage() {
                         bookings table as a cached snapshot, but the contact
                         record (phone, email, notes) will be removed.
                       </p>
-                      <p>Type the customer name to confirm.</p>
+                      <p>
+                        Type <strong>DELETE</strong> to confirm.
+                      </p>
                     </>
                   }
-                  confirmText={customer.full_name || customer.phone}
+                  confirmText="DELETE"
                   confirmLabel="Delete customer"
                   onConfirm={handleDelete}
                 >

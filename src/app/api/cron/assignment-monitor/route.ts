@@ -27,6 +27,7 @@ import {
   notifyManagerEscalation,
   notifyManagerConfirmationTimeout,
 } from "@/lib/messaging/notify";
+import { getAppUrl } from "@/lib/app-url";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -47,7 +48,7 @@ async function handler(req: NextRequest): Promise<Response> {
   try {
     const admin = createAdminClient();
     const now = new Date();
-    const appUrl = process.env.APP_URL || "http://localhost:3000";
+    const appUrl = getAppUrl();
     const results = { unassignedEscalated: 0, confirmationTimedOut: 0 };
 
     // ── 1. Unassigned bookings close to start ──

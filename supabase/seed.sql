@@ -19,12 +19,15 @@ INSERT INTO rooms (id, name, description) VALUES
   ('2d857b13-fdf1-4124-8dbe-8212795ba38e', 'Ocean Room',   'Ground floor, facial & body');
 
 -- Services
+-- All services: 45-min treatment + 15-min buffer. The buffer covers
+-- room turnover and therapist rest, so a booking always occupies a
+-- clean hour while the customer-facing duration reads "45 min".
 INSERT INTO services (id, name, description, duration_minutes, buffer_minutes, price_ils) VALUES
-  ('ca9bb45d-b798-44cb-af7f-8b2290adc3ec', 'Swedish Massage',       'Full body relaxation massage',    60, 15, 35000),
-  ('e9817346-f660-4b6f-86d4-391760fde377', 'Deep Tissue Massage',   'Focused pressure therapy',        60, 15, 40000),
-  ('8d00225a-a59b-4627-9909-3c92a7fd06fc', 'Facial Treatment',      'Cleansing and rejuvenation',      45, 10, 28000),
-  ('456128c0-e656-40e8-be6b-52951cdfbab3', 'Hot Stone Massage',     'Heated basalt stones therapy',    90, 20, 50000),
-  ('037e3a4e-4df8-448c-8e2f-b754ba762cec', 'Couples Massage',       'Side by side relaxation',         60, 15, 65000);
+  ('ca9bb45d-b798-44cb-af7f-8b2290adc3ec', 'Swedish Massage',       'Full body relaxation massage',    45, 15, 35000),
+  ('e9817346-f660-4b6f-86d4-391760fde377', 'Deep Tissue Massage',   'Focused pressure therapy',        45, 15, 40000),
+  ('8d00225a-a59b-4627-9909-3c92a7fd06fc', 'Facial Treatment',      'Cleansing and rejuvenation',      45, 15, 28000),
+  ('456128c0-e656-40e8-be6b-52951cdfbab3', 'Hot Stone Massage',     'Heated basalt stones therapy',    45, 15, 50000),
+  ('037e3a4e-4df8-448c-8e2f-b754ba762cec', 'Couples Massage',       'Side by side relaxation',         45, 15, 65000);
 
 -- Therapist qualifications
 INSERT INTO therapist_services (therapist_id, service_id) VALUES

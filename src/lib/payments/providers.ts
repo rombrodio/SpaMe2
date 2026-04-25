@@ -109,6 +109,27 @@ export function getCardcomProvider(): HostedPaymentProvider {
     : buildMockCardComProvider();
 }
 
+/**
+ * Phase 4.6: expose mock-mode flags so UI components can branch
+ * (test-mode banners, fake card form) without reading `process.env`
+ * directly in client code. Server components read these once and pass
+ * the shape down to client components as props.
+ */
+export interface PaymentsMockState {
+  cardcom: boolean;
+  dts: boolean;
+  vpay: boolean;
+  /** True when at least one provider is mock — controls the global banner. */
+  any: boolean;
+}
+
+export function getPaymentsMockState(): PaymentsMockState {
+  const cardcom = pickMode("PAYMENTS_CARDCOM_PROVIDER") === "mock";
+  const dts = pickMode("PAYMENTS_DTS_PROVIDER") === "mock";
+  const vpay = pickMode("PAYMENTS_VPAY_PROVIDER") === "mock";
+  return { cardcom, dts, vpay, any: cardcom || dts || vpay };
+}
+
 export function getDtsProvider(): PosBenefitVoucherProvider {
   if (pickMode("PAYMENTS_DTS_PROVIDER") === "real") {
     return buildRealDtsProvider();
