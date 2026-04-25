@@ -95,7 +95,7 @@ services/              # Same-repo, separate-deploy workstreams
 └── vpay-proxy/        # Fly.io mTLS + static-IP proxy (Phase 4.5)
 
 supabase/
-├── migrations/       # SQL migration files (00001-00021)
+├── migrations/       # SQL migration files (00001-00024)
 └── seed.sql          # Demo data for local development
 ```
 
@@ -151,6 +151,9 @@ Migrations are in `supabase/migrations/` and run in order:
 19. Spa settings (on-call manager name + phone)
 20. Business hours + slot granularity (configurable via Settings)
 21. Service durations normalised to 45 min + 15 min buffer (operator decision)
+22. `user_role` enum adds `'receptionist'` (Phase 6)
+23. `receptionists` entity + `receptionist_availability_rules` + RLS extended for receptionist role
+24. `booking_source` enum + `bookings.source` column (customer_web / admin_manual / receptionist_manual / chatbot)
 
 ## Scripts
 
@@ -159,7 +162,7 @@ npm run dev            # Start development server
 npm run build          # Production build
 npm run start          # Start production server
 npm run lint           # Run ESLint
-npm run test           # Vitest one-shot (162 tests across 12 files)
+npm run test           # Vitest one-shot (186 tests across 14 files)
 npm run test:watch     # Vitest in watch mode
 npm run demo:payments  # Seed + exercise payment adapters (tsx)
 ```

@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { getSupabaseAnonKey, getSupabaseUrl } from "@/lib/supabase/env";
+import { allowedOrRedirect, portalForRole } from "@/lib/roles";
 
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
@@ -28,7 +29,9 @@ export async function middleware(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
   const isProtected =
-    pathname.startsWith("/admin") || pathname.startsWith("/therapist");
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/reception") ||
+    pathname.startsWith("/therapist");
   const isGet = request.method === "GET";
 
   const {
@@ -53,19 +56,12 @@ export async function middleware(request: NextRequest) {
       .eq("id", authedUser.id)
       .maybeSingle();
 
-    const role = profileError ? null : profile?.role;
-
-    if (pathname.startsWith("/admin") && role !== "super_admin") {
+    const role = profileError ? null : profile?.role ?? null;
+    const verdict = allowedOrRedirect(pathname, role);
+    if (!verdict.allowed) {
       if (!isGet) return supabaseResponse;
       const url = request.nextUrl.clone();
-      url.pathname = role === "therapist" ? "/therapist" : "/login";
-      return NextResponse.redirect(url);
-    }
-
-    if (pathname.startsWith("/therapist") && role !== "therapist") {
-      if (!isGet) return supabaseResponse;
-      const url = request.nextUrl.clone();
-      url.pathname = role === "super_admin" ? "/admin" : "/login";
+      url.pathname = verdict.redirectTo;
       return NextResponse.redirect(url);
     }
   }
@@ -84,7 +80,7 @@ export async function middleware(request: NextRequest) {
       .maybeSingle();
 
     const url = request.nextUrl.clone();
-    url.pathname = profile?.role === "super_admin" ? "/admin" : "/therapist";
+    url.pathname = portalForRole(profile?.role ?? null);
     return NextResponse.redirect(url);
   }
 
@@ -92,5 +88,11 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/therapist/:path*", "/login", "/set-password"],
+  matcher: [
+    "/admin/:path*",
+    "/reception/:path*",
+    "/therapist/:path*",
+    "/login",
+    "/set-password",
+  ],
 };
