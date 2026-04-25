@@ -60,6 +60,11 @@ export async function middleware(request: NextRequest) {
     const verdict = allowedOrRedirect(pathname, role);
     if (!verdict.allowed) {
       if (!isGet) return supabaseResponse;
+      // Loop guard: if the redirect target is the same path we're on
+      // (which happens when portalForRole returns a path that maps to
+      // itself — e.g. an unknown-role user on /login), don't redirect.
+      // Browsers otherwise hit ERR_TOO_MANY_REDIRECTS.
+      if (verdict.redirectTo === pathname) return supabaseResponse;
       const url = request.nextUrl.clone();
       url.pathname = verdict.redirectTo;
       return NextResponse.redirect(url);
@@ -79,8 +84,17 @@ export async function middleware(request: NextRequest) {
       .eq("id", authedUser.id)
       .maybeSingle();
 
+    const target = portalForRole(profile?.role ?? null);
+
+    // Loop guard: an authed user on /login whose `profiles.role`
+    // lookup returns null (profile row missing, RLS temporarily
+    // blocked, etc.) would otherwise be redirected back to /login
+    // because portalForRole(null) === "/login". Let them see the
+    // login form instead — they can sign out and retry.
+    if (target === pathname) return supabaseResponse;
+
     const url = request.nextUrl.clone();
-    url.pathname = portalForRole(profile?.role ?? null);
+    url.pathname = target;
     return NextResponse.redirect(url);
   }
 

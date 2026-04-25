@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { portalForRole } from "@/lib/roles";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -44,7 +45,11 @@ export default function SetPasswordPage() {
       return;
     }
 
-    // After setting password, fetch profile to determine where to redirect
+    // After setting password, fetch profile to determine where to
+    // redirect. Using portalForRole keeps the three-role matrix (super
+    // admin / receptionist / therapist) in one place — the old
+    // ternary sent receptionists to /therapist first, forcing middleware
+    // to re-redirect them.
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -55,8 +60,7 @@ export default function SetPasswordPage() {
         .eq("id", user.id)
         .maybeSingle();
 
-      window.location.href =
-        profile?.role === "super_admin" ? "/admin" : "/therapist";
+      window.location.href = portalForRole(profile?.role ?? null);
     } else {
       window.location.href = "/login";
     }

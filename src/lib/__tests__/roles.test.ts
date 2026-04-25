@@ -91,4 +91,36 @@ describe("allowedOrRedirect", () => {
       expect(allowedOrRedirect("/order/abc", null)).toEqual({ allowed: true });
     });
   });
+
+  describe("redirect-loop safety", () => {
+    it("never returns a redirectTo equal to the input pathname", () => {
+      // Middleware uses verdict.redirectTo to 302 the user; if that's
+      // ever the same path, the browser hits ERR_TOO_MANY_REDIRECTS.
+      const paths = [
+        "/admin",
+        "/admin/bookings",
+        "/reception",
+        "/reception/inbox",
+        "/therapist",
+        "/therapist/availability",
+      ];
+      const roles = [
+        null,
+        undefined,
+        "",
+        "super_admin",
+        "receptionist",
+        "therapist",
+        "unknown",
+      ];
+      for (const path of paths) {
+        for (const role of roles) {
+          const v = allowedOrRedirect(path, role as string | null);
+          if (!v.allowed) {
+            expect(v.redirectTo).not.toBe(path);
+          }
+        }
+      }
+    });
+  });
 });
