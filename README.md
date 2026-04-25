@@ -1,6 +1,12 @@
-# SpaMe2
+# SpaMe
 
-Spa management and booking system for a Tel Aviv spa.
+Single-venue spa management platform for a boutique spa in Tel Aviv, replacing Biz-Online.
+
+Combines — tailored to spa operations — the functional surface of **BizOnline**
+(booking + payment), **ShiftOrganizer** (staff shifts + availability), and
+**Texter** (WhatsApp Business + AI conversational platform), with AI-assisted
+automation as a first principle. Everything ships in this single codebase; the
+earlier "SpaMeV3" split for the conversational layer is dropped.
 
 ## Tech Stack
 
@@ -68,13 +74,25 @@ src/
 ├── app/              # Next.js App Router pages
 │   ├── (auth)/       # Login, auth callback
 │   ├── admin/        # Super admin dashboard
-│   └── therapist/    # Therapist portal
+│   ├── reception/    # Receptionist portal (Phase 6) + Texter inbox (Phase 8)
+│   ├── therapist/    # Therapist portal
+│   ├── book/         # Customer browser-direct booking (Hebrew, RTL)
+│   ├── order/        # Hosted payment finalisation pages
+│   └── chat/         # Embeddable customer web-chat widget (Phase 8)
 ├── components/       # React components
 │   ├── ui/           # Base UI components (button, input, card, etc.)
 │   └── admin/        # Admin-specific components
 ├── lib/              # Shared library code
-│   └── supabase/     # Supabase client helpers
-└── middleware.ts      # Auth + role-based routing (renames to proxy.ts in a future Next 16 minor)
+│   ├── supabase/     # Supabase client helpers
+│   ├── scheduling/   # Availability + slot finding + booking engine
+│   ├── payments/     # CardCom + DTS + VPay adapters (mock + real)
+│   ├── conversations/ # WhatsApp + AI engine + approval rail (Phase 8)
+│   ├── i18n/         # HE / EN / RU catalogs + loader (Phase 7)
+│   └── reports/      # Fixed-report queries + CSV export (Phase 9)
+└── middleware.ts      # Auth + role-based routing
+
+services/              # Same-repo, separate-deploy workstreams
+└── vpay-proxy/        # Fly.io mTLS + static-IP proxy (Phase 4.5)
 
 supabase/
 ├── migrations/       # SQL migration files (00001-00021)
@@ -83,9 +101,12 @@ supabase/
 
 ## Auth & Roles
 
-- **Super Admin:** Full access to `/admin/*`. Can manage therapists, rooms, services, bookings, calendar.
-- **Therapist:** Access to `/therapist/*`. Can manage own availability and view own bookings.
-- **Customer:** No login. Identified by phone number.
+- **Super Admin:** Full access to `/admin/*`. Can manage therapists, rooms, services, bookings, calendar, receptionists, settings, audit log. Full visibility into the receptionist inbox.
+- **Receptionist** _(Phase 6)_: Primary surface is `/reception/inbox`. Creates bookings on behalf of customers (may pick a therapist or leave unassigned), submits own on-duty (chat + phone) windows, monitors every active conversation, approves / edits / rejects every AI-drafted reply before it sends. Cannot manage therapists / services / rooms / settings / audit log.
+- **Therapist:** Access to `/therapist/*`. Manages own availability, views own bookings (read-only), confirms deferred-assignment receipts via WhatsApp within a 2-hour SLA.
+- **Customer:** No login. Identified by phone number (E.164). Never sees therapist names.
+
+Language policy _(Phase 7)_: Hebrew default, first-class English + Russian for every user. Per-user toggle for staff; customer language auto-detected on first inbound message and persisted on the customer record.
 
 ### Production Supabase dashboard settings
 
@@ -147,7 +168,7 @@ npm run demo:payments  # Seed + exercise payment adapters (tsx)
 
 Read these before making changes — in order:
 
-1. [`AGENTS.md`](./AGENTS.md) — 30-second entrypoint for any AI agent (Claude, Cursor, Codex, v0, Augment, etc.).
+1. [`AGENTS.md`](./AGENTS.md) — entrypoint for any AI agent (Claude, Cursor, Codex, v0, Augment, etc.).
 2. [`CLAUDE.md`](./CLAUDE.md) — product goal, stack, engineering rules, non-negotiable architecture constraints.
 3. [`docs/plans/MASTER-PLAN.md`](./docs/plans/MASTER-PLAN.md) — single source of truth for phase status.
 4. [`docs/DOC-SYNC.md`](./docs/DOC-SYNC.md) — **mandatory** pre-commit manifest: *if you change X, update Y*. Walk it before every commit.

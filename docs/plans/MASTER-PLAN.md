@@ -1,15 +1,56 @@
-# SpaMe2 — Comprehensive Implementation Plan
+# SpaMe — Comprehensive Implementation Plan
 
 ## Context
 
-We are building a spa management web app for a Tel Aviv spa to replace Biz-Online. The repo is greenfield (only README.md and CLAUDE.md exist). This plan covers architecture, database schema, folder structure, phased implementation, risks, and assumptions — all scoped to V1 only.
+SpaMe is a custom spa management platform replacing Biz-Online for a boutique Tel Aviv spa. It fuses — tailored to spa operations — the functional surface of **BizOnline** (booking + payment), **ShiftOrganizer** (staff shifts / availability), and **Texter** (WhatsApp Business + AI conversational platform), with AI-assisted automation as a first principle so the manager and staff can run operations with as little manual intervention as possible. **Everything ships in a single codebase in this repository**; the earlier "SpaMeV3" split is dropped.
+
+This plan covers architecture, database schema, folder structure, phased implementation, risks, and assumptions — all scoped to V1 only.
+
+### Revised vision summary (2026-04-25)
+
+**Four roles**
+
+- **Super Admin** — full access: calendar, bookings, all entities, settings, audit log, reports, full Texter inbox visibility.
+- **Receptionist** — primary surface is the Texter-style `/reception/inbox`: live visibility into every active customer conversation (including bot-handled ones), take-over at any moment, AI-assisted writing, quick replies in EN/HE/RU, can create bookings (optionally picking a therapist), submits own on-duty (chat + phone) windows. Does **not** manage therapists / services / rooms / settings / audit log and does **not** receive therapist assignment receipts.
+- **Therapist** (~20, mixed patterns) — submits own availability + time-off, confirms deferred-assignment requests via WhatsApp within a 2-hour SLA, read-only view of own bookings.
+- **Customer** — phone-identified and anonymous. No login, no accounts. Picks language on first interaction; never sees therapist names.
+
+**Customer experience principles**
+
+- Phone (E.164) is the unique identifier; customer record stores information without credentials.
+- Required at booking: phone, full name, **customer gender**, preferred-therapist gender, date/time. Email optional.
+- Therapist anonymity is non-negotiable on every customer surface (`/book`, `/order`, WhatsApp replies, outbound SMS).
+- Customer language wins: three-way (HE / EN / RU) first-class support for every user including customers, auto-detected on first inbound message and persisted on the customer record.
+- Three booking paths (browser `/book`, WhatsApp, receptionist), **one source of truth** (same DB, same overlap constraints, same payment pipeline, same lifecycle).
+- Customer-facing and AI-driven bookings create an **unassigned** booking; a manager assigns a qualified therapist post-payment. Receptionists and super admins creating bookings manually may pick a therapist directly.
+- Payment is real. Cash-on-arrival is secured by a CardCom token, not a token charge. Cancellation policy (5% or 100 ILS, whichever greater) is enforced via stored card token. Payment webhooks are the only authoritative confirmation source.
+
+**AI / automation thesis — four layers**
+
+- **Layer 1 — Self-service customer booking** (shipped) — `/book` → `/order/[token]` flow is fully automated. Bookings land in the manager-assignment queue post-payment.
+- **Layer 2 — AI conversational booking** (Phase 8) — AI agent reads inbound WhatsApp / web messages, drafts replies, proposes tool calls from the approved list. Precise escalation thresholds are an open question to be answered by analysing the spa's last 12 months of WhatsApp conversations and iterating.
+- **Layer 3 — Receptionist Texter** (Phase 8) — `/reception/inbox` is the receptionist's primary work surface: live monitoring + takeover + AI handoff summary (2–3 sentences) + in-chat booking panel + AI writing-assist (translate / shorten / soften / draft from bullets) + inbound auto-translation when customer ≠ receptionist language.
+- **Layer 4 — Operational AI (narrow V1 scope)** — predictive no-show scoring as an **advisory** signal (surfaced on booking detail + in-chat booking panel, never blocks). Explicitly **not** in V1: AI assigning therapists, smart auto-assignment scoring, auto-rebook on sick-outs.
+
+**Two hardest invariants (never relaxed)**
+
+1. AI never writes to the database directly. It only calls the same Zod-validated server actions the staff use.
+2. AI never assigns a therapist in V1. Therapist assignment is human-only: managers assign, therapists confirm via WhatsApp within 2 hours.
+3. Every AI-drafted outbound reply is **receptionist-approved** in the Texter inbox. Full auto-send mode is not in V1.
 
 ### Confirmed Decisions
 
-- **Payment:** Optional for super admin (can confirm bookings directly without payment); required for customer self-booking and chatbot
-- **Buffer time:** Configurable per service (`buffer_minutes` column on `services` table)
-- **UI language:** English for admin; customer-facing Hebrew deferred
-- **Payment provider:** CardCom (hosted page + webhooks)
+- **Payment:** Optional for super admin (can confirm bookings directly without payment); required for customer self-booking and chatbot.
+- **Buffer time:** Configurable per service (`buffer_minutes` column on `services` table).
+- **Services:** 45 minutes treatment + 15 minutes buffer by default (operator decision, migration 00021).
+- **Business hours:** 09:00–21:00, admin-configurable, with 15/30/60-minute slot granularity (60 default).
+- **UI language:** Hebrew is the default for every surface; English and Russian are first-class for all users (admin, therapist, receptionist, customer). Per-user toggle; customer language auto-detected on first inbound message and persisted. Shipping in **Phase 7**.
+- **Payment provider:** CardCom (hosted page + webhooks) + DTS benefit vouchers + VPay stored-value vouchers.
+- **Roles:** `super_admin`, `receptionist`, `therapist`. Receptionist role lands in **Phase 6**.
+- **Therapist identity:** anonymous on every customer surface. Customer picks gender preference; server assigns a random eligible therapist at assignment time.
+- **Customer identity:** phone-only (E.164), no login, no accounts, no self-service history page.
+- **Cash-on-arrival:** CardCom token (CreateTokenOnly with Shva J-validation); penalty captured via LowProfileChargeToken per 5%-or-100-ILS policy.
+- **VPay carve-out:** `services/vpay-proxy/` lives in this repo but deploys to Fly.io (mTLS + static IP). Same source of truth, different deploy target.
 
 ---
 
@@ -21,19 +62,29 @@ Next.js App Router monolith on Vercel, backed by Supabase (Postgres + Auth). Thr
 
 ### Auth & Roles
 
-Two authenticated user types via Supabase Auth, distinguished by a `role` column in a `profiles` table:
+Three authenticated user types via Supabase Auth, distinguished by a `role` column in a `profiles` table:
 
-1. **Super Admin** — can invite/remove therapists, manage rooms/services/customers, edit the calendar, manage bookings, view audit logs, access staff inbox. Full CRUD.
-2. **Therapist** — logs in to submit/edit their own availability rules and time-off. Can view their own bookings (read-only). Cannot edit other therapists, rooms, services, customers, or calendar.
+1. **Super Admin** — full CRUD on every entity. Owns the calendar, bookings, therapists, rooms, services, customers, settings, audit log, reports, and has full Texter inbox visibility.
+2. **Receptionist** (Phase 6) — primary surface is `/reception/inbox`. Can:
+   - Monitor every active customer conversation in real time (including bot-handled ones)
+   - Take over from the bot at any moment
+   - Create bookings on behalf of customers — may pick a therapist directly or leave unassigned for the manager
+   - Submit own on-duty (chat + phone) availability windows
+   - Use quick-reply templates + AI writing-assist (translate, shorten, soften, draft from bullets) in EN/HE/RU
+   - Approve / edit / reject every AI-drafted outbound reply before it sends
+   
+   Explicitly cannot: manage therapists / services / rooms / settings / audit log, receive therapist assignment receipts, do shift-swap or approval work.
+3. **Therapist** — submits own availability rules and time-off, confirms deferred-assignment requests via WhatsApp (2-hour SLA), read-only view of own bookings.
 
-Customers are NOT Supabase Auth users — identified by phone number only.
+Customers are NOT Supabase Auth users — identified by phone number (E.164) only.
 
 ### Surfaces
 
-1. **Admin Dashboard** (`/admin/*`) — Super Admin: full access. Therapist: redirected to `/therapist/*` portal.
-2. **Therapist Portal** (`/therapist/*`) — Behind Supabase Auth. Therapists manage their own availability, view their bookings.
-3. **Customer Booking Flow** (`/book/*`) — Public pages. Service selection → slot picker → customer details → redirect to hosted payment page → confirmation.
-4. **Web Chat** (`/chat/*`) — Embeddable chat widget mirroring the WhatsApp conversational flow.
+1. **Admin Dashboard** (`/admin/*`) — Super Admin: full access. Receptionist/Therapist: redirected to their own portal.
+2. **Receptionist Portal** (`/reception/*`, Phase 6–8) — `/reception/inbox` is the primary Texter-style staff surface; `/reception/availability` for on-duty windows; `/reception/bookings/new` for phone/walk-in bookings (can pick therapist).
+3. **Therapist Portal** (`/therapist/*`) — Behind Supabase Auth. Therapists manage their own availability, view their bookings.
+4. **Customer Booking Flow** (`/book/*`) — Public pages. Service selection → slot picker → customer details (phone + name + gender + preferred-therapist gender + email optional) → redirect to hosted payment page → confirmation. Booking lands unassigned.
+5. **Web Chat** (`/chat/*`, Phase 8) — Embeddable chat widget mirroring the WhatsApp conversational flow; all replies pass through the same Texter inbox approval rail.
 
 ### API Routes
 
@@ -54,12 +105,14 @@ All mutations go through Server Actions. These are the only write path — the A
 1. **Payment Provider** (CardCom recommended — mature hosted page, ILS-native, webhook support). Flow: create payment page URL → redirect customer → receive webhook → update booking.
 2. **WhatsApp Business Cloud API** (Meta). Receive inbound messages via webhook, send outbound via REST.
 
-### AI Chatbot Engine
+### AI Conversational Layer (Phase 8, in-repo)
 
-- Receives messages from WhatsApp webhook or web chat endpoint
-- Calls Claude API with system prompt constraining to 6 approved tools only
-- Each tool maps to a validated server action — AI never writes to DB directly
-- Tools: `find_available_slots`, `create_tentative_booking`, `create_payment_link`, `reschedule_booking`, `cancel_booking`, `handoff_to_staff`
+- Receives messages from the WhatsApp webhook or web chat endpoint.
+- Calls the LLM with a system prompt constraining it to an approved tool list. Each tool maps to a Zod-validated server action — the AI never writes to the DB directly and never assigns a therapist (hard invariants).
+- Drafts outbound replies into a pending-send queue visible in `/reception/inbox`. **A receptionist approves / edits / rejects every send in V1.** Full auto-send mode is deferred.
+- Starter tool list (not final — will grow as usage patterns are analysed):
+  `find_available_slots`, `create_tentative_booking`, `create_payment_link`, `reschedule_booking`, `cancel_booking`, `handoff_to_staff`, `translate_message`, `summarize_thread`, `compose_reply`.
+- Inbound auto-translation and a 2–3 sentence AI handoff summary accompany every conversation opened in the receptionist inbox.
 
 ### Key Data Flows
 
@@ -67,7 +120,7 @@ All mutations go through Server Actions. These are the only write path — the A
 
 **Admin booking (skip payment):** Same flow but super admin clicks "Confirm without payment" → Booking(confirmed) directly. Only super admins can do this (not therapists). Audit log records which admin bypassed payment.
 
-**Chatbot booking:** Customer message → webhook → conversation engine → AI calls `find_available_slots` → presents options → customer picks → `create_tentative_booking` → `create_payment_link` → sends link → customer pays → webhook → Booking(confirmed)
+**Chatbot booking (Phase 8):** Customer message → webhook → conversation engine → AI calls `find_available_slots` → drafts a reply with options → **receptionist approves in the inbox** → reply sent → customer picks → `create_tentative_booking` (unassigned) → `create_payment_link` → sends link → customer pays → webhook → Booking(pending_assignment) → manager assigns a qualified therapist → therapist confirms via WhatsApp within 2h SLA → Booking(confirmed).
 
 ---
 
@@ -77,9 +130,9 @@ All tables use UUID PKs (`gen_random_uuid()`), `created_at`/`updated_at` timesta
 
 ### Auth Tables
 
-**profiles** — `id` (UUID, FK to `auth.users`), `role` ('super_admin' | 'therapist'), `therapist_id` (UUID nullable, FK to `therapists` — set when role='therapist' to link Supabase Auth user to therapist record), `created_at`, `updated_at`. Created via trigger on `auth.users` insert.
+**profiles** — `id` (UUID, FK to `auth.users`), `role` ('super_admin' | 'receptionist' | 'therapist'), `therapist_id` (UUID nullable, FK to `therapists` — set when role='therapist' to link Supabase Auth user to therapist record), `language` ('he' | 'en' | 'ru', default 'he', Phase 7), `created_at`, `updated_at`. Created via trigger on `auth.users` insert.
 
-This allows: super admin invites therapist via Supabase Auth → profile created with role='therapist' + linked `therapist_id` → therapist logs in and manages their own availability.
+This allows: super admin invites therapist or receptionist via Supabase Auth → profile created with role + linked record → the new user logs in and lands on their portal.
 
 ### Extensions & Enums
 
@@ -96,7 +149,7 @@ CREATE TYPE audit_action AS ENUM ('create','update','delete','status_change','lo
 
 ### Tables
 
-**customers** — `id`, `full_name`, `phone` (UNIQUE, E.164), `email`, `notes`, `created_at`, `updated_at`
+**customers** — `id`, `full_name`, `phone` (UNIQUE, E.164), `email`, `gender` ('male' | 'female' | 'other', Phase 9), `language` ('he' | 'en' | 'ru', auto-detected on first inbound, Phase 7), `notes`, `created_at`, `updated_at`
 
 **therapists** — `id`, `full_name`, `phone`, `email`, `color` (calendar display), `is_active`, `created_at`, `updated_at`
 
@@ -182,6 +235,23 @@ supabase/migrations/
 └── 00021_service_durations_45min.sql        (all services → 45 min + 15 min buffer)
 ```
 
+### Pending migrations (by phase)
+
+```
+Phase 6 — Roles
+  00022_receptionist_role.sql                (profiles.role adds 'receptionist';
+                                              receptionist_availability_rules table)
+Phase 7 — Localization
+  00023_language_columns.sql                 (profiles.language, customers.language,
+                                              defaults 'he')
+Phase 8 — Conversational platform
+  00024_conversations_extensions.sql         (conversation_messages.ai_draft_of,
+                                              approval state enum, translations table)
+Phase 9 — Customer profile + reports
+  00025_customer_gender.sql                  (customers.gender enum, required at
+                                              booking time going forward)
+```
+
 ---
 
 ## 3. Folder / Module Structure
@@ -218,10 +288,19 @@ src/
 │   │   ├── customers/
 │   │   │   ├── page.tsx
 │   │   │   └── [id]/page.tsx
-│   │   ├── inbox/
-│   │   │   ├── page.tsx
-│   │   │   └── [threadId]/page.tsx
+│   │   ├── reports/                        # Phase 9 — fixed reports + CSV
+│   │   │   └── page.tsx
+│   │   ├── settings/page.tsx
+│   │   ├── assignments/page.tsx
 │   │   └── audit-log/page.tsx
+│   ├── reception/                          # Phase 6–8 (receptionist portal)
+│   │   ├── layout.tsx
+│   │   ├── page.tsx                        # Dashboard (today + own on-duty window)
+│   │   ├── availability/page.tsx           # On-duty chat + phone windows (Phase 6)
+│   │   ├── bookings/new/page.tsx           # Create booking (may pick therapist, Phase 6)
+│   │   └── inbox/                          # Texter-style staff inbox (Phase 8)
+│   │       ├── page.tsx                    # Live thread list (Supabase Realtime)
+│   │       └── [threadId]/page.tsx         # Conversation + AI draft approval + booking panel
 │   ├── therapist/
 │   │   ├── layout.tsx                      # Therapist portal layout + auth guard (role=therapist)
 │   │   ├── page.tsx                        # Dashboard (my upcoming bookings)
@@ -267,17 +346,28 @@ src/
 │   │   ├── booking-service.ts              # Create/cancel/reschedule
 │   │   ├── payment-service.ts              # Payment link + webhook processing
 │   │   └── notification-service.ts         # WhatsApp reminders
-│   ├── chatbot/
-│   │   ├── engine.ts                       # Conversation orchestration
-│   │   ├── tools.ts                        # 6 approved tool definitions
-│   │   ├── prompts.ts                      # System prompts
-│   │   └── whatsapp-adapter.ts
+│   ├── conversations/                      # Phase 8 — replaces the old chatbot/ sketch
+│   │   ├── engine.ts                       # processInbound(): history → translate → LLM → draft
+│   │   ├── tools.ts                        # Zod tool schemas → server actions
+│   │   ├── prompts.ts                      # System prompt + hard-rule guards
+│   │   ├── approval.ts                     # approveDraft / editAndApprove / rejectDraft
+│   │   ├── translation.ts                  # inbound + outbound auto-translation
+│   │   ├── summary.ts                      # 2-3 sentence handoff summary
+│   │   └── no-show-scoring.ts              # advisory risk score
+│   ├── i18n/                               # Phase 7
+│   │   ├── config.ts                       # locales list, default, fallback
+│   │   ├── catalogs/he.json
+│   │   ├── catalogs/en.json
+│   │   └── catalogs/ru.json
+│   ├── reports/                            # Phase 9
+│   │   ├── queries.ts
+│   │   └── csv.ts
 │   ├── payments/
 │   │   ├── provider.ts                     # Interface
 │   │   ├── cardcom.ts                      # CardCom adapter
 │   │   └── mock.ts
 │   ├── whatsapp/
-│   │   ├── client.ts
+│   │   ├── client.ts                       # Meta WhatsApp Cloud API (Phase 8)
 │   │   └── mock.ts
 │   ├── utils/
 │   │   ├── dates.ts                        # Asia/Jerusalem helpers
@@ -296,7 +386,10 @@ src/
 │   │   ├── slot-picker.tsx
 │   │   └── customer-form.tsx
 │   └── chat/chat-widget.tsx
-├── middleware.ts                            # Auth guard: /admin (super_admin only), /therapist (therapist only)
+├── middleware.ts                            # Auth guard: /admin (super_admin), /reception (receptionist), /therapist (therapist)
+
+services/                                    # Phase 4.5 / 8 — non-Vercel deploys
+└── vpay-proxy/                              # mTLS + static-IP Fly.io proxy (Phase 4.5)
 
 supabase/
 ├── config.toml
@@ -595,44 +688,97 @@ receptionists):
 - **Vercel Web Analytics** (PR #17) — `@vercel/analytics` in root layout,
   auto page-view tracking.
 
-### Phase 6: Chatbot Foundation (~15 files)
+### Phase 6: Receptionist role (~12 files)
 
-**Reshaped for SpaMeV3** — reframed as a first-party WhatsApp Business Cloud
-platform (a "Texter-alike" — see https://texterchat.com for the market
-reference). **Do not implement in this repo.** Twilio SMS confirmations
-shipped in Phase 4 stay in production; the conversational / bot layer lives in
-SpaMeV3.
+**Goal:** Promote receptionist from a backlog ticket (SPA-137) to a real role with its own portal. This is the gating prerequisite for Phases 7 and 8 — i18n only makes sense across three roles, and the WhatsApp inbox needs somewhere to live.
 
-**Original V2 goal (now deferred):** AI conversation engine with WhatsApp +
-web chat.
+- [ ] Migration `00022_receptionist_role.sql`:
+  - `profiles.role` enum adds `'receptionist'`
+  - New `receptionist_availability_rules` table (same shape as `therapist_availability_rules` but FK to the receptionist profile; single availability mode covers both chat + phone coverage)
+  - RLS policies: receptionist can SELECT/UPDATE own availability; read-only on bookings + customers; no access to therapists / services / rooms / settings / audit log
+- [ ] `src/middleware.ts` — route guard: `/admin/*` super_admin only; `/reception/*` receptionist or super_admin; `/therapist/*` therapist only
+- [ ] `src/app/reception/layout.tsx` — sidebar shell for receptionist portal
+- [ ] `src/app/reception/page.tsx` — dashboard (today's calendar read-only, pending payments, unassigned queue, own on-duty window)
+- [ ] `src/app/reception/availability/page.tsx` — submit own on-duty chat + phone windows
+- [ ] `src/app/reception/bookings/new/page.tsx` — create booking on behalf of a customer (may pick therapist or leave unassigned)
+- [ ] `src/app/admin/users/page.tsx` or extend `/admin/therapists` — super admin invites / deactivates receptionist accounts
+- [ ] Update login post-auth redirect and role-router in `middleware.ts`
+- [ ] Vitest coverage for role-guard paths
+- [ ] Docs: AGENTS.md + README.md + CLAUDE.md role lists; DOC-SYNC row for `receptionist_availability_rules`
 
-- [ ] `src/lib/chatbot/tools.ts` — 6 tool function definitions mapping to server actions
-- [ ] `src/lib/chatbot/prompts.ts` — constraining system prompt
-- [ ] `src/lib/chatbot/engine.ts` — `processMessage()`: load history, call Claude API, execute tools, save messages
-- [ ] `src/lib/whatsapp/client.ts` — send messages, mark as read
-- [ ] `src/lib/whatsapp/mock.ts`
-- [ ] `src/lib/chatbot/whatsapp-adapter.ts`
-- [ ] `src/app/api/webhooks/whatsapp/route.ts` — GET (verify) + POST (receive + respond)
-- [ ] `src/app/api/chat/route.ts` — streaming web chat endpoint
-- [ ] `src/app/chat/page.tsx` + `src/components/chat/chat-widget.tsx`
-- [ ] `src/lib/services/notification-service.ts`
-- [ ] `src/app/api/cron/reminders/route.ts`
+**Depends on:** Phases 2, 3, 4, 5.5.
 
-**Depends on:** Phases 4, 5
+### Phase 7: Localization (HE / EN / RU) (~20 files)
 
-### Phase 7: Staff Inbox & Polish (~10 files)
-**Goal:** Escalated conversation management, real-time updates, final polish.
+**Goal:** Hebrew default with first-class English and Russian support across every surface. Per-user toggle for staff; customer language auto-detected on first inbound message and persisted on the customer record.
 
-- [ ] `src/app/admin/inbox/page.tsx` — open threads, sorted/filtered
-- [ ] `src/app/admin/inbox/[threadId]/page.tsx` — message history, staff reply, close thread
-- [ ] Supabase Realtime for inbox + calendar
-- [ ] Dashboard metrics: today's bookings, pending payments, open threads
-- [ ] Loading states, error handling, toast notifications throughout
-- [ ] RTL groundwork (`dir="rtl"` support in layout)
-- [ ] Final README update
-- [ ] End-to-end manual testing
+- [ ] Pick + install i18n framework (candidate: `next-intl` for App Router compatibility)
+- [ ] Migration `00023_language_columns.sql` — `profiles.language` + `customers.language` enums, default `'he'`
+- [ ] `src/lib/i18n/` — loader, per-locale JSON catalogs, `useTranslations()` hooks, locale router
+- [ ] Extract existing HE strings from `src/lib/i18n/he.ts` into the catalog
+- [ ] Extract existing EN admin strings (currently hardcoded in components) into the EN catalog
+- [ ] Author RU catalog for admin + therapist + reception + customer surfaces (≈ N keys — scoped when we extract)
+- [ ] Per-user language toggle in navbar for staff; persist to `profiles.language`
+- [ ] Customer language detection on first inbound message (heuristic on character set + greeting phrases), written to `customers.language`; manual override in customer detail
+- [ ] RTL groundwork — `dir="rtl"` toggled per-user based on active locale; Tailwind logical properties where needed
+- [ ] All error messages / toasts / emails / SMS templates / PDF receipts translated
+- [ ] CI lint rule: no literal user-facing strings outside the catalog (via a custom ESLint rule or `no-literal-string` plugin)
+- [ ] Vitest snapshot tests for each locale on the booking flow
+- [ ] Docs: DOC-SYNC row added — *"if you add a user-facing string, add it to all three locale catalogs in the same commit"*
 
-**Depends on:** Phase 6
+**Depends on:** Phase 6 (three roles is what justifies the framework overhead).
+
+### Phase 8: Conversational platform (WhatsApp + Web Chat + AI) (~30 files)
+
+**Goal:** The Texter-alike WhatsApp Business + web chat platform, fully in-repo. Inbound conversations stream into `/reception/inbox`; the AI drafts replies that a receptionist approves before send; booking actions are reachable from an in-chat booking panel.
+
+- [ ] Migration `00024_conversations_extensions.sql`:
+  - `conversation_messages.ai_draft_of` (nullable FK — links an approved send back to the AI draft it originated from)
+  - `conversation_messages.approval_state` enum (`pending_approval`, `approved`, `edited`, `rejected`, `sent`, `received`)
+  - `conversation_messages.translated_from` + `translated_to` for auto-translation records
+  - `conversation_threads.handoff_summary` (text, AI-generated 2–3 sentences cached per open thread)
+- [ ] `src/lib/conversations/engine.ts` — `processInbound()`: load history, detect language, auto-translate, call LLM, produce pending-send draft
+- [ ] `src/lib/conversations/tools.ts` — Zod-validated tool schemas, each maps to a server action in `src/lib/actions/`
+- [ ] `src/lib/conversations/prompts.ts` — system prompt with hard rules (never assign therapist, never confirm payment, never contradict operator-set business hours)
+- [ ] `src/lib/conversations/approval.ts` — `approveDraft()`, `editAndApprove()`, `rejectDraft()` server actions
+- [ ] `src/lib/conversations/translation.ts` — inbound/outbound translation, cached per message
+- [ ] `src/lib/conversations/summary.ts` — `generateHandoffSummary(threadId)` callable on open and on takeover
+- [ ] `src/lib/conversations/no-show-scoring.ts` — advisory scorer returning `{score, reasons[]}`; surfaced on booking detail + in-chat booking panel
+- [ ] `src/lib/whatsapp/client.ts` + `mock.ts` — Meta WhatsApp Cloud API send / mark-as-read
+- [ ] `src/app/api/webhooks/whatsapp/route.ts` — GET verify + POST receive
+- [ ] `src/app/api/chat/route.ts` — embeddable web-chat inbound endpoint
+- [ ] `src/app/chat/page.tsx` + `src/components/chat/chat-widget.tsx` — customer-facing chat widget
+- [ ] `src/app/reception/inbox/page.tsx` — live list of open threads (Supabase Realtime subscription)
+- [ ] `src/app/reception/inbox/[threadId]/page.tsx` — conversation UI with:
+  - pending AI draft + approve / edit / reject controls
+  - inbound auto-translation toggle
+  - AI handoff summary pinned to the top
+  - quick-reply picker in EN/HE/RU
+  - AI writing-assist tools (translate / shorten / soften / draft from bullets) for receptionist-typed messages
+  - in-chat booking panel (find slots, create tentative booking, send payment link, reschedule, cancel) — same server actions as `/admin/bookings/new`
+- [ ] `src/app/api/cron/reminders/route.ts` — appointment reminders via WhatsApp (falls back to Twilio SMS if WhatsApp opt-out)
+- [ ] Vitest coverage for engine + tools + approval state machine + no-show scorer
+
+**Depends on:** Phases 6, 7.
+
+**Explicit non-goals:** fully-autonomous AI replies; AI assigning therapists; auto-rebook on sick-outs; smart auto-assignment scoring. All four are deferred past V1.
+
+### Phase 9: Customer profile + Reports (~10 files)
+
+**Goal:** Close the customer-data gap (gender, booking history) and ship the fixed-report module.
+
+- [ ] Migration `00025_customer_gender.sql` — `customers.gender` enum (`'male' | 'female' | 'other'`), not-null going forward (existing rows back-filled as `'other'` or NULL-tolerant with a one-time prompt)
+- [ ] Update `/book`, `/reception/bookings/new`, `/admin/bookings/new`, and the AI `create_tentative_booking` tool to collect + require `gender`
+- [ ] `src/app/admin/customers/[id]/page.tsx` — booking history (past + upcoming), lifetime value, next appointment, quick-rebook button (SPA-050 / SPA-051)
+- [ ] SPA-091 service-polish remainder — per-service images, room/category grouping on `/book`, richer service detail
+- [ ] `src/lib/reports/` — query layer for fixed reports (revenue by date-range, bookings-by-therapist, no-show rate, cancellation reasons)
+- [ ] `src/app/admin/reports/page.tsx` — report picker with date-range + CSV export
+- [ ] Vitest coverage for report queries
+- [ ] Docs sync: README migration list, MASTER-PLAN migration list, DOC-SYNC row for reports
+
+**Depends on:** Phase 6 (receptionist booking path needs `gender` too). Localization (Phase 7) applies to the new UI as it's authored.
+
+**Explicit non-goals (deferred past V1):** custom report builder, advanced BI dashboards, payroll, inventory, loyalty, deep accounting, complex memberships, multi-branch logic, WCAG compliance, customer accounts / login / self-service history pages, shift-swap / shift-approval / time-clock / payroll-adjacent workflows.
 
 ---
 
@@ -651,11 +797,10 @@ web chat.
 
 ### Acceptable V1 Shortcuts
 
-- No real-time calendar until Phase 7 (polling/refresh is fine)
-- No i18n framework — hardcode Hebrew strings directly
-- No email notifications — WhatsApp is primary channel
-- Simple role model — all authenticated staff are admins
-- 161 Vitest tests across 12 files cover scheduling, payments, availability, and the unassigned-booking matcher. CI (`.github/workflows/ci.yml`) runs typecheck + lint + test + build on every push and PR.
+- No real-time calendar until Phase 8 (polling/refresh is fine); Supabase Realtime arrives with the inbox.
+- No custom report builder — only fixed reports with date range + CSV export (Phase 9).
+- No email notifications — WhatsApp is the primary channel, Twilio SMS is the fallback.
+- 162 Vitest tests across 12 files cover scheduling, payments, availability, and the unassigned-booking matcher. CI (`.github/workflows/ci.yml`) runs typecheck + lint + test + build on every push and PR.
 - Single payment provider, no multi-provider routing
 - No job queue — webhook/WhatsApp processing is synchronous in route handlers
 - Price as integer (agorot) not decimal — UI handles display conversion
@@ -671,25 +816,25 @@ web chat.
 ## 6. Assumptions
 
 ### Confirmed
-- **Payment provider:** CardCom (hosted page) + DTS benefit vouchers + VPay stored-value vouchers
-- **Payment requirement:** Optional for super admin (can confirm directly), required for customer/chatbot bookings
-- **Buffer time:** Configurable per service (`buffer_minutes` on services table)
-- **UI language:** English for admin; Hebrew customer-facing (/book, /order) shipped in Phase 4
-- **Cash-on-arrival:** Secured by CardCom token (CreateTokenOnly with Shva J-validation),
-  NOT a symbolic 1 NIS charge. Penalty captured via LowProfileChargeToken on late
-  cancel / no-show per the 5%-or-100-ILS policy (v1_5pct_or_100ILS_min snapshot).
-- **Therapist identity:** anonymous across customer surfaces (/book, /order, SMS).
-  Admin + therapist portals retain full identity. Customer picks gender preference
-  (male / female / any); server assigns a random eligible therapist at booking time.
+- **Payment provider:** CardCom (hosted page) + DTS benefit vouchers + VPay stored-value vouchers.
+- **Payment requirement:** Optional for super admin (can confirm directly), required for customer / receptionist-chat / chatbot bookings.
+- **Buffer time:** Configurable per service (`buffer_minutes` on services table).
+- **Service durations:** 45 min treatment + 15 min buffer by default (migration 00021).
+- **Business hours:** 09:00–21:00, admin-configurable; slot granularity 15/30/60 min, 60 default (migration 00020 + settings form).
+- **Language policy:** Hebrew default, first-class EN + RU for every user. Per-user toggle for staff; customer language auto-detected on first inbound message and persisted. Framework + columns land in Phase 7.
+- **Cash-on-arrival:** Secured by CardCom token (CreateTokenOnly with Shva J-validation), NOT a symbolic 1 NIS charge. Penalty captured via LowProfileChargeToken on late cancel / no-show per the 5%-or-100-ILS policy (v1_5pct_or_100ILS_min snapshot).
+- **Therapist identity:** anonymous across customer surfaces (/book, /order, SMS, WhatsApp). Admin + therapist portals retain full identity. Customer picks gender preference (male / female / any); server assigns a random eligible therapist post-payment (deferred-assignment flow).
+- **Role model:** `super_admin` + `receptionist` + `therapist`. Receptionist role is a named Phase 6 workstream, not deferred.
+- **AI invariants:** AI never writes to the DB, AI never assigns a therapist, every AI-drafted outbound reply is receptionist-approved in V1.
 
 ### Still Assuming (flag if wrong)
-1. **Single location** — no multi-branch logic needed
-2. **Two roles implemented today** — `super_admin` (full access) and `therapist` (own availability + own bookings read-only). Front-desk receptionists share the `super_admin` role in V1; a dedicated `receptionist` role with limited permissions is deferred (SPA-137).
-3. **Slot granularity** — 15-minute increments
-4. **Operating hours** — per-therapist only (no spa-wide override)
-5. **WhatsApp account** — needs to be set up (build with mock first)
-6. **Supabase/Vercel** — Pro plans for production (free tier for dev)
-7. **Customer identity** — identified by phone only, no login/accounts
+1. **Single location** — no multi-branch logic needed.
+2. **~20 therapists + a few receptionists + 1 super admin** — calendar UI + matcher sized against this scale.
+3. **WhatsApp Business Cloud account** — needs Meta ISV onboarding; build with mock first (Phase 8).
+4. **Supabase/Vercel** — Pro plans for production (free tier for dev).
+5. **Customer identity** — identified by phone only, no login/accounts, no self-service history page.
+6. **Anthropic Claude** as the LLM for the conversational layer (Phase 8) — to be confirmed against latency + Hebrew/Russian quality before Phase 8 implementation.
+7. **Twilio** stays for SMS fallback when WhatsApp opt-out or failed delivery; WhatsApp becomes primary channel after Phase 8.
 
 ---
 
@@ -701,4 +846,8 @@ After each phase, verify:
 - Key flows work locally via browser testing
 - Exclusion constraints tested in Phase 3 with concurrent insert attempts
 - Payment webhook tested with mock adapter in Phase 4
-- Chatbot tool calls tested with mock WhatsApp in Phase 6
+- Receptionist route-guard verified in Phase 6 (Vitest + manual browser check)
+- Locale snapshot tests per surface in Phase 7
+- Chatbot tool calls + approval state machine tested with mock WhatsApp in Phase 8
+- No-show scorer validated against historical bookings in Phase 8
+- Report query correctness verified against seed data in Phase 9
