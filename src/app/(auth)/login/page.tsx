@@ -18,17 +18,34 @@ function parseHashError(): string | null {
   return params.get("error") || null;
 }
 
+/**
+ * When an invite / magic-link / reset OTP has already been consumed
+ * or timed out, Supabase puts error_description="Email link is
+ * invalid or has expired" in the URL hash. Show a recovery hint
+ * below the raw error so the user knows what to do next.
+ */
+function isExpiredOtpError(msg: string | null): boolean {
+  if (!msg) return false;
+  const s = msg.toLowerCase();
+  return (
+    s.includes("email link is invalid") ||
+    s.includes("otp_expired") ||
+    s.includes("has expired")
+  );
+}
+
 function LoginForm() {
   const searchParams = useSearchParams();
   const next = searchParams.get("next") ?? "/admin";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  // Lazy-init from both the URL hash (Supabase's own error format) and
-  // the query string (our /callback route bubbles real verify errors
-  // up as ?error=... so the user sees "token expired" instead of a
-  // generic "email link invalid").
+  // Prefer the Supabase-provided error from the URL hash (e.g.
+  // "Email link is invalid or has expired" for an expired OTP) over
+  // our own query-string fallback — hash errors always tell the user
+  // WHY the token failed, whereas our fallbacks usually just say it's
+  // missing, which is less actionable.
   const [error, setError] = useState<string | null>(
-    () => searchParams.get("error") ?? parseHashError()
+    () => parseHashError() ?? searchParams.get("error")
   );
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -103,7 +120,18 @@ function LoginForm() {
                 required
               />
             </div>
-            {error && <p className="text-sm text-destructive">{error}</p>}
+            {error && (
+              <div className="space-y-1">
+                <p className="text-sm text-destructive">{error}</p>
+                {isExpiredOtpError(error) && (
+                  <p className="text-xs text-muted-foreground">
+                    Reset links and invites expire after 1 hour and can only
+                    be used once. Enter your email above and click{" "}
+                    <strong>Send Reset Link</strong> to get a fresh one.
+                  </p>
+                )}
+              </div>
+            )}
             {message && <p className="text-sm text-green-600">{message}</p>}
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "Sending..." : "Send Reset Link"}
@@ -157,7 +185,17 @@ function LoginForm() {
             />
           </div>
           {error && (
-            <p className="text-sm text-destructive">{error}</p>
+            <div className="space-y-1">
+              <p className="text-sm text-destructive">{error}</p>
+              {isExpiredOtpError(error) && (
+                <p className="text-xs text-muted-foreground">
+                  That email link is expired or already used. Ask an admin
+                  to resend your invite, or click{" "}
+                  <strong>Forgot password?</strong> below to request a new
+                  link for yourself.
+                </p>
+              )}
+            </div>
           )}
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? "Signing in..." : "Sign in"}
