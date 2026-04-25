@@ -79,6 +79,7 @@ export default function SetPasswordPage() {
                 id="password"
                 type="password"
                 placeholder="At least 8 characters"
+                autoComplete="new-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -90,6 +91,7 @@ export default function SetPasswordPage() {
               <Input
                 id="confirm"
                 type="password"
+                autoComplete="new-password"
                 value={confirm}
                 onChange={(e) => setConfirm(e.target.value)}
                 required
