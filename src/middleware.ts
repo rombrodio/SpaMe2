@@ -71,24 +71,49 @@ export async function middleware(request: NextRequest) {
     return redirectWithCookies(url);
   }
 
-  if (isProtected && authedUser) {
+  // Fetch the full role + linked-entity ids once per request so we
+  // can derive an "effective role" that accounts for broken profile
+  // states (role='therapist' but therapist_id=null, etc.). This used
+  // to be the source of a /login ↔ /therapist ping-pong: middleware
+  // would trust role='therapist' and redirect to /therapist; the
+  // page would then call getCurrentTherapistId, find the FK missing,
+  // and redirect back to /login. Single SELECT short-circuits that.
+  let effectiveRole: string | null = null;
+  let brokenLink = false;
+  if (authedUser && (isProtected || pathname === "/login")) {
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
-      .select("role")
+      .select("role, therapist_id, receptionist_id")
       .eq("id", authedUser.id)
       .maybeSingle();
 
-    const role = profileError ? null : profile?.role ?? null;
-    const verdict = allowedOrRedirect(pathname, role);
+    const rawRole = profileError ? null : profile?.role ?? null;
+    if (rawRole === "therapist" && !profile?.therapist_id) {
+      brokenLink = true;
+    } else if (rawRole === "receptionist" && !profile?.receptionist_id) {
+      brokenLink = true;
+    } else {
+      effectiveRole = rawRole;
+    }
+  }
+
+  if (isProtected && authedUser) {
+    const verdict = allowedOrRedirect(pathname, effectiveRole);
     if (!verdict.allowed) {
       if (!isGet) return supabaseResponse;
-      // Loop guard: if the redirect target is the same path we're on
-      // (which happens when portalForRole returns a path that maps to
-      // itself — e.g. an unknown-role user on /login), don't redirect.
-      // Browsers otherwise hit ERR_TOO_MANY_REDIRECTS.
+      // Loop guard: never redirect to the same path.
       if (verdict.redirectTo === pathname) return supabaseResponse;
       const url = request.nextUrl.clone();
       url.pathname = verdict.redirectTo;
+      // Surface the broken-link reason on /login so the operator
+      // knows to ask an admin to resend their invite rather than
+      // silently bouncing around.
+      if (brokenLink && url.pathname === "/login") {
+        url.searchParams.set(
+          "error",
+          "Your profile isn't fully linked. Ask an admin to resend your invite."
+        );
+      }
       return redirectWithCookies(url);
     }
   }
@@ -100,20 +125,15 @@ export async function middleware(request: NextRequest) {
   }
 
   if (pathname === "/login" && authedUser && isGet) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", authedUser.id)
-      .maybeSingle();
+    const target = portalForRole(effectiveRole);
 
-    const target = portalForRole(profile?.role ?? null);
-
-    // Loop guard: an authed user on /login whose `profiles.role`
-    // lookup returns null (profile row missing, RLS temporarily
-    // blocked, etc.) would otherwise be redirected back to /login
-    // because portalForRole(null) === "/login". Let them see the
-    // login form instead — they can sign out and retry.
-    if (target === pathname) return supabaseResponse;
+    // Loop guards:
+    //   1. target === /login (no role / unknown role): stay put.
+    //   2. brokenLink: role looks fine but the FK linking to the
+    //      therapist/receptionist record is missing, so the portal
+    //      would immediately bounce back. Render login with an
+    //      explanatory error instead.
+    if (target === pathname || brokenLink) return supabaseResponse;
 
     const url = request.nextUrl.clone();
     url.pathname = target;
