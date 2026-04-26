@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -70,6 +71,7 @@ export function BookingDetail({
   rooms,
 }: BookingDetailProps) {
   const router = useRouter();
+  const t = useTranslations();
   const [isPending, startTransition] = useTransition();
   const [errors, setErrors] = useState<Record<string, string[]>>({});
   const [rescheduleOpen, setRescheduleOpen] = useState(false);
@@ -87,7 +89,7 @@ export function BookingDetail({
       const result = await updateBookingStatusAction(booking.id, newStatus);
       if (result && "error" in result) {
         setErrors(result.error as Record<string, string[]>);
-        toast.error("Couldn't update booking status.");
+        toast.error(t("admin.bookings.detail.toastStatusError"));
       } else {
         toast.success(successLabel);
         router.refresh();
@@ -103,9 +105,11 @@ export function BookingDetail({
     const result = await cancelBookingAction(fd);
     if (result && "error" in result) {
       const err = result.error as Record<string, string[]>;
-      throw new Error(err._form?.join(" ") ?? "Couldn't cancel booking.");
+      throw new Error(
+        err._form?.join(" ") ?? t("admin.bookings.detail.toastCancelError")
+      );
     }
-    toast.success("Booking cancelled.");
+    toast.success(t("admin.bookings.detail.toastCancelled"));
     router.refresh();
   }
 
@@ -113,9 +117,11 @@ export function BookingDetail({
     const result = await updateBookingStatusAction(booking.id, "no_show");
     if (result && "error" in result) {
       const err = result.error as Record<string, string[]>;
-      throw new Error(err._form?.join(" ") ?? "Couldn't mark no-show.");
+      throw new Error(
+        err._form?.join(" ") ?? t("admin.bookings.detail.toastNoShowError")
+      );
     }
-    toast.success("Marked as no-show.");
+    toast.success(t("admin.bookings.detail.toastNoShow"));
     router.refresh();
   }
 
@@ -131,11 +137,12 @@ export function BookingDetail({
       const result = await rescheduleBookingAction(fd);
       if (result && "error" in result) {
         const err = result.error as Record<string, string[]>;
-        const message = err._form?.join(" ") ?? "Couldn't reschedule booking.";
+        const message =
+          err._form?.join(" ") ?? t("admin.bookings.detail.toastRescheduleError");
         toast.error(message);
         setErrors(err);
       } else {
-        toast.success("Booking rescheduled.");
+        toast.success(t("admin.bookings.detail.toastRescheduled"));
         setRescheduleOpen(false);
         setSelection(null);
         router.refresh();
@@ -161,39 +168,42 @@ export function BookingDetail({
             <Button
               size="sm"
               onClick={() =>
-                handleStatusChange("confirmed", "Marked as paid & confirmed.")
+                handleStatusChange(
+                  "confirmed",
+                  t("admin.bookings.detail.toastStatusConfirmed")
+                )
               }
               disabled={isPending}
             >
-              Confirm (Mark Paid)
+              {t("admin.bookings.detail.confirmPaid")}
             </Button>
           )}
           {booking.status === "confirmed" && (
             <Button
               size="sm"
               onClick={() =>
-                handleStatusChange("completed", "Booking marked completed.")
+                handleStatusChange(
+                  "completed",
+                  t("admin.bookings.detail.toastStatusCompleted")
+                )
               }
               disabled={isPending}
             >
-              Mark Completed
+              {t("admin.bookings.detail.markCompleted")}
             </Button>
           )}
           {booking.status === "confirmed" && (
             <ConfirmButton
               size="sm"
               variant="destructive"
-              title="Mark as no-show"
+              title={t("admin.bookings.detail.markNoShowTitle")}
               description={
-                <p>
-                  The customer will be flagged as a no-show. This removes the
-                  booking from active lists and is logged in the audit trail.
-                </p>
+                <p>{t("admin.bookings.detail.markNoShowDescription")}</p>
               }
-              confirmLabel="Mark no-show"
+              confirmLabel={t("admin.bookings.detail.markNoShowConfirmLabel")}
               onConfirm={handleNoShow}
             >
-              Mark No-Show
+              {t("admin.bookings.detail.markNoShow")}
             </ConfirmButton>
           )}
           {isReschedulable && (
@@ -203,26 +213,20 @@ export function BookingDetail({
               onClick={() => setRescheduleOpen(true)}
               disabled={isPending}
             >
-              Reschedule
+              {t("admin.bookings.detail.reschedule")}
             </Button>
           )}
           {!isTerminal && (
             <ConfirmButton
               size="sm"
               variant="destructive"
-              title="Cancel booking"
-              description={
-                <p>
-                  Cancel this booking? The customer keeps the record but it
-                  drops off the calendar and will not appear in upcoming
-                  bookings.
-                </p>
-              }
-              reasonPrompt="Reason (optional)"
-              confirmLabel="Cancel booking"
+              title={t("admin.bookings.detail.cancelTitle")}
+              description={<p>{t("admin.bookings.detail.cancelDescription")}</p>}
+              reasonPrompt={t("admin.bookings.detail.cancelReasonPrompt")}
+              confirmLabel={t("admin.bookings.detail.cancelConfirmLabel")}
               onConfirm={handleCancel}
             >
-              Cancel Booking
+              {t("admin.bookings.detail.cancel")}
             </ConfirmButton>
           )}
         </div>
@@ -233,14 +237,18 @@ export function BookingDetail({
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="text-base">Booking Information</CardTitle>
+            <CardTitle className="text-base">
+              {t("admin.bookings.detail.bookingInformation")}
+            </CardTitle>
             <StatusBadge status={booking.status} />
           </div>
         </CardHeader>
         <CardContent>
           <dl className="grid gap-3 sm:grid-cols-2">
             <div>
-              <dt className="text-sm text-muted-foreground">Customer</dt>
+              <dt className="text-sm text-muted-foreground">
+                {t("admin.bookings.detail.customer")}
+              </dt>
               <dd className="font-medium">
                 {booking.customers?.full_name || "-"}
               </dd>
@@ -249,14 +257,20 @@ export function BookingDetail({
               </dd>
             </div>
             <div>
-              <dt className="text-sm text-muted-foreground">Service</dt>
+              <dt className="text-sm text-muted-foreground">
+                {t("admin.bookings.detail.service")}
+              </dt>
               <dd className="font-medium">{booking.services?.name || "-"}</dd>
               <dd className="text-sm text-muted-foreground">
-                {booking.services?.duration_minutes} min
+                {t("admin.bookings.detail.durationMinutes", {
+                  minutes: booking.services?.duration_minutes ?? 0,
+                })}
               </dd>
             </div>
             <div>
-              <dt className="text-sm text-muted-foreground">Therapist</dt>
+              <dt className="text-sm text-muted-foreground">
+                {t("admin.bookings.detail.therapist")}
+              </dt>
               <dd className="flex items-center gap-1.5 font-medium">
                 {booking.therapists?.color && (
                   <span
@@ -268,11 +282,15 @@ export function BookingDetail({
               </dd>
             </div>
             <div>
-              <dt className="text-sm text-muted-foreground">Room</dt>
+              <dt className="text-sm text-muted-foreground">
+                {t("admin.bookings.detail.room")}
+              </dt>
               <dd className="font-medium">{booking.rooms?.name || "-"}</dd>
             </div>
             <div>
-              <dt className="text-sm text-muted-foreground">Date & Time</dt>
+              <dt className="text-sm text-muted-foreground">
+                {t("admin.bookings.detail.dateTime")}
+              </dt>
               <dd className="font-medium">
                 {formatInTimeZone(new Date(booking.start_at), TZ, "EEEE, MMM d, yyyy")}
               </dd>
@@ -286,34 +304,44 @@ export function BookingDetail({
               </dd>
             </div>
             <div>
-              <dt className="text-sm text-muted-foreground">Price</dt>
+              <dt className="text-sm text-muted-foreground">
+                {t("admin.bookings.detail.price")}
+              </dt>
               <dd className="font-medium">
-                {(booking.price_ils / 100).toFixed(0)} ILS
+                {t("admin.bookings.detail.ils", {
+                  amount: (booking.price_ils / 100).toFixed(0),
+                })}
               </dd>
             </div>
             {booking.notes && (
               <div className="sm:col-span-2">
-                <dt className="text-sm text-muted-foreground">Notes</dt>
+                <dt className="text-sm text-muted-foreground">
+                  {t("admin.bookings.detail.notes")}
+                </dt>
                 <dd>{booking.notes}</dd>
               </div>
             )}
             {booking.cancel_reason && (
               <div className="sm:col-span-2">
                 <dt className="text-sm text-muted-foreground">
-                  Cancellation Reason
+                  {t("admin.bookings.detail.cancellationReason")}
                 </dt>
                 <dd className="text-destructive">{booking.cancel_reason}</dd>
               </div>
             )}
             <div>
-              <dt className="text-sm text-muted-foreground">Created</dt>
+              <dt className="text-sm text-muted-foreground">
+                {t("admin.bookings.detail.created")}
+              </dt>
               <dd className="text-sm">
                 {formatInTimeZone(new Date(booking.created_at), TZ, "MMM d, yyyy HH:mm")}
               </dd>
             </div>
             {booking.source && (
               <div>
-                <dt className="text-sm text-muted-foreground">Source</dt>
+                <dt className="text-sm text-muted-foreground">
+                  {t("admin.bookings.detail.source")}
+                </dt>
                 <dd className="mt-1">
                   <SourceBadge source={booking.source} />
                 </dd>
@@ -327,11 +355,11 @@ export function BookingDetail({
       <AlertDialog open={rescheduleOpen} onOpenChange={setRescheduleOpen}>
         <AlertDialogContent className="max-w-2xl">
           <AlertDialogHeader>
-            <AlertDialogTitle>Reschedule booking</AlertDialogTitle>
+            <AlertDialogTitle>
+              {t("admin.bookings.detail.rescheduleTitle")}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Pick a new date, therapist, room, and slot. Availability already
-              excludes this booking, so you&apos;ll only see conflict-free
-              options.
+              {t("admin.bookings.detail.rescheduleDescription")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           {booking.services && (
@@ -347,7 +375,9 @@ export function BookingDetail({
             />
           )}
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isPending}>Back</AlertDialogCancel>
+            <AlertDialogCancel disabled={isPending}>
+              {t("admin.bookings.detail.rescheduleBack")}
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={(e) => {
                 e.preventDefault();
@@ -355,7 +385,9 @@ export function BookingDetail({
               }}
               disabled={!selection || isPending}
             >
-              {isPending ? "Rescheduling…" : "Confirm reschedule"}
+              {isPending
+                ? t("admin.bookings.detail.rescheduling")
+                : t("admin.bookings.detail.rescheduleConfirm")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

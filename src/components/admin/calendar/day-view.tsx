@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { differenceInMinutes } from "date-fns";
 import { toZonedTime, formatInTimeZone } from "date-fns-tz";
+import { useTranslations } from "next-intl";
 import { TZ } from "@/lib/constants";
 import { BookingCard } from "./booking-card";
 import type { CalendarBooking } from "./types";
@@ -94,6 +95,7 @@ function layoutOverlappingBookings(
 
 export function DayView({ date, bookings }: DayViewProps) {
   const router = useRouter();
+  const t = useTranslations();
   const hours = Array.from(
     { length: HOUR_END - HOUR_START },
     (_, i) => HOUR_START + i
@@ -134,7 +136,9 @@ export function DayView({ date, bookings }: DayViewProps) {
               type="button"
               key={`${hour}-0`}
               onClick={() => openEmpty(hour, 0)}
-              aria-label={`Book at ${String(hour).padStart(2, "0")}:00`}
+              aria-label={t("admin.calendar.book.at", {
+                time: `${String(hour).padStart(2, "0")}:00`,
+              })}
               className="absolute left-0 right-0 transition-colors hover:bg-muted/40"
               style={{
                 top: (hour - HOUR_START) * HOUR_HEIGHT,
@@ -145,7 +149,9 @@ export function DayView({ date, bookings }: DayViewProps) {
               type="button"
               key={`${hour}-1`}
               onClick={() => openEmpty(hour, 1)}
-              aria-label={`Book at ${String(hour).padStart(2, "0")}:30`}
+              aria-label={t("admin.calendar.book.at", {
+                time: `${String(hour).padStart(2, "0")}:30`,
+              })}
               className="absolute left-0 right-0 transition-colors hover:bg-muted/40"
               style={{
                 top: (hour - HOUR_START) * HOUR_HEIGHT + HOUR_HEIGHT / 2,

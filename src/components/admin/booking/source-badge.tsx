@@ -1,3 +1,6 @@
+"use client";
+
+import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 
 export type BookingSource =
@@ -14,6 +17,8 @@ export type BookingSource =
  * so it reads well in a dense table column.
  */
 export function SourceBadge({ source }: { source: BookingSource | null }) {
+  const t = useTranslations();
+
   if (!source) {
     return <span className="text-muted-foreground">--</span>;
   }
@@ -21,37 +26,37 @@ export function SourceBadge({ source }: { source: BookingSource | null }) {
   const config: Record<
     BookingSource,
     {
-      label: string;
+      labelKey: string;
+      titleKey: string;
       variant: "default" | "secondary" | "success" | "muted" | "outline";
-      title: string;
     }
   > = {
     customer_web: {
-      label: "web",
+      labelKey: "admin.source.web",
+      titleKey: "admin.source.webTitle",
       variant: "secondary",
-      title: "Customer self-booking via /book",
     },
     admin_manual: {
-      label: "admin",
+      labelKey: "admin.source.admin",
+      titleKey: "admin.source.adminTitle",
       variant: "muted",
-      title: "Created by a super admin",
     },
     receptionist_manual: {
-      label: "reception",
+      labelKey: "admin.source.reception",
+      titleKey: "admin.source.receptionTitle",
       variant: "success",
-      title: "Created by a receptionist",
     },
     chatbot: {
-      label: "bot",
+      labelKey: "admin.source.bot",
+      titleKey: "admin.source.botTitle",
       variant: "outline",
-      title: "Created by the AI conversational agent (Phase 8)",
     },
   };
 
   const c = config[source];
   return (
-    <Badge variant={c.variant} title={c.title}>
-      {c.label}
+    <Badge variant={c.variant} title={t(c.titleKey)}>
+      {t(c.labelKey)}
     </Badge>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
+import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
@@ -67,6 +68,7 @@ export function SlotPicker({
   excludeBookingId,
   onChange,
 }: SlotPickerProps) {
+  const t = useTranslations();
   const [date, setDate] = useState(
     initialDate ?? format(new Date(), "yyyy-MM-dd")
   );
@@ -165,7 +167,9 @@ export function SlotPicker({
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-3">
         <div>
-          <Label htmlFor="slot-picker-date">Date</Label>
+          <Label htmlFor="slot-picker-date">
+            {t("admin.bookings.slotPicker.date")}
+          </Label>
           <Input
             id="slot-picker-date"
             type="date"
@@ -178,7 +182,9 @@ export function SlotPicker({
           />
         </div>
         <div>
-          <Label htmlFor="slot-picker-therapist">Therapist</Label>
+          <Label htmlFor="slot-picker-therapist">
+            {t("admin.bookings.slotPicker.therapist")}
+          </Label>
           <Select
             id="slot-picker-therapist"
             value={therapistId}
@@ -188,16 +194,20 @@ export function SlotPicker({
               emitChange(null);
             }}
           >
-            <option value="">Any qualified therapist</option>
-            {qualifiedTherapists.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.full_name}
+            <option value="">
+              {t("admin.bookings.slotPicker.anyTherapist")}
+            </option>
+            {qualifiedTherapists.map((th) => (
+              <option key={th.id} value={th.id}>
+                {th.full_name}
               </option>
             ))}
           </Select>
         </div>
         <div>
-          <Label htmlFor="slot-picker-room">Room</Label>
+          <Label htmlFor="slot-picker-room">
+            {t("admin.bookings.slotPicker.room")}
+          </Label>
           <Select
             id="slot-picker-room"
             value={roomId}
@@ -215,7 +225,7 @@ export function SlotPicker({
               );
             }}
           >
-            <option value="">Any compatible room</option>
+            <option value="">{t("admin.bookings.slotPicker.anyRoom")}</option>
             {compatibleRooms.map((r) => (
               <option key={r.id} value={r.id}>
                 {r.name}
@@ -226,13 +236,15 @@ export function SlotPicker({
       </div>
 
       <div>
-        <Label>Available slots</Label>
+        <Label>{t("admin.bookings.slotPicker.available")}</Label>
         {slotsLoading ? (
-          <p className="mt-2 text-sm text-muted-foreground">Loading slots…</p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {t("admin.bookings.slotPicker.loading")}
+          </p>
         ) : slots.length === 0 ? (
           <p className="mt-2 text-sm text-muted-foreground">
-            No available slots on this date.{" "}
-            {!therapistId && "Pick a specific therapist to see more."}
+            {t("admin.bookings.slotPicker.noSlots")}{" "}
+            {!therapistId && t("admin.bookings.slotPicker.noSlotsTip")}
           </p>
         ) : (
           <div className="mt-2 grid max-h-64 grid-cols-2 gap-2 overflow-y-auto sm:grid-cols-3">

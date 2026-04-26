@@ -1,5 +1,6 @@
 import { getAssignmentScreenData } from "@/lib/actions/assignments";
 import { AssignmentList } from "@/components/admin/assignments/assignment-list";
+import { getTranslations } from "next-intl/server";
 
 export const dynamic = "force-dynamic";
 
@@ -19,19 +20,23 @@ interface PageProps {
 export default async function AssignmentsPage({ searchParams }: PageProps) {
   const sp = await searchParams;
   const scope = sp.scope === "date" ? "date" : "all";
-  const data = await getAssignmentScreenData({
-    scope,
-    date: scope === "date" ? sp.date ?? null : null,
-  });
+  const [data, t] = await Promise.all([
+    getAssignmentScreenData({
+      scope,
+      date: scope === "date" ? sp.date ?? null : null,
+    }),
+    getTranslations(),
+  ]);
 
   return (
     <div>
       <div className="flex items-baseline justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Therapist Assignments</h1>
+          <h1 className="text-2xl font-bold">
+            {t("admin.assignments.title")}
+          </h1>
           <p className="mt-1 text-muted-foreground">
-            Unassigned bookings — pick a therapist and we&apos;ll ping them
-            to confirm.
+            {t("admin.assignments.subheading")}
           </p>
         </div>
       </div>

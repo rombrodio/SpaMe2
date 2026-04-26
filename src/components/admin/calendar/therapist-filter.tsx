@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Filter, X, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,6 +33,7 @@ export function TherapistFilter({
   selected,
   onChange,
 }: TherapistFilterProps) {
+  const t = useTranslations();
   const [open, setOpen] = useState(false);
   const selectedSet = new Set(selected);
 
@@ -43,7 +45,7 @@ export function TherapistFilter({
   }
 
   function selectAll() {
-    onChange(therapists.map((t) => t.id));
+    onChange(therapists.map((th) => th.id));
   }
 
   function clear() {
@@ -52,10 +54,12 @@ export function TherapistFilter({
 
   const label =
     selected.length === 0
-      ? "All therapists"
+      ? t("admin.calendar.therapistFilter.all")
       : selected.length === therapists.length
-        ? "All therapists"
-        : `${selected.length} selected`;
+        ? t("admin.calendar.therapistFilter.all")
+        : t("admin.calendar.therapistFilter.someSelected", {
+            count: selected.length,
+          });
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -78,27 +82,27 @@ export function TherapistFilter({
               onClick={selectAll}
               className="text-muted-foreground hover:text-foreground"
             >
-              Select all
+              {t("admin.calendar.therapistFilter.selectAll")}
             </button>
             <button
               type="button"
               onClick={clear}
               className="text-muted-foreground hover:text-foreground"
             >
-              Clear
+              {t("admin.calendar.therapistFilter.clear")}
             </button>
           </div>
           <div className="max-h-[320px] overflow-y-auto py-1">
-            {therapists.map((t) => {
-              const active = selectedSet.has(t.id);
+            {therapists.map((th) => {
+              const active = selectedSet.has(th.id);
               return (
                 <button
                   type="button"
-                  key={t.id}
-                  onClick={() => toggle(t.id)}
+                  key={th.id}
+                  onClick={() => toggle(th.id)}
                   className={cn(
                     "flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-accent",
-                    !t.is_active && "opacity-60"
+                    !th.is_active && "opacity-60"
                   )}
                 >
                   <div className="flex h-4 w-4 items-center justify-center rounded border border-input">
@@ -106,13 +110,14 @@ export function TherapistFilter({
                   </div>
                   <span
                     className="inline-block h-2 w-2 shrink-0 rounded-full"
-                    style={{ backgroundColor: t.color ?? "#94a3b8" }}
+                    style={{ backgroundColor: th.color ?? "#94a3b8" }}
                   />
                   <span className="truncate">
-                    {t.full_name}
-                    {!t.is_active && (
+                    {th.full_name}
+                    {!th.is_active && (
                       <span className="ml-1 text-xs text-muted-foreground">
-                        (inactive)
+                        {" "}
+                        {t("admin.calendar.therapistFilter.inactive")}
                       </span>
                     )}
                   </span>
@@ -127,8 +132,8 @@ export function TherapistFilter({
       {selected.length > 0 && selected.length < therapists.length && (
         <div className="flex flex-wrap items-center gap-1">
           {selected.slice(0, 5).map((id) => {
-            const t = therapists.find((x) => x.id === id);
-            if (!t) return null;
+            const th = therapists.find((x) => x.id === id);
+            if (!th) return null;
             return (
               <button
                 type="button"
@@ -138,16 +143,18 @@ export function TherapistFilter({
               >
                 <span
                   className="inline-block h-1.5 w-1.5 shrink-0 rounded-full"
-                  style={{ backgroundColor: t.color ?? "#94a3b8" }}
+                  style={{ backgroundColor: th.color ?? "#94a3b8" }}
                 />
-                {t.full_name.split(" ")[0]}
+                {th.full_name.split(" ")[0]}
                 <X className="h-3 w-3" />
               </button>
             );
           })}
           {selected.length > 5 && (
             <span className="text-xs text-muted-foreground">
-              +{selected.length - 5} more
+              {t("admin.calendar.therapistFilter.more", {
+                count: selected.length - 5,
+              })}
             </span>
           )}
         </div>

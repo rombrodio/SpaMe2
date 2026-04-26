@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { formatInTimeZone } from "date-fns-tz";
 import { UserCheck } from "lucide-react";
 import { parseISO } from "date-fns";
+import { useTranslations } from "next-intl";
 import { TZ } from "@/lib/constants";
 import {
   assignTherapistAction,
@@ -42,6 +43,7 @@ export function AssignmentList({
   highlightBookingId,
 }: AssignmentListProps) {
   const router = useRouter();
+  const t = useTranslations();
   const [scope, setScope] = useState<AssignmentScope>(initialScope);
   const [date, setDate] = useState(initialDate ?? "");
   const [data, setData] = useState(initialData);
@@ -94,12 +96,16 @@ export function AssignmentList({
             size="sm"
             onClick={handleShowAll}
           >
-            All future
+            {t("admin.assignments.allFuture")}
           </Button>
-          <span className="text-sm text-muted-foreground">or filter by</span>
+          <span className="text-sm text-muted-foreground">
+            {t("admin.assignments.orFilterBy")}
+          </span>
         </div>
         <div>
-          <Label htmlFor="assignments-date">Date</Label>
+          <Label htmlFor="assignments-date">
+            {t("admin.assignments.date")}
+          </Label>
           <Input
             id="assignments-date"
             type="date"
@@ -108,10 +114,12 @@ export function AssignmentList({
           />
         </div>
         {isPending && (
-          <span className="text-sm text-muted-foreground">Loading...</span>
+          <span className="text-sm text-muted-foreground">
+            {t("admin.assignments.loading")}
+          </span>
         )}
         <div className="ml-auto text-sm text-muted-foreground">
-          {data.length} unassigned
+          {t("admin.assignments.countUnassigned", { count: data.length })}
         </div>
       </div>
 
@@ -145,6 +153,7 @@ function EmptyState({
   scope: AssignmentScope;
   date: string;
 }) {
+  const t = useTranslations();
   const parsed = date ? parseISO(date) : null;
   const prettyDate =
     parsed && !isNaN(parsed.getTime())
@@ -153,8 +162,8 @@ function EmptyState({
 
   const headline =
     scope === "all"
-      ? "No unassigned bookings"
-      : `No unassigned bookings for ${prettyDate}`;
+      ? t("admin.assignments.emptyAll")
+      : t("admin.assignments.emptyForDate", { date: prettyDate });
 
   return (
     <Card>
@@ -165,16 +174,14 @@ function EmptyState({
         <div className="space-y-1">
           <p className="text-base font-medium">{headline}</p>
           <p className="mx-auto max-w-md text-sm text-muted-foreground">
-            Paid-but-unassigned bookings show up here automatically. The
-            on-call manager receives SMS + WhatsApp the moment a customer
-            pays, so you usually won&apos;t need to refresh.
+            {t("admin.assignments.emptyBody")}
           </p>
         </div>
         <Link
           href="/admin/bookings/new"
           className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
         >
-          Create an unassigned booking
+          {t("admin.assignments.createUnassigned")}
         </Link>
       </CardContent>
     </Card>
@@ -196,6 +203,7 @@ function AssignmentRow({
   highlightRef,
   onAssignedAndRefresh,
 }: AssignmentRowProps) {
+  const t = useTranslations();
   const { booking, eligible } = row;
   const [therapistId, setTherapistId] = useState("");
   const [errors, setErrors] = useState<Record<string, string[]> | undefined>();
@@ -211,20 +219,20 @@ function AssignmentRow({
       const result = await assignTherapistAction(fd);
       if (result && "error" in result) {
         setErrors(result.error as Record<string, string[]>);
-        toast.error("Couldn't assign the therapist.");
+        toast.error(t("admin.assignments.toastAssignError"));
         return;
       }
-      toast.success("Therapist assigned — confirmation SMS sent.");
+      toast.success(t("admin.assignments.toastAssigned"));
       onAssignedAndRefresh();
     });
   }
 
   const genderLabel =
     booking.therapist_gender_preference === "male"
-      ? "Male"
+      ? t("admin.assignments.gender.male")
       : booking.therapist_gender_preference === "female"
-        ? "Female"
-        : "Any";
+        ? t("admin.assignments.gender.female")
+        : t("admin.assignments.gender.any");
 
   return (
     <Card
@@ -241,19 +249,27 @@ function AssignmentRow({
                 "MMM d, yyyy — HH:mm"
               )}
               <span className="ml-2 text-muted-foreground">
-                ({booking.duration_minutes} min)
+                {t("admin.assignments.durationMinutes", {
+                  minutes: booking.duration_minutes,
+                })}
               </span>
             </div>
             <div>
-              <span className="text-muted-foreground">Service:</span>{" "}
+              <span className="text-muted-foreground">
+                {t("admin.assignments.serviceLabel")}
+              </span>{" "}
               {booking.service_name}{" "}
               <span className="ml-2 text-muted-foreground">·</span>
-              <span className="ml-2 text-muted-foreground">Gender pref:</span>{" "}
+              <span className="ml-2 text-muted-foreground">
+                {t("admin.assignments.genderPrefLabel")}
+              </span>{" "}
               {genderLabel}
             </div>
             {booking.customer_full_name && (
               <div>
-                <span className="text-muted-foreground">Customer:</span>{" "}
+                <span className="text-muted-foreground">
+                  {t("admin.assignments.customerLabel")}
+                </span>{" "}
                 {booking.customer_full_name}
                 {booking.customer_phone && (
                   <span className="text-muted-foreground">
@@ -265,17 +281,20 @@ function AssignmentRow({
             )}
             {booking.room_name && (
               <div>
-                <span className="text-muted-foreground">Room:</span>{" "}
+                <span className="text-muted-foreground">
+                  {t("admin.assignments.roomLabel")}
+                </span>{" "}
                 {booking.room_name}
               </div>
             )}
             <div className="text-xs text-muted-foreground">
-              Booked{" "}
-              {formatInTimeZone(
-                new Date(booking.created_at),
-                TZ,
-                "MMM d, HH:mm"
-              )}
+              {t("admin.assignments.bookedAt", {
+                date: formatInTimeZone(
+                  new Date(booking.created_at),
+                  TZ,
+                  "MMM d, HH:mm"
+                ),
+              })}
             </div>
             {booking.notes && (
               <div className="pt-1 text-muted-foreground">{booking.notes}</div>
@@ -283,7 +302,9 @@ function AssignmentRow({
           </div>
 
           <div className="md:min-w-[18rem]">
-            <Label htmlFor={`therapist-${booking.id}`}>Assign therapist</Label>
+            <Label htmlFor={`therapist-${booking.id}`}>
+              {t("admin.assignments.assignTherapist")}
+            </Label>
             <Select
               id={`therapist-${booking.id}`}
               value={therapistId}
@@ -292,13 +313,13 @@ function AssignmentRow({
             >
               <option value="">
                 {eligible.length === 0
-                  ? "No eligible therapists"
-                  : "Select therapist..."}
+                  ? t("admin.assignments.noEligibleTherapists")
+                  : t("admin.assignments.selectTherapist")}
               </option>
-              {eligible.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.full_name}
-                  {t.gender ? ` (${t.gender})` : ""}
+              {eligible.map((th) => (
+                <option key={th.id} value={th.id}>
+                  {th.full_name}
+                  {th.gender ? ` (${th.gender})` : ""}
                 </option>
               ))}
             </Select>
@@ -309,7 +330,9 @@ function AssignmentRow({
                 disabled={!therapistId || submitting}
                 className="w-full"
               >
-                {submitting ? "Assigning..." : "Assign + notify"}
+                {submitting
+                  ? t("admin.assignments.assigning")
+                  : t("admin.assignments.assignNotify")}
               </Button>
             </div>
           </div>

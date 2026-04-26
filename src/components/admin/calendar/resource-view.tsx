@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { toZonedTime, formatInTimeZone, fromZonedTime } from "date-fns-tz";
 import { format } from "date-fns";
+import { useTranslations } from "next-intl";
 import { TZ } from "@/lib/constants";
 import { BookingCard } from "./booking-card";
 import type { CalendarBooking, CalendarTherapist } from "./types";
@@ -28,6 +29,7 @@ interface ResourceViewProps {
  */
 export function ResourceView({ date, bookings, therapists }: ResourceViewProps) {
   const router = useRouter();
+  const t = useTranslations();
   const dateStr = formatInTimeZone(date, TZ, "yyyy-MM-dd");
   const hours = Array.from(
     { length: HOUR_END - HOUR_START },
@@ -60,16 +62,16 @@ export function ResourceView({ date, bookings, therapists }: ResourceViewProps) 
         }}
       >
         <div className="border-r border-border" />
-        {therapists.map((t) => (
+        {therapists.map((therapist) => (
           <div
-            key={t.id}
+            key={therapist.id}
             className="flex items-center justify-center gap-2 border-r border-border px-2 py-2 text-sm font-medium last:border-r-0"
           >
             <span
               className="h-2 w-2 shrink-0 rounded-full"
-              style={{ backgroundColor: t.color ?? "#94a3b8" }}
+              style={{ backgroundColor: therapist.color ?? "#94a3b8" }}
             />
-            <span className="truncate">{t.full_name}</span>
+            <span className="truncate">{therapist.full_name}</span>
           </div>
         ))}
       </div>
@@ -97,9 +99,9 @@ export function ResourceView({ date, bookings, therapists }: ResourceViewProps) 
         </div>
 
         {/* Therapist columns */}
-        {therapists.map((t) => (
+        {therapists.map((therapist) => (
           <div
-            key={t.id}
+            key={therapist.id}
             className="relative border-r border-border last:border-r-0"
           >
             {hours.map((hour) => (
@@ -107,8 +109,11 @@ export function ResourceView({ date, bookings, therapists }: ResourceViewProps) 
                 {/* Top half — :00 */}
                 <button
                   type="button"
-                  onClick={() => handleEmptyClick(t.id, hour, 0)}
-                  aria-label={`Book ${t.full_name} at ${String(hour).padStart(2, "0")}:00`}
+                  onClick={() => handleEmptyClick(therapist.id, hour, 0)}
+                  aria-label={t("admin.calendar.book.atForTherapist", {
+                    name: therapist.full_name,
+                    time: `${String(hour).padStart(2, "0")}:00`,
+                  })}
                   className="absolute left-0 right-0 border-t border-border transition-colors hover:bg-muted/40"
                   style={{
                     top: (hour - HOUR_START) * HOUR_HEIGHT,
@@ -118,8 +123,11 @@ export function ResourceView({ date, bookings, therapists }: ResourceViewProps) 
                 {/* Bottom half — :30 */}
                 <button
                   type="button"
-                  onClick={() => handleEmptyClick(t.id, hour, 1)}
-                  aria-label={`Book ${t.full_name} at ${String(hour).padStart(2, "0")}:30`}
+                  onClick={() => handleEmptyClick(therapist.id, hour, 1)}
+                  aria-label={t("admin.calendar.book.atForTherapist", {
+                    name: therapist.full_name,
+                    time: `${String(hour).padStart(2, "0")}:30`,
+                  })}
                   className="absolute left-0 right-0 transition-colors hover:bg-muted/40"
                   style={{
                     top: (hour - HOUR_START) * HOUR_HEIGHT + HOUR_HEIGHT / 2,
@@ -129,7 +137,7 @@ export function ResourceView({ date, bookings, therapists }: ResourceViewProps) 
               </div>
             ))}
 
-            {columnBookings(t.id).map((booking) => {
+            {columnBookings(therapist.id).map((booking) => {
               const startZoned = toZonedTime(new Date(booking.start_at), TZ);
               const endZoned = toZonedTime(new Date(booking.end_at), TZ);
               const startMin =

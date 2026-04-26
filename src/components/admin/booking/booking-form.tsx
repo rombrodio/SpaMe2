@@ -4,6 +4,7 @@ import { useState, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -74,6 +75,7 @@ export function BookingForm({
   successRedirect,
 }: BookingFormProps) {
   const router = useRouter();
+  const t = useTranslations();
   const [isPending, startTransition] = useTransition();
   const [errors, setErrors] = useState<Record<string, string[]>>({});
 
@@ -171,9 +173,9 @@ export function BookingForm({
       const result = await action(formDataObj);
       if (result && "error" in result) {
         setErrors(result.error as Record<string, string[]>);
-        toast.error("Couldn't create booking. See errors below.");
+        toast.error(t("admin.bookings.form.toastCreateError"));
       } else if (result?.success) {
-        toast.success("Booking created.");
+        toast.success(t("admin.bookings.form.toastCreated"));
         router.push(redirectTo);
       }
     });
@@ -200,11 +202,15 @@ export function BookingForm({
         <div className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Booking Details</CardTitle>
+              <CardTitle className="text-base">
+                {t("admin.bookings.form.detailsCard")}
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <Label htmlFor="customer_id">Customer</Label>
+                <Label htmlFor="customer_id">
+                  {t("admin.bookings.form.customer")}
+                </Label>
                 <CustomerCombobox
                   name="customer_id"
                   value={customerId}
@@ -217,13 +223,14 @@ export function BookingForm({
                   }))}
                 />
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Type to search by name, phone, or email. Walk-in? Pick
-                  &quot;Create new customer&quot; at the bottom of the list.
+                  {t("admin.bookings.form.customerHint")}
                 </p>
               </div>
 
               <div>
-                <Label htmlFor="service_id">Service</Label>
+                <Label htmlFor="service_id">
+                  {t("admin.bookings.form.service")}
+                </Label>
                 <Select
                   id="service_id"
                   name="service_id"
@@ -231,17 +238,25 @@ export function BookingForm({
                   onChange={(e) => handleServiceChange(e.target.value)}
                   required
                 >
-                  <option value="">Select service...</option>
+                  <option value="">
+                    {t("admin.bookings.form.servicePlaceholder")}
+                  </option>
                   {formData.services.map((s) => (
                     <option key={s.id} value={s.id}>
-                      {s.name} ({s.duration_minutes} min, {(s.price_ils / 100).toFixed(0)} ILS)
+                      {t("admin.bookings.form.serviceOption", {
+                        name: s.name,
+                        minutes: s.duration_minutes,
+                        price: (s.price_ils / 100).toFixed(0),
+                      })}
                     </option>
                   ))}
                 </Select>
               </div>
 
               <div>
-                <Label htmlFor="therapist_id">Therapist</Label>
+                <Label htmlFor="therapist_id">
+                  {t("admin.bookings.form.therapist")}
+                </Label>
                 <Select
                   id="therapist_id"
                   name="therapist_id"
@@ -252,30 +267,28 @@ export function BookingForm({
                 >
                   <option value="">
                     {leaveUnassigned
-                      ? "Unassigned — manager will assign later"
+                      ? t("admin.bookings.form.unassignedPlaceholder")
                       : !serviceId
-                        ? "Select a service first..."
+                        ? t("admin.bookings.form.selectServiceFirst")
                         : filteredTherapists.length === 0
-                          ? "No qualified therapists"
-                          : "Select therapist..."}
+                          ? t("admin.bookings.form.noQualifiedTherapists")
+                          : t("admin.bookings.form.therapistPlaceholder")}
                   </option>
-                  {filteredTherapists.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.full_name}
+                  {filteredTherapists.map((th) => (
+                    <option key={th.id} value={th.id}>
+                      {th.full_name}
                     </option>
                   ))}
                 </Select>
                 {serviceId && filteredTherapists.length === 0 && !leaveUnassigned && (
                   <p className="mt-1 text-xs text-destructive">
-                    No active therapist is qualified for this service. Assign
-                    one on the{" "}
+                    {t("admin.bookings.form.noQualifiedTherapistsHint")}{" "}
                     <Link
                       href={`/admin/services/${serviceId}`}
                       className="font-medium underline underline-offset-2"
                     >
-                      service page
+                      {t("admin.bookings.form.noQualifiedLinkText")}
                     </Link>
-                    , or mark existing therapists qualified on their profile.
                   </p>
                 )}
                 <div className="mt-2 space-y-1">
@@ -295,29 +308,21 @@ export function BookingForm({
                       htmlFor="leave_unassigned"
                       className="text-xs font-normal text-muted-foreground"
                     >
-                      Leave unassigned (manager picks later)
+                      {t("admin.bookings.form.leaveUnassignedLabel")}
                     </Label>
                   </div>
                   {leaveUnassigned && (
                     <p className="pl-6 text-xs text-muted-foreground">
-                      The booking is saved without a therapist pinned. The
-                      on-call manager receives an SMS + WhatsApp alert once
-                      payment confirms, and picks a therapist on{" "}
-                      <Link
-                        href="/admin/assignments"
-                        className="font-medium underline underline-offset-2"
-                      >
-                        /admin/assignments
-                      </Link>
-                      . The therapist then has 2 hours to confirm; the
-                      manager is re-alerted if they don&apos;t.
+                      {t("admin.bookings.form.leaveUnassignedHelp")}
                     </p>
                   )}
                 </div>
               </div>
 
               <div>
-                <Label htmlFor="room_id">Room</Label>
+                <Label htmlFor="room_id">
+                  {t("admin.bookings.form.room")}
+                </Label>
                 <Select
                   id="room_id"
                   name="room_id"
@@ -328,10 +333,10 @@ export function BookingForm({
                 >
                   <option value="">
                     {!serviceId
-                      ? "Select a service first..."
+                      ? t("admin.bookings.form.selectServiceFirst")
                       : filteredRooms.length === 0
-                        ? "No compatible rooms"
-                        : "Select room..."}
+                        ? t("admin.bookings.form.noCompatibleRooms")
+                        : t("admin.bookings.form.roomPlaceholder")}
                   </option>
                   {filteredRooms.map((r) => (
                     <option key={r.id} value={r.id}>
@@ -341,22 +346,20 @@ export function BookingForm({
                 </Select>
                 {serviceId && filteredRooms.length === 0 && (
                   <p className="mt-1 text-xs text-destructive">
-                    No active room is compatible with this service. Link one
-                    on the{" "}
+                    {t("admin.bookings.form.noCompatibleRoomsHint")}{" "}
                     <Link
                       href={`/admin/services/${serviceId}`}
                       className="font-medium underline underline-offset-2"
                     >
-                      service page
+                      {t("admin.bookings.form.noQualifiedLinkText")}
                     </Link>
-                    .
                   </p>
                 )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="date">Date</Label>
+                  <Label htmlFor="date">{t("admin.bookings.form.date")}</Label>
                   <Input
                     id="date"
                     type="date"
@@ -366,7 +369,9 @@ export function BookingForm({
                   />
                 </div>
                 <div>
-                  <Label htmlFor="start_at">Start Time</Label>
+                  <Label htmlFor="start_at">
+                    {t("admin.bookings.form.startTime")}
+                  </Label>
                   <Input
                     id="start_at_time"
                     type="time"
@@ -382,30 +387,35 @@ export function BookingForm({
                   />
                   <input type="hidden" name="start_at" value={startAt} />
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Times snap to 15-minute intervals. Pick a slot on the
-                    right to auto-fill.
+                    {t("admin.bookings.form.startTimeHint")}
                   </p>
                 </div>
               </div>
 
               <div>
-                <Label htmlFor="status">Initial Status</Label>
+                <Label htmlFor="status">
+                  {t("admin.bookings.form.initialStatus")}
+                </Label>
                 <Select
                   id="status"
                   name="status"
                   value={status}
                   onChange={(e) => setStatus(e.target.value)}
                 >
-                  <option value="pending_payment">Pending Payment</option>
-                  <option value="confirmed">Confirmed</option>
+                  <option value="pending_payment">
+                    {t("admin.bookings.form.initialStatusPending")}
+                  </option>
+                  <option value="confirmed">
+                    {t("admin.bookings.form.initialStatusConfirmed")}
+                  </option>
                 </Select>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Use &quot;Pending Payment&quot; if the customer hasn&apos;t paid yet.
+                  {t("admin.bookings.form.initialStatusHint")}
                 </p>
               </div>
 
               <div>
-                <Label htmlFor="notes">Notes</Label>
+                <Label htmlFor="notes">{t("admin.bookings.form.notes")}</Label>
                 <Textarea
                   id="notes"
                   name="notes"
@@ -418,26 +428,32 @@ export function BookingForm({
           </Card>
 
           <Button type="submit" disabled={isPending} className="w-full">
-            {isPending ? "Creating..." : "Create Booking"}
+            {isPending
+              ? t("admin.bookings.form.creating")
+              : t("admin.bookings.form.createButton")}
           </Button>
         </div>
 
         {/* Right: Available slots */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Available Slots</CardTitle>
+            <CardTitle className="text-base">
+              {t("admin.bookings.form.availableSlotsCard")}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             {!serviceId ? (
               <p className="text-sm text-muted-foreground">
-                Select a service and date to see available slots.
+                {t("admin.bookings.form.pickServiceAndDate")}
               </p>
             ) : slotsLoading ? (
-              <p className="text-sm text-muted-foreground">Loading slots...</p>
+              <p className="text-sm text-muted-foreground">
+                {t("admin.bookings.form.loadingSlots")}
+              </p>
             ) : slots.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                No available slots for this date.{" "}
-                {!therapistId && "Try selecting a specific therapist."}
+                {t("admin.bookings.form.noSlots")}{" "}
+                {!therapistId && t("admin.bookings.form.noSlotsTip")}
               </p>
             ) : (
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -472,8 +488,10 @@ export function BookingForm({
             )}
             {selectedService && (
               <p className="mt-3 text-xs text-muted-foreground">
-                Duration: {selectedService.duration_minutes} min &middot; Price:{" "}
-                {(selectedService.price_ils / 100).toFixed(0)} ILS
+                {t("admin.bookings.form.durationPrice", {
+                  minutes: selectedService.duration_minutes,
+                  price: (selectedService.price_ils / 100).toFixed(0),
+                })}
               </p>
             )}
           </CardContent>

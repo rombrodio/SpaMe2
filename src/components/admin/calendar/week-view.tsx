@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { addDays, startOfWeek, isSameDay } from "date-fns";
 import { toZonedTime, formatInTimeZone } from "date-fns-tz";
+import { useTranslations } from "next-intl";
 import { TZ } from "@/lib/constants";
 import { BookingCard } from "./booking-card";
 import type { CalendarBooking } from "./types";
@@ -94,6 +95,7 @@ function layoutOverlappingBookings(
 
 export function WeekView({ date, bookings }: WeekViewProps) {
   const router = useRouter();
+  const t = useTranslations();
   const weekStart = startOfWeek(date, { weekStartsOn: 0 });
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
   const hours = Array.from(
@@ -180,7 +182,9 @@ export function WeekView({ date, bookings }: WeekViewProps) {
                   type="button"
                   key={`${hour}-0`}
                   onClick={() => openEmpty(day, hour, 0)}
-                  aria-label={`Book at ${String(hour).padStart(2, "0")}:00`}
+                  aria-label={t("admin.calendar.book.at", {
+                    time: `${String(hour).padStart(2, "0")}:00`,
+                  })}
                   className="absolute left-0 right-0 transition-colors hover:bg-muted/40"
                   style={{
                     top: (hour - HOUR_START) * HOUR_HEIGHT,
@@ -191,7 +195,9 @@ export function WeekView({ date, bookings }: WeekViewProps) {
                   type="button"
                   key={`${hour}-1`}
                   onClick={() => openEmpty(day, hour, 1)}
-                  aria-label={`Book at ${String(hour).padStart(2, "0")}:30`}
+                  aria-label={t("admin.calendar.book.at", {
+                    time: `${String(hour).padStart(2, "0")}:30`,
+                  })}
                   className="absolute left-0 right-0 transition-colors hover:bg-muted/40"
                   style={{
                     top: (hour - HOUR_START) * HOUR_HEIGHT + HOUR_HEIGHT / 2,

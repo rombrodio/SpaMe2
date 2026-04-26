@@ -4,6 +4,7 @@ import { PaymentPanel } from "@/components/admin/booking/payment-panel";
 import { Breadcrumbs } from "@/components/admin/breadcrumbs";
 import { notFound } from "next/navigation";
 import { formatInTimeZone } from "date-fns-tz";
+import { getTranslations } from "next-intl/server";
 import { TZ } from "@/lib/constants";
 
 export default async function BookingDetailPage({
@@ -22,6 +23,7 @@ export default async function BookingDetailPage({
 
   // Therapists + rooms for the reschedule slot picker (DEF-008).
   const { therapists, rooms } = await getBookingFormData();
+  const t = await getTranslations();
 
   // Extract the fields the PaymentPanel needs; leave `booking` untouched
   // so BookingDetail still receives the richer shape it expects.
@@ -44,7 +46,8 @@ export default async function BookingDetailPage({
       customers?: { full_name: string | null } | null;
       start_at?: string;
     };
-    const name = b.customers?.full_name ?? "Booking";
+    const name =
+      b.customers?.full_name ?? t("admin.bookings.detail.fallbackCrumb");
     if (!b.start_at) return name;
     return `${name} — ${formatInTimeZone(
       new Date(b.start_at),
@@ -58,11 +61,13 @@ export default async function BookingDetailPage({
       <Breadcrumbs
         className="mb-4"
         items={[
-          { label: "Bookings", href: "/admin/bookings" },
+          { label: t("admin.bookings.crumb"), href: "/admin/bookings" },
           { label: crumbLabel },
         ]}
       />
-      <h1 className="text-2xl font-bold">Booking Details</h1>
+      <h1 className="text-2xl font-bold">
+        {t("admin.bookings.detail.title")}
+      </h1>
       <div className="mt-6 space-y-6">
         <BookingDetail booking={booking} therapists={therapists} rooms={rooms} />
         <PaymentPanel

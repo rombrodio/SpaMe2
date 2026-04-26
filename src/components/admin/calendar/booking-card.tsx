@@ -1,6 +1,7 @@
 "use client";
 
 import { formatInTimeZone } from "date-fns-tz";
+import { useTranslations } from "next-intl";
 import { TZ } from "@/lib/constants";
 import Link from "next/link";
 
@@ -32,6 +33,7 @@ const statusColors: Record<string, string> = {
 };
 
 export function BookingCard({ booking, compact }: BookingCardProps) {
+  const t = useTranslations();
   const isUnassigned = booking.assignment_status === "unassigned";
   const isPending = booking.assignment_status === "pending_confirmation";
   // Unassigned bookings use a neutral gray so they stand out in a
@@ -57,16 +59,18 @@ export function BookingCard({ booking, compact }: BookingCardProps) {
   // DEF-024: full tooltip so truncated info is always recoverable on hover.
   // Native `title` attribute shows up across all browsers/OS without a
   // dependency on a tooltip primitive we don't yet have.
-  const customerName = booking.customers?.full_name ?? "No customer";
-  const serviceName = booking.services?.name ?? "Unknown service";
+  const customerName =
+    booking.customers?.full_name ?? t("admin.bookings.card.noCustomer");
+  const serviceName =
+    booking.services?.name ?? t("admin.bookings.card.unknownService");
   const therapistName = isUnassigned
-    ? "Unassigned"
-    : booking.therapists?.full_name ?? "No therapist";
-  const roomName = booking.rooms?.name ?? "No room";
-  const statusLabel = formatStatus(booking.status);
+    ? t("admin.bookings.card.unassigned")
+    : booking.therapists?.full_name ?? t("admin.bookings.card.noTherapist");
+  const roomName = booking.rooms?.name ?? t("admin.bookings.card.noRoom");
+  const statusLabel = translateStatus(t, booking.status);
   const tooltip = `${customerName} — ${serviceName}
 ${timeStr} · ${therapistName} · ${roomName}
-Status: ${statusLabel}`;
+${t("admin.bookings.card.statusLine", { label: statusLabel })}`;
 
   return (
     <Link
@@ -90,9 +94,15 @@ Status: ${statusLabel}`;
           <div className="flex items-center justify-between gap-1">
             <span className="font-medium">{timeStr}</span>
             {isUnassigned ? (
-              <AssignmentBadge label="Unassigned" tone="neutral" />
+              <AssignmentBadge
+                label={t("admin.bookings.card.unassigned")}
+                tone="neutral"
+              />
             ) : isPending ? (
-              <AssignmentBadge label="Pending" tone="warning" />
+              <AssignmentBadge
+                label={t("admin.bookings.card.pending")}
+                tone="warning"
+              />
             ) : (
               <StatusBadge status={booking.status} />
             )}
@@ -104,7 +114,13 @@ Status: ${statusLabel}`;
               <> &middot; {booking.therapists.full_name}</>
             )}
             {isUnassigned && (
-              <> &middot; <span className="italic">no therapist yet</span></>
+              <>
+                {" "}
+                &middot;{" "}
+                <span className="italic">
+                  {t("admin.bookings.card.noTherapistYet")}
+                </span>
+              </>
             )}
           </div>
           <div className="truncate text-muted-foreground">{roomName}</div>
@@ -135,23 +151,32 @@ function AssignmentBadge({
 }
 
 /**
- * DEF-032: canonical Title Case label for a booking status. Use this
- * everywhere we render a status chip so we don't get "pending payment"
- * in a table next to "Pending Payment" in a dropdown.
+ * DEF-032: canonical label for a booking status, localised via
+ * `admin.status.<status>`. Falls back to the raw string (Title Case'd)
+ * if the key is missing, so unknown statuses still render legibly.
  */
-export function formatStatus(status: string): string {
-  return status
-    .split("_")
-    .map((word) =>
-      word.length === 0
-        ? word
-        : word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
-    )
-    .join(" ");
+function translateStatus(
+  t: ReturnType<typeof useTranslations>,
+  status: string
+): string {
+  const key = `admin.status.${status}`;
+  // next-intl returns the key itself when missing; that's not useful
+  // for an unknown status like `refunded`. Fall back to Title Case.
+  const translated = t(key);
+  if (translated === key) {
+    return status
+      .split("_")
+      .map((w) =>
+        w.length === 0 ? w : w[0].toUpperCase() + w.slice(1).toLowerCase()
+      )
+      .join(" ");
+  }
+  return translated;
 }
 
 export function StatusBadge({ status }: { status: string }) {
-  const label = formatStatus(status);
+  const t = useTranslations();
+  const label = translateStatus(t, status);
   return (
     <span
       className={`inline-flex items-center rounded-full border px-1.5 py-0.5 text-[10px] font-medium ${statusColors[status] || ""}`}
