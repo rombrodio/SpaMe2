@@ -27,6 +27,28 @@ export async function middleware(request: NextRequest) {
     }
   );
 
+  /**
+   * Redirect helper that preserves any session cookies Supabase wrote
+   * on `supabaseResponse` during `auth.getUser()`. Without this,
+   * `NextResponse.redirect(url)` returns a fresh response with no
+   * Set-Cookie headers, the browser keeps stale auth cookies, and on
+   * the redirected request the session looks invalid — producing a
+   * classic /login ↔ portal ping-pong loop that eventually hits
+   * ERR_TOO_MANY_REDIRECTS.
+   *
+   * Per Supabase's official SSR middleware docs, the `cookies` set on
+   * `supabaseResponse` MUST be propagated to any response we return,
+   * including redirects.
+   */
+  function redirectWithCookies(url: URL | string): NextResponse {
+    const target = typeof url === "string" ? url : url.toString();
+    const redirect = NextResponse.redirect(target);
+    for (const cookie of supabaseResponse.cookies.getAll()) {
+      redirect.cookies.set(cookie);
+    }
+    return redirect;
+  }
+
   const pathname = request.nextUrl.pathname;
   const isProtected =
     pathname.startsWith("/admin") ||
@@ -46,7 +68,7 @@ export async function middleware(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("next", pathname);
-    return NextResponse.redirect(url);
+    return redirectWithCookies(url);
   }
 
   if (isProtected && authedUser) {
@@ -67,14 +89,14 @@ export async function middleware(request: NextRequest) {
       if (verdict.redirectTo === pathname) return supabaseResponse;
       const url = request.nextUrl.clone();
       url.pathname = verdict.redirectTo;
-      return NextResponse.redirect(url);
+      return redirectWithCookies(url);
     }
   }
 
   if (pathname === "/set-password" && !authedUser && isGet) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
-    return NextResponse.redirect(url);
+    return redirectWithCookies(url);
   }
 
   if (pathname === "/login" && authedUser && isGet) {
@@ -95,7 +117,7 @@ export async function middleware(request: NextRequest) {
 
     const url = request.nextUrl.clone();
     url.pathname = target;
-    return NextResponse.redirect(url);
+    return redirectWithCookies(url);
   }
 
   return supabaseResponse;
