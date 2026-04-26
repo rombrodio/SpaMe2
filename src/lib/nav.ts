@@ -61,65 +61,101 @@ export const adminNavSections: NavSection[] = [
     items: [
       {
         href: "/admin",
-        label: "Dashboard",
+        labelKey: "admin.nav.dashboard",
         icon: LayoutDashboard,
         exact: true,
       },
     ],
   },
   {
-    groupLabel: "Calendar",
+    groupLabelKey: "admin.nav.groups.calendar",
     items: [
-      { href: "/admin/calendar", label: "Calendar", icon: Calendar },
-      { href: "/admin/bookings", label: "Bookings", icon: BookOpen },
-      { href: "/admin/assignments", label: "Assignments", icon: UserCheck },
+      {
+        href: "/admin/calendar",
+        labelKey: "admin.nav.calendar",
+        icon: Calendar,
+      },
+      {
+        href: "/admin/bookings",
+        labelKey: "admin.nav.bookings",
+        icon: BookOpen,
+      },
+      {
+        href: "/admin/assignments",
+        labelKey: "admin.nav.assignments",
+        icon: UserCheck,
+      },
       // Phase 8 — flip `hidden: false` when the inbox route lands.
       {
         href: "/admin/inbox",
-        label: "Inbox",
+        labelKey: "admin.nav.inbox",
         icon: MessageSquare,
         hidden: true,
       },
     ],
   },
   {
-    groupLabel: "Clients",
-    items: [{ href: "/admin/customers", label: "Customers", icon: Users }],
+    groupLabelKey: "admin.nav.groups.clients",
+    items: [
+      {
+        href: "/admin/customers",
+        labelKey: "admin.nav.customers",
+        icon: Users,
+      },
+    ],
   },
   {
-    groupLabel: "Team",
+    groupLabelKey: "admin.nav.groups.team",
     items: [
-      { href: "/admin/therapists", label: "Therapists", icon: Users },
+      {
+        href: "/admin/therapists",
+        labelKey: "admin.nav.therapists",
+        icon: Users,
+      },
       {
         href: "/admin/receptionists",
-        label: "Receptionists",
+        labelKey: "admin.nav.receptionists",
         icon: Headphones,
       },
     ],
   },
   {
-    groupLabel: "Catalog",
+    groupLabelKey: "admin.nav.groups.catalog",
     items: [
-      { href: "/admin/services", label: "Services", icon: Scissors },
-      { href: "/admin/rooms", label: "Rooms", icon: DoorOpen },
+      {
+        href: "/admin/services",
+        labelKey: "admin.nav.services",
+        icon: Scissors,
+      },
+      { href: "/admin/rooms", labelKey: "admin.nav.rooms", icon: DoorOpen },
     ],
   },
   {
-    groupLabel: "Reports",
+    groupLabelKey: "admin.nav.groups.reports",
     items: [
       // Phase 9 — flip `hidden: false` when the reports route lands.
       {
         href: "/admin/reports",
-        label: "Reports",
+        labelKey: "admin.nav.reports",
         icon: ClipboardList,
         hidden: true,
       },
-      { href: "/admin/audit-log", label: "Audit Log", icon: ClipboardList },
+      {
+        href: "/admin/audit-log",
+        labelKey: "admin.nav.auditLog",
+        icon: ClipboardList,
+      },
     ],
   },
   {
     groupLabel: null,
-    items: [{ href: "/admin/settings", label: "Settings", icon: Settings }],
+    items: [
+      {
+        href: "/admin/settings",
+        labelKey: "admin.nav.settings",
+        icon: Settings,
+      },
+    ],
   },
 ];
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Search, User, Users, Calendar } from "lucide-react";
 import {
   Command,
@@ -28,6 +29,7 @@ import { globalSearch, type GlobalSearchHit } from "@/lib/actions/search";
  */
 export function GlobalSearch() {
   const router = useRouter();
+  const t = useTranslations();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [hits, setHits] = useState<GlobalSearchHit[]>([]);
@@ -84,10 +86,12 @@ export function GlobalSearch() {
           variant="outline"
           size="sm"
           className="w-full justify-start gap-2 text-muted-foreground"
-          aria-label="Open global search"
+          aria-label={t("admin.common.globalSearchLabel")}
         >
           <Search className="h-4 w-4" />
-          <span className="flex-1 text-left text-xs">Search…</span>
+          <span className="flex-1 text-left text-xs">
+            {t("admin.common.globalSearchTrigger")}
+          </span>
           <kbd className="hidden rounded border bg-muted px-1.5 text-[10px] font-medium sm:inline-block">
             ⌘K
           </kbd>
@@ -100,21 +104,23 @@ export function GlobalSearch() {
       >
         <Command shouldFilter={false}>
           <CommandInput
-            placeholder="Customers, therapists, bookings…"
+            placeholder={t("admin.common.globalSearchPlaceholder")}
             value={query}
             onValueChange={setQuery}
           />
           <CommandList>
             {query.trim().length < 2 ? (
               <div className="p-4 text-center text-sm text-muted-foreground">
-                Type at least 2 characters to search.
+                {t("admin.common.globalSearchHint")}
               </div>
             ) : effectiveHits.length === 0 && !isSearching ? (
-              <CommandEmpty>No matches.</CommandEmpty>
+              <CommandEmpty>
+                {t("admin.common.globalSearchNoMatches")}
+              </CommandEmpty>
             ) : (
               <>
                 {customerHits.length > 0 && (
-                  <CommandGroup heading="Customers">
+                  <CommandGroup heading={t("admin.common.kinds.customers")}>
                     {customerHits.map((hit) => (
                       <SearchHit
                         key={`c-${hit.id}`}
@@ -126,7 +132,7 @@ export function GlobalSearch() {
                   </CommandGroup>
                 )}
                 {therapistHits.length > 0 && (
-                  <CommandGroup heading="Therapists">
+                  <CommandGroup heading={t("admin.common.kinds.therapists")}>
                     {therapistHits.map((hit) => (
                       <SearchHit
                         key={`t-${hit.id}`}
@@ -138,7 +144,7 @@ export function GlobalSearch() {
                   </CommandGroup>
                 )}
                 {bookingHits.length > 0 && (
-                  <CommandGroup heading="Bookings">
+                  <CommandGroup heading={t("admin.common.kinds.bookings")}>
                     {bookingHits.map((hit) => (
                       <SearchHit
                         key={`b-${hit.id}`}

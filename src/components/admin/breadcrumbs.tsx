@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 
 export interface Crumb {
@@ -17,13 +20,18 @@ interface BreadcrumbsProps {
  *
  * The final crumb renders as plain text (current page), earlier crumbs
  * render as links. Renders nothing if called with ≤1 item.
+ *
+ * Labels themselves are passed in by the caller (usually already
+ * translated or derived from DB data); only the `aria-label` is
+ * localised here.
  */
 export function Breadcrumbs({ items, className }: BreadcrumbsProps) {
+  const t = useTranslations();
   if (items.length <= 1) return null;
 
   return (
     <nav
-      aria-label="Breadcrumb"
+      aria-label={t("admin.common.breadcrumb")}
       className={cn("text-sm text-muted-foreground", className)}
     >
       <ol className="flex flex-wrap items-center gap-1">

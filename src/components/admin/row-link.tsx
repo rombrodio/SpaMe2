@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
 
@@ -34,6 +35,7 @@ export function RowLink({
   className,
 }: RowLinkProps) {
   const router = useRouter();
+  const t = useTranslations();
 
   // Pre-hint the route so the first click is instant.
   useEffect(() => {
@@ -71,7 +73,7 @@ export function RowLink({
               "gap-1"
             )}
           >
-            Edit
+            {t("admin.common.edit")}
             <ChevronRight className="h-3.5 w-3.5" />
           </Link>
         </td>
