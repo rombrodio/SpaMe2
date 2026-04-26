@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import {
   getTherapist,
   getTherapistServices,
@@ -27,13 +28,14 @@ export default async function TherapistDetailPage({ params }: Props) {
     notFound();
   }
 
-  const [therapistServices, allServices, rules, timeOffs, authStatus] =
+  const [therapistServices, allServices, rules, timeOffs, authStatus, t] =
     await Promise.all([
       getTherapistServices(id),
       getServices(),
       getAvailabilityRules(id),
       getTimeOffs(id),
       getTherapistAuthStatus(id),
+      getTranslations(),
     ]);
 
   const assignedServiceIds = (
@@ -44,7 +46,7 @@ export default async function TherapistDetailPage({ params }: Props) {
     <div className="mx-auto max-w-3xl space-y-6">
       <Breadcrumbs
         items={[
-          { label: "Therapists", href: "/admin/therapists" },
+          { label: t("admin.therapists.crumb"), href: "/admin/therapists" },
           { label: therapist.full_name },
         ]}
       />

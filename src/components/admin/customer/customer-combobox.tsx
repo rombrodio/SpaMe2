@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { Check, ChevronsUpDown, UserPlus } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -71,9 +72,12 @@ export function CustomerCombobox({
   value,
   onChange,
   name,
-  placeholder = "Select or search customer…",
+  placeholder,
   initialCustomers = [],
 }: CustomerComboboxProps) {
+  const t = useTranslations();
+  const resolvedPlaceholder =
+    placeholder ?? t("admin.customers.combobox.placeholder");
   const [open, setOpen] = useState(false);
   const [results, setResults] = useState<Customer[]>(initialCustomers);
   const [query, setQuery] = useState("");
@@ -104,8 +108,8 @@ export function CustomerCombobox({
     if (!value) return "";
     const match = results.find((c) => c.id === value);
     if (!match) return "";
-    return `${match.full_name || "Unnamed"} · ${match.phone}`;
-  }, [value, results]);
+    return `${match.full_name || t("admin.customers.combobox.unnamed")} · ${match.phone}`;
+  }, [value, results, t]);
 
   function handleSelect(customer: Customer) {
     onChange(customer.id, customer);
@@ -158,7 +162,7 @@ export function CustomerCombobox({
                 !selectedLabel && "text-muted-foreground"
               )}
             >
-              {selectedLabel || placeholder}
+              {selectedLabel || resolvedPlaceholder}
             </span>
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
@@ -166,19 +170,21 @@ export function CustomerCombobox({
         <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
           <Command shouldFilter={false}>
             <CommandInput
-              placeholder="Name, phone, or email…"
+              placeholder={t("admin.customers.combobox.searchPlaceholder")}
               value={query}
               onValueChange={setQuery}
             />
             <CommandList>
               {isSearching && results.length === 0 ? (
                 <div className="p-3 text-center text-sm text-muted-foreground">
-                  Searching…
+                  {t("admin.customers.combobox.searching")}
                 </div>
               ) : results.length === 0 ? (
-                <CommandEmpty>No customers match.</CommandEmpty>
+                <CommandEmpty>
+                  {t("admin.customers.combobox.noMatches")}
+                </CommandEmpty>
               ) : (
-                <CommandGroup heading="Customers">
+                <CommandGroup heading={t("admin.customers.combobox.heading")}>
                   {results.map((c) => (
                     <CommandItem
                       key={c.id}
@@ -187,7 +193,7 @@ export function CustomerCombobox({
                     >
                       <div className="flex min-w-0 flex-col">
                         <span className="truncate font-medium">
-                          {c.full_name || "(no name)"}
+                          {c.full_name || t("admin.customers.combobox.noName")}
                         </span>
                         <span className="truncate text-xs text-muted-foreground">
                           {c.phone}
@@ -209,7 +215,7 @@ export function CustomerCombobox({
                 >
                   <UserPlus className="h-4 w-4" />
                   <span>
-                    Create new customer
+                    {t("admin.customers.combobox.createNew")}
                     {query.trim() ? (
                       <span className="text-muted-foreground">
                         {" "}— {query.trim()}
@@ -245,6 +251,7 @@ function CreateCustomerDialog({
   prefill,
   onCreated,
 }: CreateCustomerDialogProps) {
+  const t = useTranslations();
   const [fullName, setFullName] = useState(prefill.name ?? "");
   const [phone, setPhone] = useState(prefill.phone ?? "");
   const [email, setEmail] = useState("");
@@ -279,14 +286,14 @@ function CreateCustomerDialog({
       const result = await createCustomer(fd, { force });
       if ("error" in result) {
         setErrors(result.error as Record<string, string[]>);
-        toast.error("Couldn't create customer.");
+        toast.error(t("admin.customers.combobox.toastCreateError"));
         return;
       }
       if ("duplicate" in result) {
         setDuplicate(result.duplicate);
         return;
       }
-      toast.success("Customer created.");
+      toast.success(t("admin.customers.combobox.toastCreated"));
       onCreated(result.customer);
     });
   }
@@ -296,19 +303,21 @@ function CreateCustomerDialog({
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>
-            {duplicate ? "Customer already exists" : "Create new customer"}
+            {duplicate
+              ? t("admin.customers.combobox.duplicateTitle")
+              : t("admin.customers.combobox.createTitle")}
           </AlertDialogTitle>
           <AlertDialogDescription>
             {duplicate
-              ? "A customer with this phone number already exists. Pick them instead, or override to create a duplicate."
-              : "Adds the customer and auto-selects them on the booking."}
+              ? t("admin.customers.combobox.duplicateDescription")
+              : t("admin.customers.combobox.createDescription")}
           </AlertDialogDescription>
         </AlertDialogHeader>
 
         {duplicate ? (
           <div className="rounded-md border bg-muted/40 p-3 text-sm">
             <div className="font-medium">
-              {duplicate.full_name || "(no name)"}
+              {duplicate.full_name || t("admin.customers.combobox.noName")}
             </div>
             <div className="text-muted-foreground">
               {duplicate.phone}
@@ -318,7 +327,9 @@ function CreateCustomerDialog({
         ) : (
           <div className="space-y-3 text-sm">
             <div className="space-y-1">
-              <Label htmlFor="cc_full_name">Full name</Label>
+              <Label htmlFor="cc_full_name">
+                {t("admin.customers.combobox.fullName")}
+              </Label>
               <Input
                 id="cc_full_name"
                 value={fullName}
@@ -331,21 +342,24 @@ function CreateCustomerDialog({
             </div>
             <div className="space-y-1">
               <Label htmlFor="cc_phone">
-                Phone <span className="text-destructive">*</span>
+                {t("admin.customers.combobox.phone")}{" "}
+                <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="cc_phone"
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                placeholder="0501234567 or +972501234567"
+                placeholder={t("admin.customers.combobox.phonePlaceholder")}
               />
               {errors?.phone?.[0] && (
                 <p className="text-xs text-destructive">{errors.phone[0]}</p>
               )}
             </div>
             <div className="space-y-1">
-              <Label htmlFor="cc_email">Email (optional)</Label>
+              <Label htmlFor="cc_email">
+                {t("admin.customers.combobox.emailOptional")}
+              </Label>
               <Input
                 id="cc_email"
                 type="email"
@@ -369,7 +383,7 @@ function CreateCustomerDialog({
                 onClick={() => setDuplicate(null)}
                 disabled={pending}
               >
-                Edit details
+                {t("admin.customers.combobox.editDetails")}
               </AlertDialogCancel>
               <Button
                 type="button"
@@ -379,7 +393,7 @@ function CreateCustomerDialog({
                   onCreated(duplicate);
                 }}
               >
-                Use existing
+                {t("admin.customers.combobox.useExisting")}
               </Button>
               <AlertDialogAction
                 onClick={(e) => {
@@ -388,12 +402,16 @@ function CreateCustomerDialog({
                 }}
                 disabled={pending}
               >
-                {pending ? "Creating…" : "Create anyway"}
+                {pending
+                  ? t("admin.customers.combobox.creating")
+                  : t("admin.customers.combobox.createAnyway")}
               </AlertDialogAction>
             </>
           ) : (
             <>
-              <AlertDialogCancel disabled={pending}>Cancel</AlertDialogCancel>
+              <AlertDialogCancel disabled={pending}>
+                {t("admin.customers.combobox.cancel")}
+              </AlertDialogCancel>
               <AlertDialogAction
                 onClick={(e) => {
                   e.preventDefault();
@@ -401,7 +419,9 @@ function CreateCustomerDialog({
                 }}
                 disabled={pending || !phone.trim() || !fullName.trim()}
               >
-                {pending ? "Creating…" : "Create customer"}
+                {pending
+                  ? t("admin.customers.combobox.creating")
+                  : t("admin.customers.combobox.create")}
               </AlertDialogAction>
             </>
           )}

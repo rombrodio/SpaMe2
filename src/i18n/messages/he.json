@@ -320,6 +320,217 @@
         "more": "+{count} נוספים"
       }
     },
+    "therapists": {
+      "crumb": "מטפלים",
+      "title": "מטפלים",
+      "newButton": "מטפל חדש",
+      "searchPlaceholder": "שם, טלפון או אימייל…",
+      "countTitleZero": "אין מטפלים תואמים",
+      "countTitleSome": "{count} מטפלים",
+      "emptyForSearch": "אין מטפלים התואמים לחיפוש זה.",
+      "empty": "עדיין אין מטפלים. צור אחד כדי להתחיל.",
+      "columns": {
+        "name": "שם",
+        "phone": "טלפון",
+        "color": "צבע",
+        "status": "סטטוס",
+        "actions": "פעולות"
+      },
+      "statuses": {
+        "active": "פעיל",
+        "inactive": "לא פעיל"
+      },
+      "gender": {
+        "label": "מין",
+        "female": "נקבה",
+        "male": "זכר",
+        "notSet": "לא הוגדר — אנא בחר",
+        "helper": "משמש להתאמת העדפת מין של הלקוח בעת ההזמנה. אינו מוצג ללקוחות."
+      },
+      "new": {
+        "title": "מטפל חדש",
+        "cardTitle": "פרטי המטפל",
+        "emailRequired": "אימייל נדרש בעת שליחת הזמנה. המטפל יקבל קישור קסם להגדרת סיסמה.",
+        "createButton": "צור מטפל",
+        "creating": "יוצר...",
+        "toastCreated": "המטפל נוצר.",
+        "toastCreateError": "לא ניתן ליצור מטפל.",
+        "toastCreatedWithWarning": "המטפל נוצר עם אזהרה."
+      },
+      "edit": {
+        "cardTitle": "פרטי המטפל",
+        "save": "שמור שינויים",
+        "saving": "שומר...",
+        "back": "חזרה",
+        "toastSaved": "המטפל נשמר.",
+        "toastSaveError": "לא ניתן לשמור את המטפל.",
+        "toastDeleted": "המטפל נמחק.",
+        "toastDeleteError": "לא ניתן למחוק את המטפל.",
+        "inviteSent": "ההזמנה נשלחה.",
+        "noAuthUserLinked": "אין משתמש התחברות מקושר למטפל זה.",
+        "noAuthUserLinkedAddEmail": "הוסף אימייל, שמור, ואז שלח הזמנה.",
+        "sendInvite": "שלח הזמנה",
+        "sending": "שולח...",
+        "delete": "מחק מטפל",
+        "deleteTitle": "מחק מטפל",
+        "deleteDescription": "מחיקת {name} היא קבועה. הזמנותיו הקודמות יישארו במסד הנתונים אך פרופיל המטפל, כללי הזמינות, ושיוכי השירותים יוסרו.",
+        "deleteConfirmBody": "הקלד DELETE לאישור.",
+        "deleteConfirmLabel": "מחק מטפל"
+      },
+      "services": {
+        "cardTitle": "שירותים משויכים",
+        "empty": "עדיין לא קיימים שירותים. צור שירותים קודם.",
+        "save": "שמור שירותים",
+        "saving": "שומר...",
+        "saved": "השירותים עודכנו.",
+        "saveError": "שמירת השירותים נכשלה"
+      },
+      "fields": {
+        "fullName": "שם מלא",
+        "phone": "טלפון",
+        "email": "אימייל",
+        "color": "צבע",
+        "active": "פעיל",
+        "sendInvite": "שלח הזמנת התחברות באימייל"
+      }
+    },
+    "receptionists": {
+      "crumb": "פקידי קבלה",
+      "title": "פקידי קבלה",
+      "newButton": "פקיד קבלה חדש",
+      "searchPlaceholder": "שם, טלפון או אימייל…",
+      "countTitleZero": "אין פקידי קבלה תואמים",
+      "countTitleSome": "{count} פקידי קבלה",
+      "emptyForSearch": "אין פקידי קבלה התואמים לחיפוש זה.",
+      "empty": "עדיין אין פקידי קבלה. צור אחד כדי להתחיל.",
+      "columns": {
+        "name": "שם",
+        "phone": "טלפון",
+        "email": "אימייל",
+        "status": "סטטוס"
+      },
+      "statuses": {
+        "active": "פעיל",
+        "inactive": "לא פעיל"
+      },
+      "new": {
+        "title": "פקיד קבלה חדש",
+        "cardTitle": "פרטי פקיד הקבלה",
+        "emailHelper": "אימייל נדרש בעת שליחת הזמנה. פקיד הקבלה יקבל קישור קסם להגדרת סיסמה וינחת בפורטל הקבלה.",
+        "createButton": "צור פקיד קבלה",
+        "creating": "יוצר...",
+        "toastCreated": "פקיד הקבלה נוצר.",
+        "toastCreateError": "לא ניתן ליצור פקיד קבלה.",
+        "toastCreatedWithWarning": "פקיד הקבלה נוצר עם אזהרה."
+      },
+      "edit": {
+        "cardTitle": "פרטים",
+        "save": "שמור שינויים",
+        "saving": "שומר...",
+        "back": "חזרה",
+        "toastSaved": "פקיד הקבלה נשמר.",
+        "toastSaveError": "לא ניתן לשמור את פקיד הקבלה.",
+        "toastDeleted": "פקיד הקבלה נמחק.",
+        "toastDeleteError": "המחיקה נכשלה.",
+        "inviteSent": "ההזמנה נשלחה.",
+        "sendInvite": "שלח הזמנה",
+        "resendInvite": "שלח הזמנה מחדש",
+        "sending": "שולח...",
+        "delete": "מחק פקיד קבלה",
+        "deleteTitle": "מחק פקיד קבלה",
+        "deleteDescription": "מחיקת {name} היא קבועה. כללי הזמינות שלו יוסרו; הזמנות שהוא יצר יישארו במסד הנתונים כרשומות היסטוריות.",
+        "deleteConfirmBody": "הקלד DELETE לאישור.",
+        "deleteConfirmLabel": "מחק פקיד קבלה"
+      },
+      "fields": {
+        "fullName": "שם מלא",
+        "phone": "טלפון",
+        "email": "אימייל",
+        "active": "פעיל",
+        "sendInvite": "שלח הזמנת התחברות באימייל"
+      }
+    },
+    "customers": {
+      "crumb": "לקוחות",
+      "title": "לקוחות",
+      "newButton": "לקוח חדש",
+      "searchPlaceholder": "שם, טלפון או אימייל…",
+      "countTitleZero": "אין לקוחות תואמים",
+      "countTitleSome": "{count} לקוחות",
+      "emptyForSearch": "אין לקוחות התואמים לחיפוש זה.",
+      "empty": "עדיין אין לקוחות. צור אחד כדי להתחיל.",
+      "columns": {
+        "name": "שם",
+        "phone": "טלפון",
+        "email": "אימייל",
+        "actions": "פעולות"
+      },
+      "addEmail": "+ הוסף אימייל",
+      "new": {
+        "title": "לקוח חדש",
+        "cardTitle": "פרטי הלקוח",
+        "createButton": "צור לקוח",
+        "creating": "יוצר...",
+        "cancel": "ביטול",
+        "toastCreated": "הלקוח נוצר.",
+        "toastCreateError": "לא ניתן ליצור לקוח."
+      },
+      "edit": {
+        "title": "ערוך לקוח",
+        "cardTitle": "פרטי הלקוח",
+        "loading": "טוען...",
+        "backToCustomers": "חזרה ללקוחות",
+        "save": "שמור שינויים",
+        "saving": "שומר...",
+        "cancel": "ביטול",
+        "toastSaved": "הלקוח נשמר.",
+        "toastSaveError": "לא ניתן לשמור את הלקוח.",
+        "toastDeleted": "הלקוח נמחק.",
+        "toastDeleteError": "לא ניתן למחוק את הלקוח.",
+        "notFound": "הלקוח לא נמצא.",
+        "delete": "מחק",
+        "deleteTitle": "מחק לקוח",
+        "deleteDescription": "מחיקת {name} היא קבועה. היסטוריית ההזמנות שלו נשמרת בטבלת ההזמנות כתמונת מצב, אך רשומת איש הקשר (טלפון, אימייל, הערות) תוסר.",
+        "deleteConfirmBody": "הקלד DELETE לאישור.",
+        "deleteConfirmLabel": "מחק לקוח"
+      },
+      "fields": {
+        "fullName": "שם מלא",
+        "fullNamePlaceholder": "שם מלא",
+        "phone": "טלפון",
+        "phonePlaceholder": "+972-50-000-0000",
+        "email": "אימייל",
+        "emailPlaceholder": "email@example.com",
+        "notes": "הערות",
+        "notesPlaceholder": "הערות כלשהן לגבי לקוח זה..."
+      },
+      "combobox": {
+        "placeholder": "בחר או חפש לקוח…",
+        "searchPlaceholder": "שם, טלפון או אימייל…",
+        "searching": "מחפש…",
+        "noMatches": "אין לקוחות תואמים.",
+        "heading": "לקוחות",
+        "noName": "(ללא שם)",
+        "unnamed": "ללא שם",
+        "createNew": "צור לקוח חדש",
+        "createTitle": "צור לקוח חדש",
+        "createDescription": "מוסיף את הלקוח ובוחר אותו אוטומטית בהזמנה.",
+        "duplicateTitle": "הלקוח כבר קיים",
+        "duplicateDescription": "קיים לקוח עם מספר טלפון זה. בחר אותו במקום, או דרוס כדי ליצור כפילות.",
+        "editDetails": "ערוך פרטים",
+        "useExisting": "השתמש בקיים",
+        "createAnyway": "צור בכל זאת",
+        "creating": "יוצר…",
+        "create": "צור לקוח",
+        "cancel": "ביטול",
+        "fullName": "שם מלא",
+        "phone": "טלפון",
+        "phonePlaceholder": "0501234567 או +972501234567",
+        "emailOptional": "אימייל (אופציונלי)",
+        "toastCreated": "הלקוח נוצר.",
+        "toastCreateError": "לא ניתן ליצור לקוח."
+      }
+    },
     "assignments": {
       "title": "שיוכי מטפלים",
       "crumb": "שיוכים",

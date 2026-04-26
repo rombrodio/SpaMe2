@@ -320,6 +320,217 @@
         "more": "+{count} more"
       }
     },
+    "therapists": {
+      "crumb": "Therapists",
+      "title": "Therapists",
+      "newButton": "New Therapist",
+      "searchPlaceholder": "Name, phone, or email…",
+      "countTitleZero": "No therapists match",
+      "countTitleSome": "{count} therapists",
+      "emptyForSearch": "No therapists match this search.",
+      "empty": "No therapists yet. Create one to get started.",
+      "columns": {
+        "name": "Name",
+        "phone": "Phone",
+        "color": "Color",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "statuses": {
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "gender": {
+        "label": "Gender",
+        "female": "Female",
+        "male": "Male",
+        "notSet": "not set — please pick one",
+        "helper": "Used to match customer gender preferences at booking time. Not displayed to customers."
+      },
+      "new": {
+        "title": "New Therapist",
+        "cardTitle": "Therapist Details",
+        "emailRequired": "Email is required when sending an invite. The therapist will receive a magic link to set their password.",
+        "createButton": "Create Therapist",
+        "creating": "Creating...",
+        "toastCreated": "Therapist created.",
+        "toastCreateError": "Couldn't create therapist.",
+        "toastCreatedWithWarning": "Therapist created with a warning."
+      },
+      "edit": {
+        "cardTitle": "Therapist Details",
+        "save": "Save Changes",
+        "saving": "Saving...",
+        "back": "Back",
+        "toastSaved": "Therapist saved.",
+        "toastSaveError": "Couldn't save therapist.",
+        "toastDeleted": "Therapist deleted.",
+        "toastDeleteError": "Couldn't delete therapist.",
+        "inviteSent": "Invite sent.",
+        "noAuthUserLinked": "No login user linked to this therapist.",
+        "noAuthUserLinkedAddEmail": "Add an email, save, then send invite.",
+        "sendInvite": "Send invite",
+        "sending": "Sending...",
+        "delete": "Delete Therapist",
+        "deleteTitle": "Delete therapist",
+        "deleteDescription": "Deleting {name} is permanent. Their past bookings will remain in the database but this therapist profile, availability rules, and service assignments will be removed.",
+        "deleteConfirmBody": "Type DELETE to confirm.",
+        "deleteConfirmLabel": "Delete therapist"
+      },
+      "services": {
+        "cardTitle": "Assigned Services",
+        "empty": "No services exist yet. Create services first.",
+        "save": "Save Services",
+        "saving": "Saving...",
+        "saved": "Services updated.",
+        "saveError": "Failed to save services"
+      },
+      "fields": {
+        "fullName": "Full Name",
+        "phone": "Phone",
+        "email": "Email",
+        "color": "Color",
+        "active": "Active",
+        "sendInvite": "Send login invite by email"
+      }
+    },
+    "receptionists": {
+      "crumb": "Receptionists",
+      "title": "Receptionists",
+      "newButton": "New Receptionist",
+      "searchPlaceholder": "Name, phone, or email…",
+      "countTitleZero": "No receptionists match",
+      "countTitleSome": "{count} receptionists",
+      "emptyForSearch": "No receptionists match this search.",
+      "empty": "No receptionists yet. Create one to get started.",
+      "columns": {
+        "name": "Name",
+        "phone": "Phone",
+        "email": "Email",
+        "status": "Status"
+      },
+      "statuses": {
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "new": {
+        "title": "New Receptionist",
+        "cardTitle": "Receptionist Details",
+        "emailHelper": "Email is required when sending an invite. The receptionist will receive a magic link to set their password and land on the reception portal.",
+        "createButton": "Create Receptionist",
+        "creating": "Creating...",
+        "toastCreated": "Receptionist created.",
+        "toastCreateError": "Couldn't create receptionist.",
+        "toastCreatedWithWarning": "Receptionist created with a warning."
+      },
+      "edit": {
+        "cardTitle": "Details",
+        "save": "Save Changes",
+        "saving": "Saving...",
+        "back": "Back",
+        "toastSaved": "Receptionist saved.",
+        "toastSaveError": "Couldn't save receptionist.",
+        "toastDeleted": "Receptionist deleted.",
+        "toastDeleteError": "Delete failed.",
+        "inviteSent": "Invite sent.",
+        "sendInvite": "Send invite",
+        "resendInvite": "Resend invite",
+        "sending": "Sending...",
+        "delete": "Delete Receptionist",
+        "deleteTitle": "Delete receptionist",
+        "deleteDescription": "Deleting {name} is permanent. Their on-duty availability rules will be removed; any bookings they created stay in the database as historical records.",
+        "deleteConfirmBody": "Type DELETE to confirm.",
+        "deleteConfirmLabel": "Delete receptionist"
+      },
+      "fields": {
+        "fullName": "Full Name",
+        "phone": "Phone",
+        "email": "Email",
+        "active": "Active",
+        "sendInvite": "Send login invite by email"
+      }
+    },
+    "customers": {
+      "crumb": "Customers",
+      "title": "Customers",
+      "newButton": "New Customer",
+      "searchPlaceholder": "Name, phone, or email…",
+      "countTitleZero": "No customers match",
+      "countTitleSome": "{count} customers",
+      "emptyForSearch": "No customers match this search.",
+      "empty": "No customers yet. Create one to get started.",
+      "columns": {
+        "name": "Name",
+        "phone": "Phone",
+        "email": "Email",
+        "actions": "Actions"
+      },
+      "addEmail": "+ Add email",
+      "new": {
+        "title": "New Customer",
+        "cardTitle": "Customer Details",
+        "createButton": "Create Customer",
+        "creating": "Creating...",
+        "cancel": "Cancel",
+        "toastCreated": "Customer created.",
+        "toastCreateError": "Couldn't create customer."
+      },
+      "edit": {
+        "title": "Edit Customer",
+        "cardTitle": "Customer Details",
+        "loading": "Loading...",
+        "backToCustomers": "Back to Customers",
+        "save": "Save Changes",
+        "saving": "Saving...",
+        "cancel": "Cancel",
+        "toastSaved": "Customer saved.",
+        "toastSaveError": "Couldn't save customer.",
+        "toastDeleted": "Customer deleted.",
+        "toastDeleteError": "Couldn't delete customer.",
+        "notFound": "Customer not found.",
+        "delete": "Delete",
+        "deleteTitle": "Delete customer",
+        "deleteDescription": "Deleting {name} is permanent. Their booking history stays on the bookings table as a cached snapshot, but the contact record (phone, email, notes) will be removed.",
+        "deleteConfirmBody": "Type DELETE to confirm.",
+        "deleteConfirmLabel": "Delete customer"
+      },
+      "fields": {
+        "fullName": "Full Name",
+        "fullNamePlaceholder": "Full name",
+        "phone": "Phone",
+        "phonePlaceholder": "+972-50-000-0000",
+        "email": "Email",
+        "emailPlaceholder": "email@example.com",
+        "notes": "Notes",
+        "notesPlaceholder": "Any notes about this customer..."
+      },
+      "combobox": {
+        "placeholder": "Select or search customer…",
+        "searchPlaceholder": "Name, phone, or email…",
+        "searching": "Searching…",
+        "noMatches": "No customers match.",
+        "heading": "Customers",
+        "noName": "(no name)",
+        "unnamed": "Unnamed",
+        "createNew": "Create new customer",
+        "createTitle": "Create new customer",
+        "createDescription": "Adds the customer and auto-selects them on the booking.",
+        "duplicateTitle": "Customer already exists",
+        "duplicateDescription": "A customer with this phone number already exists. Pick them instead, or override to create a duplicate.",
+        "editDetails": "Edit details",
+        "useExisting": "Use existing",
+        "createAnyway": "Create anyway",
+        "creating": "Creating…",
+        "create": "Create customer",
+        "cancel": "Cancel",
+        "fullName": "Full name",
+        "phone": "Phone",
+        "phonePlaceholder": "0501234567 or +972501234567",
+        "emailOptional": "Email (optional)",
+        "toastCreated": "Customer created.",
+        "toastCreateError": "Couldn't create customer."
+      }
+    },
     "assignments": {
       "title": "Therapist Assignments",
       "crumb": "Assignments",

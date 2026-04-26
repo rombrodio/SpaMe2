@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import { getReceptionists } from "@/lib/actions/receptionists";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -26,6 +27,7 @@ export default async function ReceptionistsListPage({
   searchParams: Promise<SearchParams>;
 }) {
   const sp = await searchParams;
+  const t = await getTranslations();
   const page = Math.max(1, Number(sp.page ?? "1") || 1);
 
   const { rows: receptionists, total } = await getReceptionists({
@@ -37,39 +39,51 @@ export default async function ReceptionistsListPage({
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Receptionists</h1>
+        <h1 className="text-2xl font-bold">
+          {t("admin.receptionists.title")}
+        </h1>
         <Link href="/admin/receptionists/new" className={cn(buttonVariants())}>
-          New Receptionist
+          {t("admin.receptionists.newButton")}
         </Link>
       </div>
 
       <ListSearchBar
         basePath="/admin/receptionists"
-        placeholder="Name, phone, or email…"
+        placeholder={t("admin.receptionists.searchPlaceholder")}
       />
 
       <Card>
         <CardHeader>
           <CardTitle>
-            {total === 0 ? "No receptionists match" : `${total} receptionists`}
+            {total === 0
+              ? t("admin.receptionists.countTitleZero")
+              : t("admin.receptionists.countTitleSome", { count: total })}
           </CardTitle>
         </CardHeader>
         <CardContent>
           {receptionists.length === 0 ? (
             <p className="text-muted-foreground text-sm">
               {sp.q
-                ? "No receptionists match this search."
-                : "No receptionists yet. Create one to get started."}
+                ? t("admin.receptionists.emptyForSearch")
+                : t("admin.receptionists.empty")}
             </p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b text-left">
-                    <th className="pb-2 font-medium">Name</th>
-                    <th className="pb-2 font-medium">Phone</th>
-                    <th className="pb-2 font-medium">Email</th>
-                    <th className="pb-2 font-medium">Status</th>
+                    <th className="pb-2 font-medium">
+                      {t("admin.receptionists.columns.name")}
+                    </th>
+                    <th className="pb-2 font-medium">
+                      {t("admin.receptionists.columns.phone")}
+                    </th>
+                    <th className="pb-2 font-medium">
+                      {t("admin.receptionists.columns.email")}
+                    </th>
+                    <th className="pb-2 font-medium">
+                      {t("admin.receptionists.columns.status")}
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -92,7 +106,9 @@ export default async function ReceptionistsListPage({
                       <td className="py-3">
                         <Badge variant={r.is_active ? "success" : "muted"}>
                           <span className="dot mr-1.5 inline-block h-1.5 w-1.5 rounded-full" />
-                          {r.is_active ? "Active" : "Inactive"}
+                          {r.is_active
+                            ? t("admin.receptionists.statuses.active")
+                            : t("admin.receptionists.statuses.inactive")}
                         </Badge>
                       </td>
                     </RowLink>
