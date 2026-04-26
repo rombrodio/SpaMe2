@@ -28,7 +28,14 @@ import {
 
 export interface NavItem {
   href: string;
-  label: string;
+  /**
+   * Either a static label (admin portal — not yet translated) OR a
+   * translation key. When both are provided, the key wins at render
+   * time. Reception portal uses `labelKey` exclusively; admin portal
+   * keeps `label` until its own Phase 7b PR ships.
+   */
+  label?: string;
+  labelKey?: string;
   icon: LucideIcon;
   /** Exact-match the current pathname (used for the Dashboard route). */
   exact?: boolean;
@@ -38,7 +45,8 @@ export interface NavItem {
 
 export interface NavSection {
   /** `null` for ungrouped items (Dashboard, Settings). */
-  groupLabel: string | null;
+  groupLabel?: string | null;
+  groupLabelKey?: string;
   items: NavItem[];
   hidden?: boolean;
 }
@@ -125,36 +133,40 @@ export const receptionNavSections: NavSection[] = [
     items: [
       {
         href: "/reception",
-        label: "Dashboard",
+        labelKey: "reception.nav.dashboard",
         icon: LayoutDashboard,
         exact: true,
       },
     ],
   },
   {
-    groupLabel: "Calendar",
+    groupLabelKey: "reception.nav.groups.calendar",
     items: [
       {
         href: "/reception/bookings/new",
-        label: "New booking",
+        labelKey: "reception.nav.newBooking",
         icon: CalendarPlus,
       },
-      { href: "/reception/bookings", label: "Bookings", icon: BookOpen },
+      {
+        href: "/reception/bookings",
+        labelKey: "reception.nav.bookings",
+        icon: BookOpen,
+      },
       // Phase 8 — primary surface for receptionists.
       {
         href: "/reception/inbox",
-        label: "Inbox",
+        labelKey: "reception.nav.inbox",
         icon: MessageSquare,
         hidden: true,
       },
     ],
   },
   {
-    groupLabel: "Me",
+    groupLabelKey: "reception.nav.groups.me",
     items: [
       {
         href: "/reception/availability",
-        label: "My on-duty hours",
+        labelKey: "reception.nav.myOnDutyHours",
         icon: Clock,
       },
     ],

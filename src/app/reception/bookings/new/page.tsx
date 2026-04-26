@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
+import { getTranslations } from "next-intl/server";
 import { BookingForm } from "@/components/admin/booking/booking-form";
 import {
   getBookingFormData,
@@ -21,6 +22,7 @@ export default async function NewReceptionBookingPage({
 }) {
   const sp = await searchParams;
   const formData = await getBookingFormData();
+  const t = await getTranslations();
 
   return (
     <div>
@@ -29,13 +31,13 @@ export default async function NewReceptionBookingPage({
         className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
       >
         <ChevronLeft className="h-4 w-4" />
-        Back to dashboard
+        {t("common.backToDashboard")}
       </Link>
-      <h1 className="text-2xl font-bold">New booking</h1>
+      <h1 className="text-2xl font-bold">
+        {t("reception.bookings.newPage.title")}
+      </h1>
       <p className="mt-1 text-muted-foreground">
-        Create a booking on behalf of a customer. Leave the therapist
-        unassigned if you don&apos;t have someone specific in mind — the
-        manager will assign one after payment.
+        {t("reception.bookings.newPage.subheading")}
       </p>
       <div className="mt-6">
         <BookingForm

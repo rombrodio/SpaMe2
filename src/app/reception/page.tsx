@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { startOfDay, endOfDay, addDays } from "date-fns";
-import { formatInTimeZone, toZonedTime } from "date-fns-tz";
+import { toZonedTime } from "date-fns-tz";
+import { getTranslations, getLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import {
   getMyReceptionistId,
@@ -11,12 +12,9 @@ import { Clock, UserCheck, CalendarPlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
 import { TZ } from "@/lib/constants";
+import type { Locale } from "@/i18n/config";
 
 export const dynamic = "force-dynamic";
-
-function capitalize(s: string) {
-  return s.charAt(0).toUpperCase() + s.slice(1);
-}
 
 const DAY_ORDER = [
   "sunday",
@@ -28,8 +26,14 @@ const DAY_ORDER = [
   "saturday",
 ] as const;
 
+function intlLocale(locale: Locale): string {
+  return locale === "he" ? "he-IL" : locale === "ru" ? "ru-IL" : "en-IL";
+}
+
 export default async function ReceptionDashboardPage() {
   const supabase = await createClient();
+  const t = await getTranslations();
+  const locale = (await getLocale()) as Locale;
 
   // Use the spa's timezone for "today" bounds so a booking whose
   // start_at falls on the Tel Aviv calendar day lands here even when
@@ -81,33 +85,44 @@ export default async function ReceptionDashboardPage() {
     return a.start_time.localeCompare(b.start_time);
   });
 
+  // Localized full-date heading e.g. "Sunday, April 27, 2026" (EN) or
+  // "יום ראשון, 27 באפריל 2026" (HE). Uses Intl directly so we don't
+  // have to thread a named format through next-intl.
+  const headerDate = new Intl.DateTimeFormat(intlLocale(locale), {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    timeZone: TZ,
+  }).format(new Date());
+
   return (
     <div className="space-y-6">
       <div className="flex items-baseline justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Reception</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {formatInTimeZone(new Date(), TZ, "EEEE, MMMM d, yyyy")}
-          </p>
+          <h1 className="text-2xl font-bold">
+            {t("reception.dashboard.title")}
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">{headerDate}</p>
         </div>
         <Link
           href="/reception/bookings/new"
           className={cn(buttonVariants(), "gap-1")}
         >
           <CalendarPlus className="h-4 w-4" />
-          New booking
+          {t("reception.nav.newBooking")}
         </Link>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
         <Tile
-          title="Today's bookings"
+          title={t("reception.dashboard.tiles.todayBookings")}
           value={String(todayCount.count ?? 0)}
           icon={<CalendarPlus className="h-5 w-5 text-muted-foreground" />}
           href="/reception/bookings"
         />
         <Tile
-          title="Pending payment"
+          title={t("reception.dashboard.tiles.pendingPayment")}
           value={String(pendingPaymentCount.count ?? 0)}
           icon={<Clock className="h-5 w-5 text-amber-500" />}
           href="/reception/bookings?status=pending_payment"
@@ -116,7 +131,7 @@ export default async function ReceptionDashboardPage() {
           }
         />
         <Tile
-          title="Unassigned (next 7d)"
+          title={t("reception.dashboard.tiles.unassignedUpcoming")}
           value={String(unassignedUpcomingCount.count ?? 0)}
           icon={<UserCheck className="h-5 w-5 text-muted-foreground" />}
           href="/reception/bookings?assignment_status=unassigned"
@@ -125,26 +140,27 @@ export default async function ReceptionDashboardPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>My on-duty hours</CardTitle>
+          <CardTitle>{t("reception.dashboard.onDutyCard.title")}</CardTitle>
         </CardHeader>
         <CardContent>
           {!myReceptionistId ? (
             <p className="text-sm text-muted-foreground">
-              Your profile isn&apos;t linked to a receptionist record yet —
-              ask the admin to run the invite flow or set
-              <code className="mx-1 rounded bg-muted px-1 py-0.5 text-xs">
-                profiles.receptionist_id
-              </code>
-              for your user.
+              {t.rich("reception.dashboard.onDutyCard.notLinked", {
+                code: () => (
+                  <code className="mx-1 rounded bg-muted px-1 py-0.5 text-xs">
+                    profiles.receptionist_id
+                  </code>
+                ),
+              })}
             </p>
           ) : sortedRules.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No on-duty windows defined yet.{" "}
+              {t("reception.dashboard.onDutyCard.emptyLead")}{" "}
               <Link
                 href="/reception/availability"
                 className="text-primary underline"
               >
-                Add your first one
+                {t("reception.dashboard.onDutyCard.emptyCta")}
               </Link>
               .
             </p>
@@ -156,7 +172,7 @@ export default async function ReceptionDashboardPage() {
                   className="flex items-center gap-3 border-b py-2 last:border-0"
                 >
                   <span className="w-24 font-medium">
-                    {capitalize(r.day_of_week)}
+                    {t(`common.days.${r.day_of_week}` as never)}
                   </span>
                   <span className="text-muted-foreground">
                     {r.start_time}–{r.end_time}
@@ -170,7 +186,7 @@ export default async function ReceptionDashboardPage() {
               href="/reception/availability"
               className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
             >
-              Manage on-duty hours
+              {t("reception.dashboard.onDutyCard.manageCta")}
             </Link>
           </div>
         </CardContent>

@@ -2,6 +2,7 @@
   "common": {
     "appName": "SpaMe",
     "back": "Back",
+    "backToDashboard": "Back to dashboard",
     "cancel": "Cancel",
     "close": "Close",
     "confirm": "Confirm",
@@ -11,7 +12,110 @@
     "loading": "Loading…",
     "required": "Required",
     "errorGeneric": "Something went wrong. Please try again.",
-    "tryAgain": "Try again"
+    "tryAgain": "Try again",
+    "signOut": "Sign out",
+    "days": {
+      "sunday": "Sunday",
+      "monday": "Monday",
+      "tuesday": "Tuesday",
+      "wednesday": "Wednesday",
+      "thursday": "Thursday",
+      "friday": "Friday",
+      "saturday": "Saturday"
+    }
+  },
+  "reception": {
+    "brand": "SpaMe · Reception",
+    "nav": {
+      "dashboard": "Dashboard",
+      "newBooking": "New booking",
+      "bookings": "Bookings",
+      "myOnDutyHours": "My on-duty hours",
+      "inbox": "Inbox",
+      "groups": {
+        "calendar": "Calendar",
+        "me": "Me"
+      }
+    },
+    "dashboard": {
+      "title": "Reception",
+      "tiles": {
+        "todayBookings": "Today's bookings",
+        "pendingPayment": "Pending payment",
+        "unassignedUpcoming": "Unassigned (next 7d)"
+      },
+      "onDutyCard": {
+        "title": "My on-duty hours",
+        "manageCta": "Manage on-duty hours",
+        "emptyLead": "No on-duty windows defined yet.",
+        "emptyCta": "Add your first one",
+        "notLinked": "Your profile isn't linked to a receptionist record yet — ask the admin to run the invite flow or set {code} for your user."
+      }
+    },
+    "availability": {
+      "pageTitle": "My on-duty hours",
+      "subheading": "The hours you're available to cover customer chat + phone. The AI conversation layer (Phase 8) will route inbound messages to whichever receptionist is on duty.",
+      "sectionTitle": "My on-duty hours",
+      "sectionHelper": "Submit weekly recurring windows. Each window covers chat + phone together — V1 is one mode.",
+      "notLinkedHeading": "On-duty hours",
+      "notLinkedBody": "Your profile isn't linked to a receptionist record yet. Ask an admin to run the invite flow for your email (or set {code}). Once linked, refresh this page."
+    },
+    "availabilitySection": {
+      "defaultTitle": "On-duty Availability",
+      "defaultHelper": "Single on-duty window covers chat + phone. Rules snap to the 15-minute grid and must be at least 30 minutes long — no overlaps on the same day.",
+      "empty": "No on-duty windows defined yet.",
+      "columns": {
+        "day": "Day",
+        "start": "Start",
+        "end": "End",
+        "validFrom": "Valid From",
+        "validUntil": "Valid Until",
+        "actions": "Actions"
+      },
+      "addHeading": "Add Rule",
+      "addButton": "Add Rule",
+      "addingButton": "Adding...",
+      "labels": {
+        "dayOfWeek": "Day of Week",
+        "startTime": "Start Time",
+        "endTime": "End Time",
+        "validFrom": "Valid From",
+        "validUntil": "Valid Until"
+      },
+      "deleteConfirm": {
+        "title": "Delete on-duty rule",
+        "body": "Remove the {day} rule ({start}–{end})?",
+        "cta": "Delete rule",
+        "actionLabel": "Delete"
+      },
+      "toasts": {
+        "addError": "Couldn't add on-duty rule.",
+        "addSuccess": "On-duty rule added.",
+        "deleteError": "Couldn't delete rule.",
+        "deleteSuccess": "Rule deleted."
+      }
+    },
+    "bookings": {
+      "title": "Bookings",
+      "newBookingCta": "New booking",
+      "countNone": "No bookings",
+      "countSome": "{count} bookings",
+      "empty": "No bookings match the current filter.",
+      "unassigned": "(unassigned)",
+      "columns": {
+        "dateTime": "Date & Time",
+        "customer": "Customer",
+        "service": "Service",
+        "therapist": "Therapist",
+        "status": "Status",
+        "source": "Source",
+        "created": "Created"
+      },
+      "newPage": {
+        "title": "New booking",
+        "subheading": "Create a booking on behalf of a customer. Leave the therapist unassigned if you don't have someone specific in mind — the manager will assign one after payment."
+      }
+    }
   },
   "customer": {
     "book": {

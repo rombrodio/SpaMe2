@@ -42,11 +42,14 @@ export default async function ReceptionistDetailPage({ params }: Props) {
         hasAuthUser={authStatus.hasAuthUser}
       />
 
+      {/*
+        Uses the section's defaults (reception.availabilitySection.*)
+        for title + helper copy. Admin-specific overrides can land
+        when the admin portal gets its Phase 7b translation PR.
+       */}
       <ReceptionistAvailabilitySection
         receptionistId={id}
         rules={rules}
-        title="On-duty Availability"
-        helperText="Single on-duty window covers chat + phone coverage. Receptionist can manage their own from /reception/availability."
       />
     </div>
   );
