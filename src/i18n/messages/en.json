@@ -24,6 +24,76 @@
       "saturday": "Saturday"
     }
   },
+  "admin": {
+    "brand": "SpaMe",
+    "common": {
+      "edit": "Edit",
+      "apply": "Apply",
+      "clear": "Clear",
+      "previous": "Previous",
+      "next": "Next",
+      "searchLabel": "Search",
+      "searchPlaceholder": "Search…",
+      "pageOf": "Page {page} of {totalPages} · {total} total",
+      "breadcrumb": "Breadcrumb",
+      "globalSearchLabel": "Open global search",
+      "globalSearchTrigger": "Search…",
+      "globalSearchPlaceholder": "Customers, therapists, bookings…",
+      "globalSearchHint": "Type at least 2 characters to search.",
+      "globalSearchNoMatches": "No matches.",
+      "kinds": {
+        "customers": "Customers",
+        "therapists": "Therapists",
+        "bookings": "Bookings"
+      }
+    },
+    "nav": {
+      "dashboard": "Dashboard",
+      "calendar": "Calendar",
+      "bookings": "Bookings",
+      "assignments": "Assignments",
+      "inbox": "Inbox",
+      "customers": "Customers",
+      "therapists": "Therapists",
+      "receptionists": "Receptionists",
+      "services": "Services",
+      "rooms": "Rooms",
+      "reports": "Reports",
+      "auditLog": "Audit Log",
+      "settings": "Settings",
+      "groups": {
+        "calendar": "Calendar",
+        "clients": "Clients",
+        "team": "Team",
+        "catalog": "Catalog",
+        "reports": "Reports"
+      }
+    },
+    "dashboard": {
+      "today": "Today",
+      "tiles": {
+        "todaysBookings": "Today's bookings",
+        "pendingPayment": "Pending payment",
+        "unassignedToday": "Unassigned today",
+        "revenueToday": "Revenue today",
+        "revenueFooter": "Revenue: {amount}",
+        "revenueFooterAll": "Incl. pending payment"
+      },
+      "agenda": "Today's agenda",
+      "openCalendar": "Open calendar",
+      "emptyAgenda": "No bookings today. Enjoy the quiet day.",
+      "unassigned": "Unassigned",
+      "noName": "(no name)",
+      "columns": {
+        "time": "Time",
+        "customer": "Customer",
+        "service": "Service",
+        "therapist": "Therapist",
+        "room": "Room",
+        "status": "Status"
+      }
+    }
+  },
   "therapist": {
     "brand": "SpaMe",
     "badge": "Therapist",

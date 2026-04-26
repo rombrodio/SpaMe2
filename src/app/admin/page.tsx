@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 import { StatusBadge } from "@/components/admin/calendar/booking-card";
@@ -30,6 +31,7 @@ import {
  */
 export default async function AdminDashboard() {
   const supabase = await createClient();
+  const t = await getTranslations();
 
   const now = new Date();
   const nowMs = now.getTime();
@@ -98,11 +100,12 @@ export default async function AdminDashboard() {
   );
   const revenueIls = Math.round(revenueAgorot / 100);
   const todayRows = (todayBookings.data ?? []) as unknown as TodayBookingRow[];
+  const revenueLabel = `₪${revenueIls.toLocaleString()}`;
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Today</h1>
+        <h1 className="text-2xl font-bold">{t("admin.dashboard.today")}</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           {formatInTimeZone(new Date(), TZ, "EEEE, MMMM d, yyyy")}
         </p>
@@ -110,14 +113,16 @@ export default async function AdminDashboard() {
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <DashboardTile
-          title="Today's bookings"
+          title={t("admin.dashboard.tiles.todaysBookings")}
           value={String(todayRows.length)}
           icon={<Calendar className="h-5 w-5 text-muted-foreground" />}
           href="/admin/bookings"
-          footer={`Revenue: ₪${revenueIls.toLocaleString()}`}
+          footer={t("admin.dashboard.tiles.revenueFooter", {
+            amount: revenueLabel,
+          })}
         />
         <DashboardTile
-          title="Pending payment"
+          title={t("admin.dashboard.tiles.pendingPayment")}
           value={String(pendingPaymentCount.count ?? 0)}
           icon={<Clock className="h-5 w-5 text-amber-500" />}
           href="/admin/bookings?status=pending_payment"
@@ -126,7 +131,7 @@ export default async function AdminDashboard() {
           }
         />
         <DashboardTile
-          title="Unassigned today"
+          title={t("admin.dashboard.tiles.unassignedToday")}
           value={String(unassignedTodayCount.count ?? 0)}
           icon={<UserPlus className="h-5 w-5 text-amber-500" />}
           href="/admin/assignments"
@@ -135,17 +140,19 @@ export default async function AdminDashboard() {
           }
         />
         <DashboardTile
-          title="Revenue today"
-          value={`₪${revenueIls.toLocaleString()}`}
+          title={t("admin.dashboard.tiles.revenueToday")}
+          value={revenueLabel}
           icon={<DollarSign className="h-5 w-5 text-muted-foreground" />}
           href="/admin/bookings"
-          footer="Incl. pending payment"
+          footer={t("admin.dashboard.tiles.revenueFooterAll")}
         />
       </div>
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-base">Today&apos;s agenda</CardTitle>
+          <CardTitle className="text-base">
+            {t("admin.dashboard.agenda")}
+          </CardTitle>
           <Link
             href="/admin/calendar"
             className={cn(
@@ -153,26 +160,38 @@ export default async function AdminDashboard() {
               "gap-1"
             )}
           >
-            Open calendar
+            {t("admin.dashboard.openCalendar")}
             <ChevronRight className="h-3.5 w-3.5" />
           </Link>
         </CardHeader>
         <CardContent>
           {todayRows.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No bookings today. Enjoy the quiet day.
+              {t("admin.dashboard.emptyAgenda")}
             </p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
-                    <th className="pb-2 font-medium">Time</th>
-                    <th className="pb-2 font-medium">Customer</th>
-                    <th className="pb-2 font-medium">Service</th>
-                    <th className="pb-2 font-medium">Therapist</th>
-                    <th className="pb-2 font-medium">Room</th>
-                    <th className="pb-2 font-medium">Status</th>
+                    <th className="pb-2 font-medium">
+                      {t("admin.dashboard.columns.time")}
+                    </th>
+                    <th className="pb-2 font-medium">
+                      {t("admin.dashboard.columns.customer")}
+                    </th>
+                    <th className="pb-2 font-medium">
+                      {t("admin.dashboard.columns.service")}
+                    </th>
+                    <th className="pb-2 font-medium">
+                      {t("admin.dashboard.columns.therapist")}
+                    </th>
+                    <th className="pb-2 font-medium">
+                      {t("admin.dashboard.columns.room")}
+                    </th>
+                    <th className="pb-2 font-medium">
+                      {t("admin.dashboard.columns.status")}
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -198,7 +217,8 @@ export default async function AdminDashboard() {
                             href={`/admin/bookings/${b.id}`}
                             className="hover:underline"
                           >
-                            {b.customers?.full_name || "(no name)"}
+                            {b.customers?.full_name ||
+                              t("admin.dashboard.noName")}
                           </Link>
                         </td>
                         <td className="py-2 text-muted-foreground">
@@ -218,7 +238,9 @@ export default async function AdminDashboard() {
                               {b.therapists.full_name}
                             </span>
                           ) : (
-                            <span className="text-amber-600">Unassigned</span>
+                            <span className="text-amber-600">
+                              {t("admin.dashboard.unassigned")}
+                            </span>
                           )}
                         </td>
                         <td className="py-2 text-muted-foreground">

@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,13 +18,17 @@ interface ListSearchBarProps {
  * Reusable search box for admin list pages. URL is the source of truth:
  * submitting updates `?q=` and resets `?page=`. A client-side input keeps
  * the field responsive while typing.
+ *
+ * `placeholder` is an optional per-list override; when omitted the
+ * default "Search…" is rendered via `admin.common.searchPlaceholder`.
  */
 export function ListSearchBar({
   basePath,
-  placeholder = "Search…",
+  placeholder,
   paramName = "q",
 }: ListSearchBarProps) {
   const router = useRouter();
+  const t = useTranslations();
   const sp = useSearchParams();
   const [value, setValue] = useState(sp.get(paramName) ?? "");
   const [isPending, startTransition] = useTransition();
@@ -56,17 +61,17 @@ export function ListSearchBar({
     >
       <div className="flex-1 min-w-[12rem] space-y-1">
         <Label htmlFor={paramName} className="text-xs font-medium">
-          Search
+          {t("admin.common.searchLabel")}
         </Label>
         <Input
           id={paramName}
-          placeholder={placeholder}
+          placeholder={placeholder ?? t("admin.common.searchPlaceholder")}
           value={value}
           onChange={(e) => setValue(e.target.value)}
         />
       </div>
       <Button type="submit" size="sm" disabled={isPending}>
-        Apply
+        {t("admin.common.apply")}
       </Button>
       {active && (
         <Button
@@ -76,7 +81,7 @@ export function ListSearchBar({
           disabled={isPending}
           onClick={clear}
         >
-          Clear
+          {t("admin.common.clear")}
         </Button>
       )}
     </form>

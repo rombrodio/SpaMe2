@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -20,6 +21,7 @@ interface PagerProps {
 /** Renders a simple prev/next pager preserving every other search param. */
 export function Pager({ page, pageSize, total, basePath = "/admin/bookings" }: PagerProps) {
   const sp = useSearchParams();
+  const t = useTranslations();
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   if (totalPages <= 1) return null;
 
@@ -39,7 +41,7 @@ export function Pager({ page, pageSize, total, basePath = "/admin/bookings" }: P
   return (
     <div className="flex items-center justify-between pt-3 text-sm">
       <p className="text-muted-foreground">
-        Page {page} of {totalPages} · {total} total
+        {t("admin.common.pageOf", { page, totalPages, total })}
       </p>
       <div className="flex gap-2">
         <Link
@@ -50,7 +52,7 @@ export function Pager({ page, pageSize, total, basePath = "/admin/bookings" }: P
             isFirst && "pointer-events-none opacity-50"
           )}
         >
-          Previous
+          {t("admin.common.previous")}
         </Link>
         <Link
           href={hrefFor(nextPage)}
@@ -60,7 +62,7 @@ export function Pager({ page, pageSize, total, basePath = "/admin/bookings" }: P
             isLast && "pointer-events-none opacity-50"
           )}
         >
-          Next
+          {t("admin.common.next")}
         </Link>
       </div>
     </div>

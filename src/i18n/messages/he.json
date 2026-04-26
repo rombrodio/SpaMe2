@@ -24,6 +24,76 @@
       "saturday": "שבת"
     }
   },
+  "admin": {
+    "brand": "ספאמי",
+    "common": {
+      "edit": "עריכה",
+      "apply": "החל",
+      "clear": "נקה",
+      "previous": "הקודם",
+      "next": "הבא",
+      "searchLabel": "חיפוש",
+      "searchPlaceholder": "חיפוש…",
+      "pageOf": "עמוד {page} מתוך {totalPages} · {total} סה״כ",
+      "breadcrumb": "פירורי לחם",
+      "globalSearchLabel": "פתח חיפוש כללי",
+      "globalSearchTrigger": "חיפוש…",
+      "globalSearchPlaceholder": "לקוחות, מטפלים, הזמנות…",
+      "globalSearchHint": "הקלד לפחות 2 תווים לחיפוש.",
+      "globalSearchNoMatches": "לא נמצאו תוצאות.",
+      "kinds": {
+        "customers": "לקוחות",
+        "therapists": "מטפלים",
+        "bookings": "הזמנות"
+      }
+    },
+    "nav": {
+      "dashboard": "לוח בקרה",
+      "calendar": "יומן",
+      "bookings": "הזמנות",
+      "assignments": "שיוכים",
+      "inbox": "תיבת הודעות",
+      "customers": "לקוחות",
+      "therapists": "מטפלים",
+      "receptionists": "פקידי קבלה",
+      "services": "טיפולים",
+      "rooms": "חדרים",
+      "reports": "דוחות",
+      "auditLog": "יומן פעולות",
+      "settings": "הגדרות",
+      "groups": {
+        "calendar": "יומן",
+        "clients": "לקוחות",
+        "team": "צוות",
+        "catalog": "קטלוג",
+        "reports": "דוחות"
+      }
+    },
+    "dashboard": {
+      "today": "היום",
+      "tiles": {
+        "todaysBookings": "הזמנות להיום",
+        "pendingPayment": "ממתין לתשלום",
+        "unassignedToday": "לא משויך להיום",
+        "revenueToday": "הכנסה להיום",
+        "revenueFooter": "הכנסה: {amount}",
+        "revenueFooterAll": "כולל ממתינות לתשלום"
+      },
+      "agenda": "סדר היום של היום",
+      "openCalendar": "פתח יומן",
+      "emptyAgenda": "אין הזמנות היום. תיהנה מהשקט.",
+      "unassigned": "לא משויך",
+      "noName": "(ללא שם)",
+      "columns": {
+        "time": "שעה",
+        "customer": "לקוח",
+        "service": "טיפול",
+        "therapist": "מטפל",
+        "room": "חדר",
+        "status": "סטטוס"
+      }
+    }
+  },
   "therapist": {
     "brand": "ספאמי",
     "badge": "מטפל/ת",
