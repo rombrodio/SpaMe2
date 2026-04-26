@@ -24,6 +24,129 @@
       "saturday": "שבת"
     }
   },
+  "therapist": {
+    "brand": "ספאמי",
+    "badge": "מטפל/ת",
+    "nav": {
+      "myBookings": "ההזמנות שלי",
+      "availability": "זמינות",
+      "timeOff": "חופשות"
+    },
+    "dashboard": {
+      "title": "ההזמנות שלי",
+      "subheading": "הפגישות הקרובות שלך.",
+      "upcoming": "קרובות",
+      "empty": "אין פגישות קרובות.",
+      "columns": {
+        "dateTime": "תאריך ושעה",
+        "customer": "לקוח/ה",
+        "service": "טיפול",
+        "room": "חדר",
+        "status": "סטטוס"
+      }
+    },
+    "availability": {
+      "title": "הזמינות שלי",
+      "subheading": "נהלו את שעות העבודה השבועיות שלכם.",
+      "sectionTitle": "כללי זמינות",
+      "empty": "לא הוגדרו כללי זמינות.",
+      "columns": {
+        "day": "יום",
+        "start": "התחלה",
+        "end": "סיום",
+        "validFrom": "בתוקף מ-",
+        "validUntil": "בתוקף עד",
+        "actions": "פעולות"
+      },
+      "addHeading": "הוספת כלל",
+      "addButton": "הוספת כלל",
+      "addingButton": "מוסיף...",
+      "labels": {
+        "dayOfWeek": "יום בשבוע",
+        "startTime": "שעת התחלה",
+        "endTime": "שעת סיום",
+        "validFrom": "בתוקף מ-",
+        "validUntil": "בתוקף עד"
+      },
+      "helper": "שעות ההתחלה והסיום מוצמדות לרשת של 15 דקות. כללים חייבים להיות באורך של לפחות 30 דקות ואינם יכולים לחפוף עם כלל אחר באותו יום.",
+      "deleteConfirm": {
+        "title": "מחיקת כלל זמינות",
+        "body": "להסיר את כלל {day} ({start}–{end})? הזמנות חדשות למטפל/ת ביום הזה יפסיקו להציג חלונות מהכלל הזה.",
+        "cta": "מחיקת הכלל",
+        "actionLabel": "מחיקה"
+      },
+      "toasts": {
+        "addError": "לא ניתן היה להוסיף כלל זמינות.",
+        "addSuccess": "כלל זמינות נוסף.",
+        "deleteError": "לא ניתן היה למחוק את הכלל.",
+        "deleteSuccess": "הכלל נמחק."
+      }
+    },
+    "timeOff": {
+      "title": "החופשות שלי",
+      "subheading": "הוסיפו ימים או שעות שאתם לא זמינים.",
+      "sectionTitle": "חופשות",
+      "empty": "אין רשומות חופשה.",
+      "columns": {
+        "start": "התחלה",
+        "end": "סיום",
+        "reason": "סיבה",
+        "actions": "פעולות"
+      },
+      "addHeading": "הוספת חופשה",
+      "addButton": "הוספת חופשה",
+      "addingButton": "מוסיף...",
+      "labels": {
+        "start": "התחלה",
+        "end": "סיום",
+        "reason": "סיבה"
+      },
+      "deleteConfirm": {
+        "title": "מחיקת חופשה",
+        "body": "להסיר את בלוק החופשה הזה ({start} – {end})? המטפל/ת יהיה/תהיה זמין/ה לשיבוץ בחלון הזה שוב.",
+        "cta": "מחיקה",
+        "actionLabel": "מחיקה"
+      },
+      "toasts": {
+        "addError": "לא ניתן היה להוסיף חופשה.",
+        "addSuccess": "חופשה נוספה.",
+        "deleteError": "לא ניתן היה למחוק את החופשה.",
+        "deleteSuccess": "החופשה הוסרה."
+      }
+    },
+    "pending": {
+      "title": "ממתין לאישור",
+      "subheading": "אנא אשרו או דחו את השיבוצים החדשים. המנהל יתויג מחדש אם לא תגיבו תוך שעתיים.",
+      "minutes": "{count} דקות",
+      "forCustomer": "עבור {name}",
+      "accept": "אישור",
+      "accepting": "מאשר...",
+      "decline": "דחייה",
+      "declining": "דוחה...",
+      "confirmDecline": "אישור דחייה",
+      "reasonPlaceholder": "סיבה (לא חובה)",
+      "toasts": {
+        "acceptError": "לא ניתן היה לאשר את השיבוץ.",
+        "acceptSuccess": "השיבוץ אושר.",
+        "declineError": "לא ניתן היה לדחות את השיבוץ.",
+        "declineSuccess": "השיבוץ נדחה."
+      }
+    },
+    "password": {
+      "title": "שינוי סיסמה",
+      "description": "הגדירו סיסמה חדשה לחשבון שלכם",
+      "newPassword": "סיסמה חדשה",
+      "newPasswordPlaceholder": "לפחות 8 תווים",
+      "confirmPassword": "אישור סיסמה",
+      "update": "עדכון סיסמה",
+      "updating": "מעדכן...",
+      "success": "הסיסמה עודכנה בהצלחה.",
+      "errors": {
+        "tooShort": "הסיסמה חייבת להיות באורך של 8 תווים לפחות",
+        "mismatch": "הסיסמאות אינן תואמות"
+      }
+    }
+  },
   "reception": {
     "brand": "ספאמי · קבלה",
     "nav": {

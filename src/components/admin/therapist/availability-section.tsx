@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import {
   createAvailabilityRule,
   deleteAvailabilityRule,
@@ -32,10 +33,6 @@ const DAYS = [
   "saturday",
 ] as const;
 
-function capitalize(s: string) {
-  return s.charAt(0).toUpperCase() + s.slice(1);
-}
-
 interface AvailabilityRule {
   id: string;
   therapist_id: string;
@@ -54,6 +51,8 @@ interface Props {
 
 export function AvailabilitySection({ therapistId, rules }: Props) {
   const router = useRouter();
+  const t = useTranslations("therapist.availability");
+  const tDays = useTranslations("common.days");
   const [errors, setErrors] = useState<Record<string, string[]> | undefined>();
   const [submitting, setSubmitting] = useState(false);
 
@@ -65,14 +64,14 @@ export function AvailabilitySection({ therapistId, rules }: Props) {
 
     const result = await createAvailabilityRule(formData);
 
-    if (result && 'error' in result) {
+    if (result && "error" in result) {
       setErrors(result.error as Record<string, string[]>);
       setSubmitting(false);
-      toast.error("Couldn't add availability rule.");
+      toast.error(t("toasts.addError"));
       return;
     }
 
-    toast.success("Availability rule added.");
+    toast.success(t("toasts.addSuccess"));
     setSubmitting(false);
     router.refresh();
   }
@@ -81,39 +80,43 @@ export function AvailabilitySection({ therapistId, rules }: Props) {
     const result = await deleteAvailabilityRule(ruleId, therapistId);
     if (result && "error" in result) {
       const err = result.error as Record<string, string[]>;
-      throw new Error(err._form?.join(" ") ?? "Couldn't delete rule.");
+      throw new Error(err._form?.join(" ") ?? t("toasts.deleteError"));
     }
-    toast.success("Rule deleted.");
+    toast.success(t("toasts.deleteSuccess"));
     router.refresh();
   }
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Availability Rules</CardTitle>
+        <CardTitle>{t("sectionTitle")}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
         {rules.length === 0 ? (
-          <p className="text-muted-foreground text-sm">
-            No availability rules defined.
-          </p>
+          <p className="text-muted-foreground text-sm">{t("empty")}</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b text-left">
-                  <th className="pb-2 font-medium">Day</th>
-                  <th className="pb-2 font-medium">Start</th>
-                  <th className="pb-2 font-medium">End</th>
-                  <th className="pb-2 font-medium">Valid From</th>
-                  <th className="pb-2 font-medium">Valid Until</th>
-                  <th className="pb-2 font-medium">Actions</th>
+                  <th className="pb-2 font-medium">{t("columns.day")}</th>
+                  <th className="pb-2 font-medium">{t("columns.start")}</th>
+                  <th className="pb-2 font-medium">{t("columns.end")}</th>
+                  <th className="pb-2 font-medium">
+                    {t("columns.validFrom")}
+                  </th>
+                  <th className="pb-2 font-medium">
+                    {t("columns.validUntil")}
+                  </th>
+                  <th className="pb-2 font-medium">{t("columns.actions")}</th>
                 </tr>
               </thead>
               <tbody>
                 {rules.map((rule) => (
                   <tr key={rule.id} className="border-b last:border-0">
-                    <td className="py-3">{capitalize(rule.day_of_week)}</td>
+                    <td className="py-3">
+                      {tDays(rule.day_of_week as never)}
+                    </td>
                     <td className="py-3">{rule.start_time}</td>
                     <td className="py-3">{rule.end_time}</td>
                     <td className="py-3">
@@ -129,19 +132,20 @@ export function AvailabilitySection({ therapistId, rules }: Props) {
                     <td className="py-3">
                       <ConfirmButton
                         size="sm"
-                        title="Delete availability rule"
+                        title={t("deleteConfirm.title")}
                         description={
                           <p>
-                            Remove the <strong>{capitalize(rule.day_of_week)}</strong>{" "}
-                            rule ({rule.start_time}–{rule.end_time})? New bookings
-                            for this therapist on that day will stop showing
-                            slots from this window.
+                            {t("deleteConfirm.body", {
+                              day: tDays(rule.day_of_week as never),
+                              start: rule.start_time,
+                              end: rule.end_time,
+                            })}
                           </p>
                         }
-                        confirmLabel="Delete rule"
+                        confirmLabel={t("deleteConfirm.cta")}
                         onConfirm={() => handleDelete(rule.id)}
                       >
-                        Delete
+                        {t("deleteConfirm.actionLabel")}
                       </ConfirmButton>
                     </td>
                   </tr>
@@ -152,13 +156,13 @@ export function AvailabilitySection({ therapistId, rules }: Props) {
         )}
 
         <div className="border-t pt-4">
-          <h4 className="mb-3 text-sm font-medium">Add Rule</h4>
+          <h4 className="mb-3 text-sm font-medium">{t("addHeading")}</h4>
           <form action={handleAdd} className="space-y-4">
             <FormErrors errors={errors} />
 
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
               <div className="space-y-2">
-                <Label htmlFor="day_of_week">Day of Week</Label>
+                <Label htmlFor="day_of_week">{t("labels.dayOfWeek")}</Label>
                 <select
                   id="day_of_week"
                   name="day_of_week"
@@ -167,14 +171,14 @@ export function AvailabilitySection({ therapistId, rules }: Props) {
                 >
                   {DAYS.map((day) => (
                     <option key={day} value={day}>
-                      {capitalize(day)}
+                      {tDays(day)}
                     </option>
                   ))}
                 </select>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="start_time">Start Time</Label>
+                <Label htmlFor="start_time">{t("labels.startTime")}</Label>
                 <select
                   id="start_time"
                   name="start_time"
@@ -182,16 +186,16 @@ export function AvailabilitySection({ therapistId, rules }: Props) {
                   defaultValue="09:00"
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
-                  {TIME_OPTIONS.map((t) => (
-                    <option key={t} value={t}>
-                      {t}
+                  {TIME_OPTIONS.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
                     </option>
                   ))}
                 </select>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="end_time">End Time</Label>
+                <Label htmlFor="end_time">{t("labels.endTime")}</Label>
                 <select
                   id="end_time"
                   name="end_time"
@@ -199,32 +203,28 @@ export function AvailabilitySection({ therapistId, rules }: Props) {
                   defaultValue="17:00"
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
-                  {TIME_OPTIONS.map((t) => (
-                    <option key={t} value={t}>
-                      {t}
+                  {TIME_OPTIONS.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
                     </option>
                   ))}
                 </select>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="valid_from">Valid From</Label>
+                <Label htmlFor="valid_from">{t("labels.validFrom")}</Label>
                 <Input id="valid_from" name="valid_from" type="date" required />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="valid_until">Valid Until</Label>
+                <Label htmlFor="valid_until">{t("labels.validUntil")}</Label>
                 <Input id="valid_until" name="valid_until" type="date" />
               </div>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Start/end times are locked to the 15-minute grid. Rules must be
-              at least 30 minutes long and may not overlap with another rule
-              on the same day.
-            </p>
+            <p className="text-xs text-muted-foreground">{t("helper")}</p>
 
             <Button type="submit" disabled={submitting}>
-              {submitting ? "Adding..." : "Add Rule"}
+              {submitting ? t("addingButton") : t("addButton")}
             </Button>
           </form>
         </div>

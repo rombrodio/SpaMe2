@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +15,7 @@ import {
 } from "@/components/ui/card";
 
 export function ChangePasswordCard() {
+  const t = useTranslations("therapist.password");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -26,11 +28,11 @@ export function ChangePasswordCard() {
     setSuccess(false);
 
     if (password.length < 8) {
-      setError("Password must be at least 8 characters");
+      setError(t("errors.tooShort"));
       return;
     }
     if (password !== confirm) {
-      setError("Passwords do not match");
+      setError(t("errors.mismatch"));
       return;
     }
 
@@ -54,17 +56,17 @@ export function ChangePasswordCard() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Change Password</CardTitle>
-        <CardDescription>Set a new password for your account</CardDescription>
+        <CardTitle className="text-base">{t("title")}</CardTitle>
+        <CardDescription>{t("description")}</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4 max-w-sm">
           <div className="space-y-2">
-            <Label htmlFor="new-password">New Password</Label>
+            <Label htmlFor="new-password">{t("newPassword")}</Label>
             <Input
               id="new-password"
               type="password"
-              placeholder="At least 8 characters"
+              placeholder={t("newPasswordPlaceholder")}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
@@ -72,7 +74,7 @@ export function ChangePasswordCard() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="confirm-password">Confirm Password</Label>
+            <Label htmlFor="confirm-password">{t("confirmPassword")}</Label>
             <Input
               id="confirm-password"
               type="password"
@@ -83,12 +85,10 @@ export function ChangePasswordCard() {
           </div>
           {error && <p className="text-sm text-destructive">{error}</p>}
           {success && (
-            <p className="text-sm text-green-600">
-              Password updated successfully.
-            </p>
+            <p className="text-sm text-green-600">{t("success")}</p>
           )}
           <Button type="submit" disabled={loading}>
-            {loading ? "Updating..." : "Update Password"}
+            {loading ? t("updating") : t("update")}
           </Button>
         </form>
       </CardContent>
