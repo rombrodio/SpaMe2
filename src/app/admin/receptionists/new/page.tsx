@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import { createReceptionist } from "@/lib/actions/receptionists";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -20,6 +21,7 @@ import { FormErrors } from "@/components/admin/form-message";
 
 export default function NewReceptionistPage() {
   const router = useRouter();
+  const t = useTranslations();
   const [errors, setErrors] = useState<Record<string, string[]> | undefined>();
   const [warning, setWarning] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -35,28 +37,30 @@ export default function NewReceptionistPage() {
     if (result && "error" in result) {
       setErrors(result.error);
       setSubmitting(false);
-      toast.error("Couldn't create receptionist.");
+      toast.error(t("admin.receptionists.new.toastCreateError"));
       return;
     }
 
     if (result?.warning) {
       setWarning(result.warning);
       setSubmitting(false);
-      toast.warning("Receptionist created with a warning.");
+      toast.warning(t("admin.receptionists.new.toastCreatedWithWarning"));
       return;
     }
 
-    toast.success("Receptionist created.");
+    toast.success(t("admin.receptionists.new.toastCreated"));
     router.push("/admin/receptionists");
   }
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      <h1 className="text-2xl font-bold">New Receptionist</h1>
+      <h1 className="text-2xl font-bold">
+        {t("admin.receptionists.new.title")}
+      </h1>
 
       <Card>
         <CardHeader>
-          <CardTitle>Receptionist Details</CardTitle>
+          <CardTitle>{t("admin.receptionists.new.cardTitle")}</CardTitle>
         </CardHeader>
         <CardContent>
           <form action={handleSubmit} className="space-y-4">
@@ -68,19 +72,24 @@ export default function NewReceptionistPage() {
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="full_name">Full Name</Label>
+              <Label htmlFor="full_name">
+                {t("admin.receptionists.fields.fullName")}
+              </Label>
               <Input id="full_name" name="full_name" required />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="phone">Phone</Label>
+                <Label htmlFor="phone">
+                  {t("admin.receptionists.fields.phone")}
+                </Label>
                 <Input id="phone" name="phone" type="tel" />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="email">
-                  Email {sendInvite && <span className="text-destructive">*</span>}
+                  {t("admin.receptionists.fields.email")}{" "}
+                  {sendInvite && <span className="text-destructive">*</span>}
                 </Label>
                 <Input
                   id="email"
@@ -99,7 +108,9 @@ export default function NewReceptionistPage() {
                 defaultChecked
                 className="h-4 w-4 rounded border-gray-300"
               />
-              <Label htmlFor="is_active">Active</Label>
+              <Label htmlFor="is_active">
+                {t("admin.receptionists.fields.active")}
+              </Label>
             </div>
 
             <div className="flex items-center gap-2">
@@ -112,24 +123,24 @@ export default function NewReceptionistPage() {
                 className="h-4 w-4 rounded border-gray-300"
               />
               <Label htmlFor="send_invite">
-                Send login invite by email
+                {t("admin.receptionists.fields.sendInvite")}
               </Label>
             </div>
             <p className="text-xs text-muted-foreground">
-              Email is required when sending an invite. The receptionist will
-              receive a magic link to set their password and land on the
-              reception portal.
+              {t("admin.receptionists.new.emailHelper")}
             </p>
 
             <div className="flex gap-3 pt-2">
               <Button type="submit" disabled={submitting}>
-                {submitting ? "Creating..." : "Create Receptionist"}
+                {submitting
+                  ? t("admin.receptionists.new.creating")
+                  : t("admin.receptionists.new.createButton")}
               </Button>
               <Link
                 href="/admin/receptionists"
                 className={cn(buttonVariants({ variant: "outline" }))}
               >
-                Cancel
+                {t("common.cancel")}
               </Link>
             </div>
           </form>

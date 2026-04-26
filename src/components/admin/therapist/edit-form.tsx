@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import {
   updateTherapist,
   deleteTherapist,
@@ -44,6 +45,7 @@ export function TherapistEditForm({
   hasAuthUser?: boolean;
 }) {
   const router = useRouter();
+  const t = useTranslations();
   const [errors, setErrors] = useState<Record<string, string[]> | undefined>();
   const [submitting, setSubmitting] = useState(false);
   const [resending, setResending] = useState(false);
@@ -59,7 +61,7 @@ export function TherapistEditForm({
     if (result && "error" in result) {
       setErrors(result.error as Record<string, string[]>);
     } else {
-      setResendNotice("Invite sent.");
+      setResendNotice(t("admin.therapists.edit.inviteSent"));
       router.refresh();
     }
     setResending(false);
@@ -74,11 +76,11 @@ export function TherapistEditForm({
     if (result && 'error' in result) {
       setErrors(result.error);
       setSubmitting(false);
-      toast.error("Couldn't save therapist.");
+      toast.error(t("admin.therapists.edit.toastSaveError"));
       return;
     }
 
-    toast.success("Therapist saved.");
+    toast.success(t("admin.therapists.edit.toastSaved"));
     resetDirty();
     router.refresh();
     setSubmitting(false);
@@ -89,11 +91,12 @@ export function TherapistEditForm({
 
     if (result && 'error' in result) {
       const err = result.error as Record<string, string[]>;
-      const message = err._form?.join(" ") ?? "Couldn't delete therapist.";
+      const message =
+        err._form?.join(" ") ?? t("admin.therapists.edit.toastDeleteError");
       throw new Error(message);
     }
 
-    toast.success("Therapist deleted.");
+    toast.success(t("admin.therapists.edit.toastDeleted"));
     router.push("/admin/therapists");
   }
 
@@ -101,7 +104,7 @@ export function TherapistEditForm({
     <DirtyFormGuard dirty={dirty && !submitting}>
     <Card>
       <CardHeader>
-        <CardTitle>Therapist Details</CardTitle>
+        <CardTitle>{t("admin.therapists.edit.cardTitle")}</CardTitle>
       </CardHeader>
       <CardContent>
         <form ref={formRef} action={handleSubmit} className="space-y-4">
@@ -114,8 +117,10 @@ export function TherapistEditForm({
           {!hasAuthUser && (
             <div className="flex items-center justify-between rounded-md border border-yellow-300 bg-yellow-50 p-3">
               <div className="text-sm text-yellow-900">
-                No login user linked to this therapist.
-                {!therapist.email && " Add an email, save, then send invite."}
+                {t("admin.therapists.edit.noAuthUserLinked")}
+                {!therapist.email && (
+                  <> {t("admin.therapists.edit.noAuthUserLinkedAddEmail")}</>
+                )}
               </div>
               <Button
                 type="button"
@@ -124,13 +129,17 @@ export function TherapistEditForm({
                 disabled={resending || !therapist.email}
                 onClick={handleResendInvite}
               >
-                {resending ? "Sending..." : "Send invite"}
+                {resending
+                  ? t("admin.therapists.edit.sending")
+                  : t("admin.therapists.edit.sendInvite")}
               </Button>
             </div>
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="full_name">Full Name</Label>
+            <Label htmlFor="full_name">
+              {t("admin.therapists.fields.fullName")}
+            </Label>
             <Input
               id="full_name"
               name="full_name"
@@ -141,7 +150,9 @@ export function TherapistEditForm({
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="phone">Phone</Label>
+              <Label htmlFor="phone">
+                {t("admin.therapists.fields.phone")}
+              </Label>
               <Input
                 id="phone"
                 name="phone"
@@ -151,7 +162,9 @@ export function TherapistEditForm({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">
+                {t("admin.therapists.fields.email")}
+              </Label>
               <Input
                 id="email"
                 name="email"
@@ -162,7 +175,9 @@ export function TherapistEditForm({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="color">Color</Label>
+            <Label htmlFor="color">
+              {t("admin.therapists.fields.color")}
+            </Label>
             <Input
               id="color"
               name="color"
@@ -173,10 +188,10 @@ export function TherapistEditForm({
 
           <fieldset className="space-y-2">
             <Label>
-              Gender
+              {t("admin.therapists.gender.label")}
               {therapist.gender === null && (
                 <span className="ms-2 rounded bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-900">
-                  not set — please pick one
+                  {t("admin.therapists.gender.notSet")}
                 </span>
               )}
             </Label>
@@ -189,7 +204,7 @@ export function TherapistEditForm({
                   defaultChecked={therapist.gender === "female"}
                   className="h-4 w-4"
                 />
-                Female
+                {t("admin.therapists.gender.female")}
               </label>
               <label className="flex items-center gap-2">
                 <input
@@ -199,12 +214,11 @@ export function TherapistEditForm({
                   defaultChecked={therapist.gender === "male"}
                   className="h-4 w-4"
                 />
-                Male
+                {t("admin.therapists.gender.male")}
               </label>
             </div>
             <p className="text-xs text-muted-foreground">
-              Used to match customer gender preferences at booking time.
-              Not displayed to customers.
+              {t("admin.therapists.gender.helper")}
             </p>
           </fieldset>
 
@@ -216,35 +230,41 @@ export function TherapistEditForm({
               defaultChecked={therapist.is_active}
               className="h-4 w-4 rounded border-gray-300"
             />
-            <Label htmlFor="is_active">Active</Label>
+            <Label htmlFor="is_active">
+              {t("admin.therapists.fields.active")}
+            </Label>
           </div>
 
           <div className="flex items-center gap-3 pt-2">
             <Button type="submit" disabled={submitting}>
-              {submitting ? "Saving..." : "Save Changes"}
+              {submitting
+                ? t("admin.therapists.edit.saving")
+                : t("admin.therapists.edit.save")}
             </Button>
-            <Link href="/admin/therapists" className={cn(buttonVariants({ variant: "outline" }))}>Back</Link>
+            <Link
+              href="/admin/therapists"
+              className={cn(buttonVariants({ variant: "outline" }))}
+            >
+              {t("admin.therapists.edit.back")}
+            </Link>
             <div className="ml-auto">
               <ConfirmButton
-                title="Delete therapist"
+                title={t("admin.therapists.edit.deleteTitle")}
                 description={
                   <>
                     <p>
-                      Deleting <strong>{therapist.full_name}</strong> is
-                      permanent. Their past bookings will remain in the
-                      database but this therapist profile, availability rules,
-                      and service assignments will be removed.
+                      {t("admin.therapists.edit.deleteDescription", {
+                        name: therapist.full_name,
+                      })}
                     </p>
-                    <p>
-                      Type <strong>DELETE</strong> to confirm.
-                    </p>
+                    <p>{t("admin.therapists.edit.deleteConfirmBody")}</p>
                   </>
                 }
                 confirmText="DELETE"
-                confirmLabel="Delete therapist"
+                confirmLabel={t("admin.therapists.edit.deleteConfirmLabel")}
                 onConfirm={handleDelete}
               >
-                Delete Therapist
+                {t("admin.therapists.edit.delete")}
               </ConfirmButton>
             </div>
           </div>

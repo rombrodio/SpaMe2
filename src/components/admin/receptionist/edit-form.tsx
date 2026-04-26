@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import {
   updateReceptionist,
   deleteReceptionist,
@@ -42,6 +43,7 @@ export function ReceptionistEditForm({
   hasAuthUser?: boolean;
 }) {
   const router = useRouter();
+  const t = useTranslations();
   const [errors, setErrors] = useState<Record<string, string[]> | undefined>();
   const [submitting, setSubmitting] = useState(false);
   const [resending, setResending] = useState(false);
@@ -57,7 +59,9 @@ export function ReceptionistEditForm({
     if (result && "error" in result) {
       setErrors(result.error as Record<string, string[]>);
     } else {
-      setResendNotice(result?.warning ?? "Invite sent.");
+      setResendNotice(
+        result?.warning ?? t("admin.receptionists.edit.inviteSent")
+      );
       router.refresh();
     }
     setResending(false);
@@ -72,12 +76,12 @@ export function ReceptionistEditForm({
     if (result && "error" in result) {
       setErrors(result.error);
       setSubmitting(false);
-      toast.error("Couldn't save receptionist.");
+      toast.error(t("admin.receptionists.edit.toastSaveError"));
       return;
     }
 
     resetDirty();
-    toast.success("Receptionist saved.");
+    toast.success(t("admin.receptionists.edit.toastSaved"));
     router.refresh();
     setSubmitting(false);
   }
@@ -86,9 +90,13 @@ export function ReceptionistEditForm({
     const result = await deleteReceptionist(receptionist.id);
     if (result && "error" in result) {
       const err = result.error as Record<string, string[] | undefined>;
-      throw new Error((err._form ?? ["Delete failed"]).join(", "));
+      throw new Error(
+        (err._form ?? [t("admin.receptionists.edit.toastDeleteError")]).join(
+          ", "
+        )
+      );
     }
-    toast.success("Receptionist deleted.");
+    toast.success(t("admin.receptionists.edit.toastDeleted"));
     router.push("/admin/receptionists");
   }
 
@@ -96,7 +104,7 @@ export function ReceptionistEditForm({
     <DirtyFormGuard dirty={dirty}>
       <Card>
         <CardHeader>
-          <CardTitle>Details</CardTitle>
+          <CardTitle>{t("admin.receptionists.edit.cardTitle")}</CardTitle>
         </CardHeader>
         <CardContent>
           <form ref={formRef} action={handleSubmit} className="space-y-4">
@@ -108,7 +116,9 @@ export function ReceptionistEditForm({
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="full_name">Full Name</Label>
+              <Label htmlFor="full_name">
+                {t("admin.receptionists.fields.fullName")}
+              </Label>
               <Input
                 id="full_name"
                 name="full_name"
@@ -119,7 +129,9 @@ export function ReceptionistEditForm({
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="phone">Phone</Label>
+                <Label htmlFor="phone">
+                  {t("admin.receptionists.fields.phone")}
+                </Label>
                 <Input
                   id="phone"
                   name="phone"
@@ -129,7 +141,9 @@ export function ReceptionistEditForm({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">
+                  {t("admin.receptionists.fields.email")}
+                </Label>
                 <Input
                   id="email"
                   name="email"
@@ -147,18 +161,22 @@ export function ReceptionistEditForm({
                 defaultChecked={receptionist.is_active}
                 className="h-4 w-4 rounded border-gray-300"
               />
-              <Label htmlFor="is_active">Active</Label>
+              <Label htmlFor="is_active">
+                {t("admin.receptionists.fields.active")}
+              </Label>
             </div>
 
             <div className="flex items-center gap-3 pt-2">
               <Button type="submit" disabled={submitting}>
-                {submitting ? "Saving..." : "Save Changes"}
+                {submitting
+                  ? t("admin.receptionists.edit.saving")
+                  : t("admin.receptionists.edit.save")}
               </Button>
               <Link
                 href="/admin/receptionists"
                 className={cn(buttonVariants({ variant: "outline" }))}
               >
-                Back
+                {t("admin.receptionists.edit.back")}
               </Link>
               {receptionist.email && !hasAuthUser && (
                 <Button
@@ -167,7 +185,9 @@ export function ReceptionistEditForm({
                   onClick={handleResendInvite}
                   disabled={resending}
                 >
-                  {resending ? "Sending..." : "Send invite"}
+                  {resending
+                    ? t("admin.receptionists.edit.sending")
+                    : t("admin.receptionists.edit.sendInvite")}
                 </Button>
               )}
               {receptionist.email && hasAuthUser && (
@@ -177,30 +197,31 @@ export function ReceptionistEditForm({
                   onClick={handleResendInvite}
                   disabled={resending}
                 >
-                  {resending ? "Sending..." : "Resend invite"}
+                  {resending
+                    ? t("admin.receptionists.edit.sending")
+                    : t("admin.receptionists.edit.resendInvite")}
                 </Button>
               )}
               <div className="ml-auto">
                 <ConfirmButton
-                  title="Delete receptionist"
+                  title={t("admin.receptionists.edit.deleteTitle")}
                   description={
                     <>
                       <p>
-                        Deleting <strong>{receptionist.full_name}</strong> is
-                        permanent. Their on-duty availability rules will be
-                        removed; any bookings they created stay in the
-                        database as historical records.
+                        {t("admin.receptionists.edit.deleteDescription", {
+                          name: receptionist.full_name,
+                        })}
                       </p>
-                      <p>
-                        Type <strong>DELETE</strong> to confirm.
-                      </p>
+                      <p>{t("admin.receptionists.edit.deleteConfirmBody")}</p>
                     </>
                   }
                   confirmText="DELETE"
-                  confirmLabel="Delete receptionist"
+                  confirmLabel={t(
+                    "admin.receptionists.edit.deleteConfirmLabel"
+                  )}
                   onConfirm={handleDelete}
                 >
-                  Delete Receptionist
+                  {t("admin.receptionists.edit.delete")}
                 </ConfirmButton>
               </div>
             </div>

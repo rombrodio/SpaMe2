@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import { setTherapistServices } from "@/lib/actions/therapists";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -30,6 +31,7 @@ export function TherapistServicesSection({
   assignedServiceIds,
 }: Props) {
   const router = useRouter();
+  const t = useTranslations();
   const [selected, setSelected] = useState<Set<string>>(
     new Set(assignedServiceIds)
   );
@@ -60,28 +62,28 @@ export function TherapistServicesSection({
     if (result && 'error' in result) {
       const msg =
         (result.error as Record<string, string[]>)._form?.[0] ??
-        "Failed to save services";
+        t("admin.therapists.services.saveError");
       setMessage(msg);
       setSubmitting(false);
       toast.error(msg);
       return;
     }
 
-    setMessage("Services updated.");
+    setMessage(t("admin.therapists.services.saved"));
     setSubmitting(false);
-    toast.success("Services updated.");
+    toast.success(t("admin.therapists.services.saved"));
     router.refresh();
   }
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Assigned Services</CardTitle>
+        <CardTitle>{t("admin.therapists.services.cardTitle")}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {allServices.length === 0 ? (
           <p className="text-muted-foreground text-sm">
-            No services exist yet. Create services first.
+            {t("admin.therapists.services.empty")}
           </p>
         ) : (
           <div className="space-y-2">
@@ -105,7 +107,9 @@ export function TherapistServicesSection({
         )}
 
         <Button onClick={handleSave} disabled={submitting || allServices.length === 0}>
-          {submitting ? "Saving..." : "Save Services"}
+          {submitting
+            ? t("admin.therapists.services.saving")
+            : t("admin.therapists.services.save")}
         </Button>
       </CardContent>
     </Card>

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import { createTherapist } from "@/lib/actions/therapists";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -20,6 +21,7 @@ import { FormErrors } from "@/components/admin/form-message";
 
 export default function NewTherapistPage() {
   const router = useRouter();
+  const t = useTranslations();
   const [errors, setErrors] = useState<Record<string, string[]> | undefined>();
   const [warning, setWarning] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -35,28 +37,28 @@ export default function NewTherapistPage() {
     if (result && 'error' in result) {
       setErrors(result.error);
       setSubmitting(false);
-      toast.error("Couldn't create therapist.");
+      toast.error(t("admin.therapists.new.toastCreateError"));
       return;
     }
 
     if (result?.warning) {
       setWarning(result.warning);
       setSubmitting(false);
-      toast.warning("Therapist created with a warning.");
+      toast.warning(t("admin.therapists.new.toastCreatedWithWarning"));
       return;
     }
 
-    toast.success("Therapist created.");
+    toast.success(t("admin.therapists.new.toastCreated"));
     router.push("/admin/therapists");
   }
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      <h1 className="text-2xl font-bold">New Therapist</h1>
+      <h1 className="text-2xl font-bold">{t("admin.therapists.new.title")}</h1>
 
       <Card>
         <CardHeader>
-          <CardTitle>Therapist Details</CardTitle>
+          <CardTitle>{t("admin.therapists.new.cardTitle")}</CardTitle>
         </CardHeader>
         <CardContent>
           <form action={handleSubmit} className="space-y-4">
@@ -68,32 +70,40 @@ export default function NewTherapistPage() {
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="full_name">Full Name</Label>
+              <Label htmlFor="full_name">
+                {t("admin.therapists.fields.fullName")}
+              </Label>
               <Input id="full_name" name="full_name" required />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="phone">Phone</Label>
+                <Label htmlFor="phone">
+                  {t("admin.therapists.fields.phone")}
+                </Label>
                 <Input id="phone" name="phone" type="tel" />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="email">
-                  Email {sendInvite && <span className="text-destructive">*</span>}
+                  {t("admin.therapists.fields.email")}{" "}
+                  {sendInvite && <span className="text-destructive">*</span>}
                 </Label>
                 <Input id="email" name="email" type="email" required={sendInvite} />
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="color">Color</Label>
+              <Label htmlFor="color">
+                {t("admin.therapists.fields.color")}
+              </Label>
               <Input id="color" name="color" type="color" defaultValue="#6366f1" />
             </div>
 
             <fieldset className="space-y-2">
               <Label>
-                Gender <span className="text-destructive">*</span>
+                {t("admin.therapists.gender.label")}{" "}
+                <span className="text-destructive">*</span>
               </Label>
               <div className="flex gap-4 text-sm">
                 <label className="flex items-center gap-2">
@@ -104,7 +114,7 @@ export default function NewTherapistPage() {
                     required
                     className="h-4 w-4"
                   />
-                  Female
+                  {t("admin.therapists.gender.female")}
                 </label>
                 <label className="flex items-center gap-2">
                   <input
@@ -114,12 +124,11 @@ export default function NewTherapistPage() {
                     required
                     className="h-4 w-4"
                   />
-                  Male
+                  {t("admin.therapists.gender.male")}
                 </label>
               </div>
               <p className="text-xs text-muted-foreground">
-                Used to match customer gender preferences at booking time.
-                Not displayed to customers.
+                {t("admin.therapists.gender.helper")}
               </p>
             </fieldset>
 
@@ -131,7 +140,9 @@ export default function NewTherapistPage() {
                 defaultChecked
                 className="h-4 w-4 rounded border-gray-300"
               />
-              <Label htmlFor="is_active">Active</Label>
+              <Label htmlFor="is_active">
+                {t("admin.therapists.fields.active")}
+              </Label>
             </div>
 
             <div className="flex items-center gap-2">
@@ -144,19 +155,25 @@ export default function NewTherapistPage() {
                 className="h-4 w-4 rounded border-gray-300"
               />
               <Label htmlFor="send_invite">
-                Send login invite by email
+                {t("admin.therapists.fields.sendInvite")}
               </Label>
             </div>
             <p className="text-xs text-muted-foreground">
-              Email is required when sending an invite. The therapist will
-              receive a magic link to set their password.
+              {t("admin.therapists.new.emailRequired")}
             </p>
 
             <div className="flex gap-3 pt-2">
               <Button type="submit" disabled={submitting}>
-                {submitting ? "Creating..." : "Create Therapist"}
+                {submitting
+                  ? t("admin.therapists.new.creating")
+                  : t("admin.therapists.new.createButton")}
               </Button>
-              <Link href="/admin/therapists" className={cn(buttonVariants({ variant: "outline" }))}>Cancel</Link>
+              <Link
+                href="/admin/therapists"
+                className={cn(buttonVariants({ variant: "outline" }))}
+              >
+                {t("common.cancel")}
+              </Link>
             </div>
           </form>
         </CardContent>
@@ -164,3 +181,4 @@ export default function NewTherapistPage() {
     </div>
   );
 }
+

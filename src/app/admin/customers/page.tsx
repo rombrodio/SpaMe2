@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import { getCustomers } from "@/lib/actions/customers";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -42,6 +43,7 @@ export default async function CustomersPage({
   searchParams: Promise<SearchParams>;
 }) {
   const sp = await searchParams;
+  const t = await getTranslations();
   const page = Math.max(1, Number(sp.page ?? "1") || 1);
 
   const { rows: customers, total } = await getCustomers({
@@ -53,41 +55,51 @@ export default async function CustomersPage({
   return (
     <div>
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Customers</h1>
+        <h1 className="text-2xl font-bold">{t("admin.customers.title")}</h1>
         <Link href="/admin/customers/new" className={cn(buttonVariants())}>
-          New Customer
+          {t("admin.customers.newButton")}
         </Link>
       </div>
 
       <div className="mt-6">
         <ListSearchBar
           basePath="/admin/customers"
-          placeholder="Name, phone, or email…"
+          placeholder={t("admin.customers.searchPlaceholder")}
         />
       </div>
 
       <Card className="mt-6">
         <CardHeader>
           <CardTitle>
-            {total === 0 ? "No customers match" : `${total} customers`}
+            {total === 0
+              ? t("admin.customers.countTitleZero")
+              : t("admin.customers.countTitleSome", { count: total })}
           </CardTitle>
         </CardHeader>
         <CardContent>
           {customers.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               {sp.q
-                ? "No customers match this search."
-                : "No customers yet. Create one to get started."}
+                ? t("admin.customers.emptyForSearch")
+                : t("admin.customers.empty")}
             </p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b text-left">
-                    <th className="pb-2 font-medium">Name</th>
-                    <th className="pb-2 font-medium">Phone</th>
-                    <th className="pb-2 font-medium">Email</th>
-                    <th className="pb-2 font-medium text-right">Actions</th>
+                    <th className="pb-2 font-medium">
+                      {t("admin.customers.columns.name")}
+                    </th>
+                    <th className="pb-2 font-medium">
+                      {t("admin.customers.columns.phone")}
+                    </th>
+                    <th className="pb-2 font-medium">
+                      {t("admin.customers.columns.email")}
+                    </th>
+                    <th className="pb-2 font-medium text-right">
+                      {t("admin.customers.columns.actions")}
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -108,7 +120,7 @@ export default async function CustomersPage({
                             href={`/admin/customers/${customer.id}`}
                             className="text-xs text-primary underline-offset-2 hover:underline"
                           >
-                            + Add email
+                            {t("admin.customers.addEmail")}
                           </Link>
                         )}
                       </td>

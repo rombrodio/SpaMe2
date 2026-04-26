@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import {
   getReceptionist,
   getReceptionistAvailabilityRules,
@@ -22,16 +23,17 @@ export default async function ReceptionistDetailPage({ params }: Props) {
     notFound();
   }
 
-  const [rules, authStatus] = await Promise.all([
+  const [rules, authStatus, t] = await Promise.all([
     getReceptionistAvailabilityRules(id),
     getReceptionistAuthStatus(id),
+    getTranslations(),
   ]);
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <Breadcrumbs
         items={[
-          { label: "Receptionists", href: "/admin/receptionists" },
+          { label: t("admin.receptionists.crumb"), href: "/admin/receptionists" },
           { label: receptionist.full_name },
         ]}
       />
