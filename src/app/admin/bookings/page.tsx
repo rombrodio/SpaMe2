@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import { getBookings, getBookingFormData } from "@/lib/actions/bookings";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -33,6 +34,7 @@ export default async function BookingsPage({
   searchParams: Promise<SearchParams>;
 }) {
   const sp = await searchParams;
+  const t = await getTranslations();
   const page = Math.max(1, Number(sp.page ?? "1") || 1);
 
   // Dates arrive as YYYY-MM-DD; expand to full-day ISO bounds.
@@ -55,10 +57,10 @@ export default async function BookingsPage({
   return (
     <div>
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Bookings</h1>
+        <h1 className="text-2xl font-bold">{t("admin.bookings.title")}</h1>
         <Link href="/admin/bookings/new" className={cn(buttonVariants(), "gap-1")}>
           <Plus className="h-4 w-4" />
-          New Booking
+          {t("admin.bookings.newButton")}
         </Link>
       </div>
 
@@ -69,28 +71,48 @@ export default async function BookingsPage({
       <Card className="mt-6">
         <CardHeader>
           <CardTitle>
-            {total === 0 ? "No bookings match" : `${total} bookings`}
+            {total === 0
+              ? t("admin.bookings.countTitleZero")
+              : t("admin.bookings.countTitleSome", { count: total })}
           </CardTitle>
         </CardHeader>
         <CardContent>
           {bookings.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No bookings match the current filters.
+              {t("admin.bookings.emptyFiltered")}
             </p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b text-left">
-                    <th className="pb-2 font-medium">Date & Time</th>
-                    <th className="pb-2 font-medium">Customer</th>
-                    <th className="pb-2 font-medium">Service</th>
-                    <th className="pb-2 font-medium">Therapist</th>
-                    <th className="pb-2 font-medium">Room</th>
-                    <th className="pb-2 font-medium">Status</th>
-                    <th className="pb-2 font-medium">Source</th>
-                    <th className="pb-2 font-medium">Created</th>
-                    <th className="pb-2 font-medium text-right">Actions</th>
+                    <th className="pb-2 font-medium">
+                      {t("admin.bookings.columns.dateTime")}
+                    </th>
+                    <th className="pb-2 font-medium">
+                      {t("admin.bookings.columns.customer")}
+                    </th>
+                    <th className="pb-2 font-medium">
+                      {t("admin.bookings.columns.service")}
+                    </th>
+                    <th className="pb-2 font-medium">
+                      {t("admin.bookings.columns.therapist")}
+                    </th>
+                    <th className="pb-2 font-medium">
+                      {t("admin.bookings.columns.room")}
+                    </th>
+                    <th className="pb-2 font-medium">
+                      {t("admin.bookings.columns.status")}
+                    </th>
+                    <th className="pb-2 font-medium">
+                      {t("admin.bookings.columns.source")}
+                    </th>
+                    <th className="pb-2 font-medium">
+                      {t("admin.bookings.columns.created")}
+                    </th>
+                    <th className="pb-2 font-medium text-right">
+                      {t("admin.bookings.columns.actions")}
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -157,7 +179,7 @@ export default async function BookingsPage({
                             buttonVariants({ variant: "ghost", size: "sm" })
                           )}
                         >
-                          View
+                          {t("admin.bookings.view")}
                         </Link>
                       </td>
                     </tr>

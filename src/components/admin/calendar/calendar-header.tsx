@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useRef } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -30,6 +31,7 @@ export function CalendarHeader({
   onDateChange,
   onViewChange,
 }: CalendarHeaderProps) {
+  const t = useTranslations();
   // DEF-030: hidden native date input + clickable title that opens it.
   // Keeps the compact header layout while giving the user a proper date
   // jump — better than adding yet another button.
@@ -79,25 +81,35 @@ export function CalendarHeader({
       ? format(date, "EEEE, MMMM d, yyyy")
       : view === "month"
         ? format(date, "MMMM yyyy")
-        : `Week of ${format(date, "MMM d, yyyy")}`;
+        : t("admin.calendar.nav.weekOf", { date: format(date, "MMM d, yyyy") });
 
   return (
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-2">
-        <Button variant="outline" size="sm" onClick={goBack} aria-label="Previous">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={goBack}
+          aria-label={t("admin.calendar.nav.previous")}
+        >
           <ChevronLeft className="h-4 w-4" />
         </Button>
         <Button variant="outline" size="sm" onClick={goToday}>
-          Today
+          {t("admin.calendar.nav.today")}
         </Button>
-        <Button variant="outline" size="sm" onClick={goForward} aria-label="Next">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={goForward}
+          aria-label={t("admin.calendar.nav.next")}
+        >
           <ChevronRight className="h-4 w-4" />
         </Button>
         <button
           type="button"
           onClick={openPicker}
           className="ml-2 rounded-md px-2 py-1 text-lg font-semibold hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          aria-label="Jump to date"
+          aria-label={t("admin.calendar.nav.jumpToDate")}
         >
           {title}
         </button>
@@ -117,28 +129,28 @@ export function CalendarHeader({
           size="sm"
           onClick={() => onViewChange("day")}
         >
-          Day
+          {t("admin.calendar.views.day")}
         </Button>
         <Button
           variant={view === "week" ? "default" : "ghost"}
           size="sm"
           onClick={() => onViewChange("week")}
         >
-          Week
+          {t("admin.calendar.views.week")}
         </Button>
         <Button
           variant={view === "resource" ? "default" : "ghost"}
           size="sm"
           onClick={() => onViewChange("resource")}
         >
-          Resource
+          {t("admin.calendar.views.resource")}
         </Button>
         <Button
           variant={view === "month" ? "default" : "ghost"}
           size="sm"
           onClick={() => onViewChange("month")}
         >
-          Month
+          {t("admin.calendar.views.month")}
         </Button>
       </div>
     </div>

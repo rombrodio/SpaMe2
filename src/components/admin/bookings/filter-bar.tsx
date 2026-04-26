@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useMemo, useState, useTransition } from "react";
+import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
@@ -18,6 +19,7 @@ interface FilterBarProps {
 export function BookingsFilterBar({ therapists }: FilterBarProps) {
   const router = useRouter();
   const sp = useSearchParams();
+  const t = useTranslations();
   const [isPending, startTransition] = useTransition();
 
   // Local state so the search box is responsive while the user types.
@@ -61,47 +63,51 @@ export function BookingsFilterBar({ therapists }: FilterBarProps) {
         }}
       >
         <div className="md:col-span-2">
-          <Label htmlFor="q">Search customer</Label>
+          <Label htmlFor="q">{t("admin.bookings.filters.searchCustomer")}</Label>
           <Input
             id="q"
-            placeholder="Name or phone…"
+            placeholder={t("admin.bookings.filters.searchPlaceholder")}
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />
         </div>
         <div>
-          <Label htmlFor="status">Status</Label>
+          <Label htmlFor="status">{t("admin.bookings.filters.status")}</Label>
           <Select
             id="status"
             value={sp.get("status") ?? ""}
             onChange={(e) => apply({ status: e.target.value || null })}
           >
-            <option value="">All</option>
-            <option value="pending_payment">Pending payment</option>
-            <option value="confirmed">Confirmed</option>
-            <option value="completed">Completed</option>
-            <option value="cancelled">Cancelled</option>
-            <option value="no_show">No-show</option>
+            <option value="">{t("admin.bookings.filters.all")}</option>
+            <option value="pending_payment">
+              {t("admin.status.pending_payment")}
+            </option>
+            <option value="confirmed">{t("admin.status.confirmed")}</option>
+            <option value="completed">{t("admin.status.completed")}</option>
+            <option value="cancelled">{t("admin.status.cancelled")}</option>
+            <option value="no_show">{t("admin.status.no_show")}</option>
           </Select>
         </div>
         <div>
-          <Label htmlFor="therapist_id">Therapist</Label>
+          <Label htmlFor="therapist_id">
+            {t("admin.bookings.filters.therapist")}
+          </Label>
           <Select
             id="therapist_id"
             value={sp.get("therapist_id") ?? ""}
             onChange={(e) => apply({ therapist_id: e.target.value || null })}
           >
-            <option value="">All</option>
-            {therapists.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.full_name}
+            <option value="">{t("admin.bookings.filters.all")}</option>
+            {therapists.map((th) => (
+              <option key={th.id} value={th.id}>
+                {th.full_name}
               </option>
             ))}
           </Select>
         </div>
         <div className="grid grid-cols-2 gap-2 md:col-span-5">
           <div>
-            <Label htmlFor="from">From</Label>
+            <Label htmlFor="from">{t("admin.bookings.filters.from")}</Label>
             <Input
               id="from"
               type="date"
@@ -110,7 +116,7 @@ export function BookingsFilterBar({ therapists }: FilterBarProps) {
             />
           </div>
           <div>
-            <Label htmlFor="to">To</Label>
+            <Label htmlFor="to">{t("admin.bookings.filters.to")}</Label>
             <Input
               id="to"
               type="date"
@@ -121,7 +127,7 @@ export function BookingsFilterBar({ therapists }: FilterBarProps) {
         </div>
         <div className="flex items-end gap-2 md:col-span-5">
           <Button type="submit" size="sm" disabled={isPending}>
-            Apply search
+            {t("admin.bookings.filters.apply")}
           </Button>
           {hasFilters && (
             <Button
@@ -131,7 +137,7 @@ export function BookingsFilterBar({ therapists }: FilterBarProps) {
               onClick={clear}
               disabled={isPending}
             >
-              Clear filters
+              {t("admin.bookings.filters.clear")}
             </Button>
           )}
         </div>

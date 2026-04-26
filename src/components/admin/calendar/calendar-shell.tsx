@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { CalendarHeader, type CalendarView } from "./calendar-header";
 import { DayView } from "./day-view";
 import { WeekView } from "./week-view";
@@ -42,6 +43,7 @@ export function CalendarShell({
   initialView = "week",
   therapists,
 }: CalendarShellProps) {
+  const t = useTranslations();
   const [date, setDate] = useState(() =>
     initialDate ? new Date(initialDate) : new Date()
   );
@@ -129,13 +131,13 @@ export function CalendarShell({
   return (
     <div>
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Calendar</h1>
+        <h1 className="text-2xl font-bold">{t("admin.calendar.title")}</h1>
         <Link
           href="/admin/bookings/new"
           className={cn(buttonVariants(), "gap-1")}
         >
           <Plus className="h-4 w-4" />
-          New Booking
+          {t("admin.calendar.newButton")}
         </Link>
       </div>
       <div className="mt-4">
@@ -155,7 +157,7 @@ export function CalendarShell({
       </div>
       {loading ? (
         <div className="mt-8 text-center text-muted-foreground">
-          Loading...
+          {t("admin.calendar.loading")}
         </div>
       ) : view === "day" ? (
         <DayView date={date} bookings={filteredBookings} />
@@ -183,8 +185,7 @@ export function CalendarShell({
       )}
       {selectedTherapists.length > 8 && view === "resource" && (
         <p className="mt-2 text-xs text-muted-foreground">
-          Resource view renders up to 8 therapists as columns. Narrow your
-          selection to focus on specific therapists.
+          {t("admin.calendar.resourceCapHint")}
         </p>
       )}
     </div>
@@ -192,9 +193,10 @@ export function CalendarShell({
 }
 
 function EmptyResource() {
+  const t = useTranslations();
   return (
     <div className="mt-8 rounded-lg border border-dashed border-border p-10 text-center text-sm text-muted-foreground">
-      Pick one or more therapists in the filter to view their columns.
+      {t("admin.calendar.emptyResource")}
     </div>
   );
 }

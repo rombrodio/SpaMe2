@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { useTranslations } from "next-intl";
 import {
   Card,
   CardHeader,
@@ -50,6 +51,7 @@ export function PaymentPanel({
   cashDueAgorot,
   servicePriceAgorot,
 }: Props) {
+  const t = useTranslations();
   const [rows, setRows] = useState<PaymentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -73,7 +75,7 @@ export function PaymentPanel({
         if (activeFetch.current !== marker) return;
         if ("error" in result && result.error) {
           const msg = Object.values(result.error).flat().filter(Boolean)[0];
-          setError(msg ?? "Failed to load payments");
+          setError(msg ?? t("admin.bookings.payments.loadError"));
           return;
         }
         if ("data" in result) {
@@ -83,7 +85,7 @@ export function PaymentPanel({
       .finally(() => {
         if (activeFetch.current === marker) setLoading(false);
       });
-  }, [bookingId]);
+  }, [bookingId, t]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -95,7 +97,7 @@ export function PaymentPanel({
     setError(null);
     const agorot = Math.round(Number(cashAmountIls) * 100);
     if (!Number.isFinite(agorot) || agorot < 0) {
-      setError("Invalid cash amount");
+      setError(t("admin.bookings.payments.invalidCashAmount"));
       return;
     }
     const fd = new FormData();
@@ -105,7 +107,7 @@ export function PaymentPanel({
       const result = await markCashReceivedAction(fd);
       if ("error" in result && result.error) {
         const msg = Object.values(result.error).flat().filter(Boolean)[0];
-        setError(msg ?? "Failed to mark cash received");
+        setError(msg ?? t("admin.bookings.payments.markCashError"));
         return;
       }
       reload();
@@ -114,7 +116,7 @@ export function PaymentPanel({
 
   function handleApplyFee() {
     setError(null);
-    if (!window.confirm("Charge cancellation fee on the stored card token?")) {
+    if (!window.confirm(t("admin.bookings.payments.feeConfirm"))) {
       return;
     }
     const fd = new FormData();
@@ -123,7 +125,7 @@ export function PaymentPanel({
       const result = await applyCancellationFeeAction(fd);
       if ("error" in result && result.error) {
         const msg = Object.values(result.error).flat().filter(Boolean)[0];
-        setError(msg ?? "Failed to apply fee");
+        setError(msg ?? t("admin.bookings.payments.applyFeeError"));
         return;
       }
       reload();
@@ -147,7 +149,7 @@ export function PaymentPanel({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Payments</CardTitle>
+        <CardTitle>{t("admin.bookings.payments.title")}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {error && (
@@ -157,21 +159,33 @@ export function PaymentPanel({
         )}
 
         {loading ? (
-          <p className="text-sm text-muted-foreground">Loading…</p>
+          <p className="text-sm text-muted-foreground">
+            {t("admin.bookings.payments.loading")}
+          </p>
         ) : rows.length === 0 ? (
           <p className="rounded-md border border-dashed border-gray-300 bg-gray-50 p-3 text-sm text-gray-600">
-            No payment rows yet for this booking.
+            {t("admin.bookings.payments.empty")}
           </p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-200 text-left text-xs uppercase tracking-wider text-gray-500">
-                  <th className="py-2 pr-3">Method / Role</th>
-                  <th className="py-2 pr-3">Status</th>
-                  <th className="py-2 pr-3">Amount</th>
-                  <th className="py-2 pr-3">Refs</th>
-                  <th className="py-2 pr-3">Created</th>
+                  <th className="py-2 pr-3">
+                    {t("admin.bookings.payments.columns.methodRole")}
+                  </th>
+                  <th className="py-2 pr-3">
+                    {t("admin.bookings.payments.columns.status")}
+                  </th>
+                  <th className="py-2 pr-3">
+                    {t("admin.bookings.payments.columns.amount")}
+                  </th>
+                  <th className="py-2 pr-3">
+                    {t("admin.bookings.payments.columns.refs")}
+                  </th>
+                  <th className="py-2 pr-3">
+                    {t("admin.bookings.payments.columns.created")}
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -182,32 +196,58 @@ export function PaymentPanel({
                       <div className="text-xs text-gray-500">{r.role}</div>
                     </td>
                     <td className="py-2 pr-3">
-                      <StatusBadge status={r.status} />
+                      <PaymentStatusBadge status={r.status} />
                     </td>
                     <td className="py-2 pr-3 font-mono">
-                      {(r.amount_ils / 100).toFixed(2)} ILS
+                      {t("admin.bookings.detail.ils", {
+                        amount: (r.amount_ils / 100).toFixed(2),
+                      })}
                       {r.card_last4 && (
                         <span className="block text-xs text-gray-500">
-                          card •••• {r.card_last4}
+                          {t("admin.bookings.payments.cardLast4", {
+                            last4: r.card_last4,
+                          })}
                         </span>
                       )}
                     </td>
                     <td className="py-2 pr-3 font-mono text-xs text-gray-600">
-                      {r.invoice_number && <div>inv: {r.invoice_number}</div>}
+                      {r.invoice_number && (
+                        <div>
+                          {t("admin.bookings.payments.invoicePrefix", {
+                            number: r.invoice_number,
+                          })}
+                        </div>
+                      )}
                       {r.provider_tx_id && (
-                        <div>tx: {r.provider_tx_id.slice(0, 8)}…</div>
+                        <div>
+                          {t("admin.bookings.payments.txPrefix", {
+                            id: r.provider_tx_id.slice(0, 8),
+                          })}
+                        </div>
                       )}
                       {r.provider_internal_deal_id && (
-                        <div>deal: {r.provider_internal_deal_id}</div>
+                        <div>
+                          {t("admin.bookings.payments.dealPrefix", {
+                            id: r.provider_internal_deal_id,
+                          })}
+                        </div>
                       )}
                     </td>
                     <td className="py-2 pr-3 text-xs text-gray-600">
                       {formatDate(r.created_at)}
                       {r.paid_at && (
-                        <div>paid: {formatDate(r.paid_at)}</div>
+                        <div>
+                          {t("admin.bookings.payments.paidPrefix", {
+                            date: formatDate(r.paid_at),
+                          })}
+                        </div>
                       )}
                       {r.voided_at && (
-                        <div>voided: {formatDate(r.voided_at)}</div>
+                        <div>
+                          {t("admin.bookings.payments.voidedPrefix", {
+                            date: formatDate(r.voided_at),
+                          })}
+                        </div>
                       )}
                     </td>
                   </tr>
@@ -224,7 +264,9 @@ export function PaymentPanel({
           >
             <div className="flex-1 space-y-1">
               <Label htmlFor="cash_amount">
-                Mark cash received (ILS, {cashDueAgorot > 0 ? "due" : "none due"})
+                {cashDueAgorot > 0
+                  ? t("admin.bookings.payments.cashLabelDue")
+                  : t("admin.bookings.payments.cashLabelNone")}
               </Label>
               <Input
                 id="cash_amount"
@@ -235,12 +277,15 @@ export function PaymentPanel({
                 onChange={(e) => setCashAmountIls(e.target.value)}
               />
               <p className="text-xs text-muted-foreground">
-                Service price {(servicePriceAgorot / 100).toFixed(2)} ILS.
-                Marking cash received will complete the booking.
+                {t("admin.bookings.payments.cashHelp", {
+                  price: (servicePriceAgorot / 100).toFixed(2),
+                })}
               </p>
             </div>
             <Button type="submit" disabled={pending}>
-              {pending ? "Saving…" : "Mark paid cash"}
+              {pending
+                ? t("admin.bookings.payments.saving")
+                : t("admin.bookings.payments.cashSubmit")}
             </Button>
           </form>
         )}
@@ -248,11 +293,11 @@ export function PaymentPanel({
         {canApplyFee && (
           <div className="flex items-center justify-between gap-3 border-t border-gray-200 pt-4">
             <div className="text-sm">
-              <div className="font-medium">Apply cancellation fee</div>
+              <div className="font-medium">
+                {t("admin.bookings.payments.feeTitle")}
+              </div>
               <p className="text-xs text-muted-foreground">
-                Charges the stored card token. Fee is computed from the
-                v1 policy (min 5% or 100 ILS; free if cancelled &gt; 24h
-                before start).
+                {t("admin.bookings.payments.feeHelp")}
               </p>
             </div>
             <Button
@@ -261,7 +306,9 @@ export function PaymentPanel({
               onClick={handleApplyFee}
               disabled={pending}
             >
-              {pending ? "Charging…" : "Apply fee"}
+              {pending
+                ? t("admin.bookings.payments.charging")
+                : t("admin.bookings.payments.feeSubmit")}
             </Button>
           </div>
         )}
@@ -270,7 +317,8 @@ export function PaymentPanel({
   );
 }
 
-function StatusBadge({ status }: { status: string }) {
+function PaymentStatusBadge({ status }: { status: string }) {
+  const t = useTranslations();
   const cls =
     status === "success"
       ? "border-emerald-300 bg-emerald-50 text-emerald-900"
@@ -283,11 +331,18 @@ function StatusBadge({ status }: { status: string }) {
       : status === "refunded"
       ? "border-gray-300 bg-gray-50 text-gray-700"
       : "border-gray-300 bg-gray-50";
+
+  // Localise the common statuses; unknown ones fall through to the
+  // raw string so debugging is still possible.
+  const key = `admin.paymentStatus.${status}`;
+  const translated = t(key);
+  const label = translated === key ? status : translated;
+
   return (
     <span
       className={`inline-block rounded border px-2 py-0.5 text-xs font-medium ${cls}`}
     >
-      {status}
+      {label}
     </span>
   );
 }
