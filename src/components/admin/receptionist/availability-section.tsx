@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import {
   createReceptionistAvailabilityRule,
   deleteReceptionistAvailabilityRule,
@@ -32,10 +33,6 @@ const DAYS = [
   "saturday",
 ] as const;
 
-function capitalize(s: string) {
-  return s.charAt(0).toUpperCase() + s.slice(1);
-}
-
 interface AvailabilityRule {
   id: string;
   receptionist_id: string;
@@ -51,22 +48,29 @@ interface Props {
   receptionistId: string;
   rules: AvailabilityRule[];
   /**
-   * Heading level wrapper text. The admin detail page uses
-   * "Availability Rules"; the /reception/availability page uses
-   * "My on-duty hours" — same component, two copy variants.
+   * Translation key for the card title. Defaults to the generic
+   * "On-duty Availability" from `reception.availabilitySection`.
+   * The /reception/availability page overrides this with
+   * `reception.availability.sectionTitle` ("My on-duty hours").
    */
-  title?: string;
-  /** Optional helper copy under the form. */
-  helperText?: string;
+  titleKey?: string;
+  /**
+   * Translation key for the helper copy under the form. Defaults to
+   * the section's generic helper. Overridden when the reception page
+   * wants to say something specific to the receptionist-editing-self
+   * case.
+   */
+  helperKey?: string;
 }
 
 export function ReceptionistAvailabilitySection({
   receptionistId,
   rules,
-  title = "On-duty Availability",
-  helperText,
+  titleKey = "reception.availabilitySection.defaultTitle",
+  helperKey = "reception.availabilitySection.defaultHelper",
 }: Props) {
   const router = useRouter();
+  const t = useTranslations();
   const [errors, setErrors] = useState<Record<string, string[]> | undefined>();
   const [submitting, setSubmitting] = useState(false);
 
@@ -81,11 +85,11 @@ export function ReceptionistAvailabilitySection({
     if (result && "error" in result) {
       setErrors(result.error as Record<string, string[]>);
       setSubmitting(false);
-      toast.error("Couldn't add on-duty rule.");
+      toast.error(t("reception.availabilitySection.toasts.addError"));
       return;
     }
 
-    toast.success("On-duty rule added.");
+    toast.success(t("reception.availabilitySection.toasts.addSuccess"));
     setSubmitting(false);
     router.refresh();
   }
@@ -97,39 +101,56 @@ export function ReceptionistAvailabilitySection({
     );
     if (result && "error" in result) {
       const err = result.error as Record<string, string[]>;
-      throw new Error(err._form?.join(" ") ?? "Couldn't delete rule.");
+      throw new Error(
+        err._form?.join(" ") ??
+          t("reception.availabilitySection.toasts.deleteError")
+      );
     }
-    toast.success("Rule deleted.");
+    toast.success(t("reception.availabilitySection.toasts.deleteSuccess"));
     router.refresh();
   }
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{title}</CardTitle>
+        <CardTitle>{t(titleKey as never)}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
         {rules.length === 0 ? (
           <p className="text-muted-foreground text-sm">
-            No on-duty windows defined yet.
+            {t("reception.availabilitySection.empty")}
           </p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b text-left">
-                  <th className="pb-2 font-medium">Day</th>
-                  <th className="pb-2 font-medium">Start</th>
-                  <th className="pb-2 font-medium">End</th>
-                  <th className="pb-2 font-medium">Valid From</th>
-                  <th className="pb-2 font-medium">Valid Until</th>
-                  <th className="pb-2 font-medium">Actions</th>
+                  <th className="pb-2 font-medium">
+                    {t("reception.availabilitySection.columns.day")}
+                  </th>
+                  <th className="pb-2 font-medium">
+                    {t("reception.availabilitySection.columns.start")}
+                  </th>
+                  <th className="pb-2 font-medium">
+                    {t("reception.availabilitySection.columns.end")}
+                  </th>
+                  <th className="pb-2 font-medium">
+                    {t("reception.availabilitySection.columns.validFrom")}
+                  </th>
+                  <th className="pb-2 font-medium">
+                    {t("reception.availabilitySection.columns.validUntil")}
+                  </th>
+                  <th className="pb-2 font-medium">
+                    {t("reception.availabilitySection.columns.actions")}
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {rules.map((rule) => (
                   <tr key={rule.id} className="border-b last:border-0">
-                    <td className="py-3">{capitalize(rule.day_of_week)}</td>
+                    <td className="py-3">
+                      {t(`common.days.${rule.day_of_week}` as never)}
+                    </td>
                     <td className="py-3">{rule.start_time}</td>
                     <td className="py-3">{rule.end_time}</td>
                     <td className="py-3">
@@ -145,18 +166,31 @@ export function ReceptionistAvailabilitySection({
                     <td className="py-3">
                       <ConfirmButton
                         size="sm"
-                        title="Delete on-duty rule"
+                        title={t(
+                          "reception.availabilitySection.deleteConfirm.title"
+                        )}
                         description={
                           <p>
-                            Remove the{" "}
-                            <strong>{capitalize(rule.day_of_week)}</strong>{" "}
-                            rule ({rule.start_time}–{rule.end_time})?
+                            {t(
+                              "reception.availabilitySection.deleteConfirm.body",
+                              {
+                                day: t(
+                                  `common.days.${rule.day_of_week}` as never
+                                ),
+                                start: rule.start_time,
+                                end: rule.end_time,
+                              }
+                            )}
                           </p>
                         }
-                        confirmLabel="Delete rule"
+                        confirmLabel={t(
+                          "reception.availabilitySection.deleteConfirm.cta"
+                        )}
                         onConfirm={() => handleDelete(rule.id)}
                       >
-                        Delete
+                        {t(
+                          "reception.availabilitySection.deleteConfirm.actionLabel"
+                        )}
                       </ConfirmButton>
                     </td>
                   </tr>
@@ -167,13 +201,17 @@ export function ReceptionistAvailabilitySection({
         )}
 
         <div className="border-t pt-4">
-          <h4 className="mb-3 text-sm font-medium">Add Rule</h4>
+          <h4 className="mb-3 text-sm font-medium">
+            {t("reception.availabilitySection.addHeading")}
+          </h4>
           <form action={handleAdd} className="space-y-4">
             <FormErrors errors={errors} />
 
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
               <div className="space-y-2">
-                <Label htmlFor="day_of_week">Day of Week</Label>
+                <Label htmlFor="day_of_week">
+                  {t("reception.availabilitySection.labels.dayOfWeek")}
+                </Label>
                 <select
                   id="day_of_week"
                   name="day_of_week"
@@ -182,14 +220,16 @@ export function ReceptionistAvailabilitySection({
                 >
                   {DAYS.map((day) => (
                     <option key={day} value={day}>
-                      {capitalize(day)}
+                      {t(`common.days.${day}` as never)}
                     </option>
                   ))}
                 </select>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="start_time">Start Time</Label>
+                <Label htmlFor="start_time">
+                  {t("reception.availabilitySection.labels.startTime")}
+                </Label>
                 <select
                   id="start_time"
                   name="start_time"
@@ -197,16 +237,18 @@ export function ReceptionistAvailabilitySection({
                   defaultValue="09:00"
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
-                  {TIME_OPTIONS.map((t) => (
-                    <option key={t} value={t}>
-                      {t}
+                  {TIME_OPTIONS.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
                     </option>
                   ))}
                 </select>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="end_time">End Time</Label>
+                <Label htmlFor="end_time">
+                  {t("reception.availabilitySection.labels.endTime")}
+                </Label>
                 <select
                   id="end_time"
                   name="end_time"
@@ -214,31 +256,36 @@ export function ReceptionistAvailabilitySection({
                   defaultValue="17:00"
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
-                  {TIME_OPTIONS.map((t) => (
-                    <option key={t} value={t}>
-                      {t}
+                  {TIME_OPTIONS.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
                     </option>
                   ))}
                 </select>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="valid_from">Valid From</Label>
+                <Label htmlFor="valid_from">
+                  {t("reception.availabilitySection.labels.validFrom")}
+                </Label>
                 <Input id="valid_from" name="valid_from" type="date" required />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="valid_until">Valid Until</Label>
+                <Label htmlFor="valid_until">
+                  {t("reception.availabilitySection.labels.validUntil")}
+                </Label>
                 <Input id="valid_until" name="valid_until" type="date" />
               </div>
             </div>
             <p className="text-xs text-muted-foreground">
-              {helperText ??
-                "Single on-duty window covers chat + phone. Rules snap to the 15-minute grid and must be at least 30 minutes long — no overlaps on the same day."}
+              {t(helperKey as never)}
             </p>
 
             <Button type="submit" disabled={submitting}>
-              {submitting ? "Adding..." : "Add Rule"}
+              {submitting
+                ? t("reception.availabilitySection.addingButton")
+                : t("reception.availabilitySection.addButton")}
             </Button>
           </form>
         </div>

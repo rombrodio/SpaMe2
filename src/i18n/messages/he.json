@@ -2,6 +2,7 @@
   "common": {
     "appName": "ספאמי",
     "back": "חזרה",
+    "backToDashboard": "חזרה ללוח הבקרה",
     "cancel": "ביטול",
     "close": "סגירה",
     "confirm": "אישור",
@@ -11,7 +12,110 @@
     "loading": "טוען...",
     "required": "שדה חובה",
     "errorGeneric": "אירעה שגיאה. נסו שוב.",
-    "tryAgain": "נסו שוב"
+    "tryAgain": "נסו שוב",
+    "signOut": "התנתקות",
+    "days": {
+      "sunday": "ראשון",
+      "monday": "שני",
+      "tuesday": "שלישי",
+      "wednesday": "רביעי",
+      "thursday": "חמישי",
+      "friday": "שישי",
+      "saturday": "שבת"
+    }
+  },
+  "reception": {
+    "brand": "ספאמי · קבלה",
+    "nav": {
+      "dashboard": "לוח בקרה",
+      "newBooking": "הזמנה חדשה",
+      "bookings": "הזמנות",
+      "myOnDutyHours": "שעות המשמרת שלי",
+      "inbox": "תיבת ההודעות",
+      "groups": {
+        "calendar": "לוח שנה",
+        "me": "אישי"
+      }
+    },
+    "dashboard": {
+      "title": "קבלה",
+      "tiles": {
+        "todayBookings": "הזמנות להיום",
+        "pendingPayment": "ממתין לתשלום",
+        "unassignedUpcoming": "ללא שיוך (7 הימים הקרובים)"
+      },
+      "onDutyCard": {
+        "title": "שעות המשמרת שלי",
+        "manageCta": "ניהול שעות המשמרת",
+        "emptyLead": "עדיין לא הוגדרו חלונות משמרת.",
+        "emptyCta": "הוסיפו את הראשון",
+        "notLinked": "הפרופיל שלכם עדיין לא מקושר לרשומת מקבל/ת — בקשו מהמנהל להפעיל הזמנה או להגדיר {code} למשתמש שלכם."
+      }
+    },
+    "availability": {
+      "pageTitle": "שעות המשמרת שלי",
+      "subheading": "השעות שבהן אתם זמינים לכיסוי צ׳אט וטלפון של לקוחות. שכבת השיחה עם הבינה המלאכותית (שלב 8) תנתב הודעות נכנסות לכל מי שבמשמרת.",
+      "sectionTitle": "שעות המשמרת שלי",
+      "sectionHelper": "הגישו חלונות שבועיים חוזרים. כל חלון מכסה צ׳אט וטלפון יחד — V1 תומך במצב אחד.",
+      "notLinkedHeading": "שעות משמרת",
+      "notLinkedBody": "הפרופיל שלכם עדיין לא מקושר לרשומת מקבל/ת. בקשו ממנהל להפעיל את תהליך ההזמנה לכתובת המייל שלכם (או להגדיר את {code}). לאחר הקישור, רעננו את העמוד."
+    },
+    "availabilitySection": {
+      "defaultTitle": "זמינות משמרת",
+      "defaultHelper": "חלון משמרת אחד מכסה צ׳אט וטלפון. כללים מוצמדים לרשת של 15 דקות וחייבים להיות באורך של לפחות 30 דקות — ללא חפיפות באותו היום.",
+      "empty": "עדיין לא הוגדרו חלונות משמרת.",
+      "columns": {
+        "day": "יום",
+        "start": "התחלה",
+        "end": "סיום",
+        "validFrom": "בתוקף מ-",
+        "validUntil": "בתוקף עד",
+        "actions": "פעולות"
+      },
+      "addHeading": "הוספת כלל",
+      "addButton": "הוספת כלל",
+      "addingButton": "מוסיף...",
+      "labels": {
+        "dayOfWeek": "יום בשבוע",
+        "startTime": "שעת התחלה",
+        "endTime": "שעת סיום",
+        "validFrom": "בתוקף מ-",
+        "validUntil": "בתוקף עד"
+      },
+      "deleteConfirm": {
+        "title": "מחיקת כלל משמרת",
+        "body": "להסיר את כלל {day} ({start}–{end})?",
+        "cta": "מחיקת הכלל",
+        "actionLabel": "מחיקה"
+      },
+      "toasts": {
+        "addError": "לא ניתן היה להוסיף כלל משמרת.",
+        "addSuccess": "כלל משמרת נוסף.",
+        "deleteError": "לא ניתן היה למחוק את הכלל.",
+        "deleteSuccess": "הכלל נמחק."
+      }
+    },
+    "bookings": {
+      "title": "הזמנות",
+      "newBookingCta": "הזמנה חדשה",
+      "countNone": "אין הזמנות",
+      "countSome": "{count} הזמנות",
+      "empty": "אין הזמנות שתואמות את הסינון.",
+      "unassigned": "(ללא שיוך)",
+      "columns": {
+        "dateTime": "תאריך ושעה",
+        "customer": "לקוח/ה",
+        "service": "טיפול",
+        "therapist": "מטפל/ת",
+        "status": "סטטוס",
+        "source": "מקור",
+        "created": "נוצר"
+      },
+      "newPage": {
+        "title": "הזמנה חדשה",
+        "subheading": "צרו הזמנה עבור לקוח/ה. השאירו את המטפל/ת ללא שיוך אם אין לכם אחד/ת ספציפי/ת בראש — המנהל ישייך לאחר התשלום."
+      }
+    }
   },
   "customer": {
     "book": {
