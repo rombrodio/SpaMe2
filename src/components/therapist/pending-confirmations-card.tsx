@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { useTranslations, useLocale } from "next-intl";
 import { formatInTimeZone } from "date-fns-tz";
 import { TZ } from "@/lib/constants";
 import {
@@ -14,27 +15,30 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { FormErrors } from "@/components/admin/form-message";
+import type { Locale } from "@/i18n/config";
 
 interface Props {
   items: PendingConfirmation[];
   highlightBookingId?: string;
 }
 
+function intlLocale(locale: Locale): string {
+  return locale === "he" ? "he-IL" : locale === "ru" ? "ru-IL" : "en-IL";
+}
+
 export function PendingConfirmationsCard({
   items,
   highlightBookingId,
 }: Props) {
+  const t = useTranslations("therapist.pending");
   if (items.length === 0) return null;
   return (
     <Card className="border-amber-300 bg-amber-50/60">
       <CardHeader>
         <CardTitle className="text-base text-amber-900">
-          Pending confirmations
+          {t("title")}
         </CardTitle>
-        <p className="text-sm text-amber-800/80">
-          Please accept or decline these new assignments. The manager is
-          re-alerted if you don&apos;t respond within 2 hours.
-        </p>
+        <p className="text-sm text-amber-800/80">{t("subheading")}</p>
       </CardHeader>
       <CardContent>
         <div className="space-y-3">
@@ -59,6 +63,9 @@ function PendingRow({
   highlight: boolean;
 }) {
   const router = useRouter();
+  const t = useTranslations("therapist.pending");
+  const tCommon = useTranslations("common");
+  const locale = useLocale() as Locale;
   const rowRef = useRef<HTMLDivElement | null>(null);
   const [submitting, startSubmit] = useTransition();
   const [mode, setMode] = useState<"idle" | "declining">("idle");
@@ -79,10 +86,10 @@ function PendingRow({
       const result = await confirmAssignmentAction(fd);
       if (result && "error" in result) {
         setErrors(result.error as Record<string, string[]>);
-        toast.error("Couldn't accept the assignment.");
+        toast.error(t("toasts.acceptError"));
         return;
       }
-      toast.success("Assignment accepted.");
+      toast.success(t("toasts.acceptSuccess"));
       router.refresh();
     });
   }
@@ -96,13 +103,20 @@ function PendingRow({
       const result = await declineAssignmentAction(fd);
       if (result && "error" in result) {
         setErrors(result.error as Record<string, string[]>);
-        toast.error("Couldn't decline the assignment.");
+        toast.error(t("toasts.declineError"));
         return;
       }
-      toast.success("Assignment declined.");
+      toast.success(t("toasts.declineSuccess"));
       router.refresh();
     });
   }
+
+  const fmtDate = new Intl.DateTimeFormat(intlLocale(locale), {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: TZ,
+  });
 
   return (
     <div
@@ -114,15 +128,16 @@ function PendingRow({
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-0.5">
           <div className="font-medium">
-            {formatInTimeZone(new Date(item.start_at), TZ, "MMM d, yyyy")} at{" "}
+            {fmtDate.format(new Date(item.start_at))} ·{" "}
             {formatInTimeZone(new Date(item.start_at), TZ, "HH:mm")}
             <span className="ml-1 text-muted-foreground">
-              ({item.duration_minutes} min)
+              ({t("minutes", { count: item.duration_minutes })})
             </span>
           </div>
           <div className="text-muted-foreground">
             {item.service_name}
-            {item.customer_first_name && ` · for ${item.customer_first_name}`}
+            {item.customer_first_name &&
+              ` · ${t("forCustomer", { name: item.customer_first_name })}`}
             {item.room_name && ` · ${item.room_name}`}
           </div>
         </div>
@@ -136,7 +151,7 @@ function PendingRow({
             onClick={handleConfirm}
             disabled={submitting}
           >
-            {submitting ? "Accepting..." : "Accept"}
+            {submitting ? t("accepting") : t("accept")}
           </Button>
           <Button
             type="button"
@@ -145,14 +160,14 @@ function PendingRow({
             onClick={() => setMode("declining")}
             disabled={submitting}
           >
-            Decline
+            {t("decline")}
           </Button>
         </div>
       ) : (
         <div className="mt-3 space-y-2">
           <Textarea
             rows={2}
-            placeholder="Reason (optional)"
+            placeholder={t("reasonPlaceholder")}
             value={reason}
             onChange={(e) => setReason(e.target.value)}
           />
@@ -164,7 +179,7 @@ function PendingRow({
               onClick={handleDecline}
               disabled={submitting}
             >
-              {submitting ? "Declining..." : "Confirm decline"}
+              {submitting ? t("declining") : t("confirmDecline")}
             </Button>
             <Button
               type="button"
@@ -173,7 +188,7 @@ function PendingRow({
               onClick={() => setMode("idle")}
               disabled={submitting}
             >
-              Cancel
+              {tCommon("cancel")}
             </Button>
           </div>
         </div>

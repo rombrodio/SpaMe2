@@ -24,6 +24,129 @@
       "saturday": "Saturday"
     }
   },
+  "therapist": {
+    "brand": "SpaMe",
+    "badge": "Therapist",
+    "nav": {
+      "myBookings": "My Bookings",
+      "availability": "Availability",
+      "timeOff": "Time Off"
+    },
+    "dashboard": {
+      "title": "My Bookings",
+      "subheading": "Your upcoming appointments.",
+      "upcoming": "Upcoming",
+      "empty": "No upcoming appointments.",
+      "columns": {
+        "dateTime": "Date & Time",
+        "customer": "Customer",
+        "service": "Service",
+        "room": "Room",
+        "status": "Status"
+      }
+    },
+    "availability": {
+      "title": "My Availability",
+      "subheading": "Manage your weekly working hours.",
+      "sectionTitle": "Availability Rules",
+      "empty": "No availability rules defined.",
+      "columns": {
+        "day": "Day",
+        "start": "Start",
+        "end": "End",
+        "validFrom": "Valid From",
+        "validUntil": "Valid Until",
+        "actions": "Actions"
+      },
+      "addHeading": "Add Rule",
+      "addButton": "Add Rule",
+      "addingButton": "Adding...",
+      "labels": {
+        "dayOfWeek": "Day of Week",
+        "startTime": "Start Time",
+        "endTime": "End Time",
+        "validFrom": "Valid From",
+        "validUntil": "Valid Until"
+      },
+      "helper": "Start/end times are locked to the 15-minute grid. Rules must be at least 30 minutes long and may not overlap with another rule on the same day.",
+      "deleteConfirm": {
+        "title": "Delete availability rule",
+        "body": "Remove the {day} rule ({start}–{end})? New bookings for this therapist on that day will stop showing slots from this window.",
+        "cta": "Delete rule",
+        "actionLabel": "Delete"
+      },
+      "toasts": {
+        "addError": "Couldn't add availability rule.",
+        "addSuccess": "Availability rule added.",
+        "deleteError": "Couldn't delete rule.",
+        "deleteSuccess": "Rule deleted."
+      }
+    },
+    "timeOff": {
+      "title": "My Time Off",
+      "subheading": "Add days or hours you're unavailable.",
+      "sectionTitle": "Time Off",
+      "empty": "No time-off entries.",
+      "columns": {
+        "start": "Start",
+        "end": "End",
+        "reason": "Reason",
+        "actions": "Actions"
+      },
+      "addHeading": "Add Time Off",
+      "addButton": "Add Time Off",
+      "addingButton": "Adding...",
+      "labels": {
+        "start": "Start",
+        "end": "End",
+        "reason": "Reason"
+      },
+      "deleteConfirm": {
+        "title": "Delete time-off",
+        "body": "Remove this time-off block ({start} – {end})? The therapist becomes bookable again in this window.",
+        "cta": "Delete",
+        "actionLabel": "Delete"
+      },
+      "toasts": {
+        "addError": "Couldn't add time-off.",
+        "addSuccess": "Time-off added.",
+        "deleteError": "Couldn't delete time-off.",
+        "deleteSuccess": "Time-off removed."
+      }
+    },
+    "pending": {
+      "title": "Pending confirmations",
+      "subheading": "Please accept or decline these new assignments. The manager is re-alerted if you don't respond within 2 hours.",
+      "minutes": "{count} min",
+      "forCustomer": "for {name}",
+      "accept": "Accept",
+      "accepting": "Accepting...",
+      "decline": "Decline",
+      "declining": "Declining...",
+      "confirmDecline": "Confirm decline",
+      "reasonPlaceholder": "Reason (optional)",
+      "toasts": {
+        "acceptError": "Couldn't accept the assignment.",
+        "acceptSuccess": "Assignment accepted.",
+        "declineError": "Couldn't decline the assignment.",
+        "declineSuccess": "Assignment declined."
+      }
+    },
+    "password": {
+      "title": "Change Password",
+      "description": "Set a new password for your account",
+      "newPassword": "New Password",
+      "newPasswordPlaceholder": "At least 8 characters",
+      "confirmPassword": "Confirm Password",
+      "update": "Update Password",
+      "updating": "Updating...",
+      "success": "Password updated successfully.",
+      "errors": {
+        "tooShort": "Password must be at least 8 characters",
+        "mismatch": "Passwords do not match"
+      }
+    }
+  },
   "reception": {
     "brand": "SpaMe · Reception",
     "nav": {

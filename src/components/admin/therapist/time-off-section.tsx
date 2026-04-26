@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { useTranslations, useLocale } from "next-intl";
 import { createTimeOff, deleteTimeOff } from "@/lib/actions/therapists";
 import { Button } from "@/components/ui/button";
 import { ConfirmButton } from "@/components/ui/confirm-button";
@@ -16,6 +17,7 @@ import {
   CardContent,
 } from "@/components/ui/card";
 import { FormErrors } from "@/components/admin/form-message";
+import type { Locale } from "@/i18n/config";
 
 interface TimeOff {
   id: string;
@@ -31,8 +33,14 @@ interface Props {
   timeOffs: TimeOff[];
 }
 
+function intlLocale(locale: Locale): string {
+  return locale === "he" ? "he-IL" : locale === "ru" ? "ru-IL" : "en-IL";
+}
+
 export function TimeOffSection({ therapistId, timeOffs }: Props) {
   const router = useRouter();
+  const t = useTranslations("therapist.timeOff");
+  const locale = useLocale() as Locale;
   const [errors, setErrors] = useState<Record<string, string[]> | undefined>();
   const [submitting, setSubmitting] = useState(false);
 
@@ -44,14 +52,14 @@ export function TimeOffSection({ therapistId, timeOffs }: Props) {
 
     const result = await createTimeOff(formData);
 
-    if (result && 'error' in result) {
+    if (result && "error" in result) {
       setErrors(result.error as Record<string, string[]>);
       setSubmitting(false);
-      toast.error("Couldn't add time-off.");
+      toast.error(t("toasts.addError"));
       return;
     }
 
-    toast.success("Time-off added.");
+    toast.success(t("toasts.addSuccess"));
     setSubmitting(false);
     router.refresh();
   }
@@ -60,14 +68,14 @@ export function TimeOffSection({ therapistId, timeOffs }: Props) {
     const result = await deleteTimeOff(timeOffId, therapistId);
     if (result && "error" in result) {
       const err = result.error as Record<string, string[]>;
-      throw new Error(err._form?.join(" ") ?? "Couldn't delete time-off.");
+      throw new Error(err._form?.join(" ") ?? t("toasts.deleteError"));
     }
-    toast.success("Time-off removed.");
+    toast.success(t("toasts.deleteSuccess"));
     router.refresh();
   }
 
   function formatDateTime(iso: string) {
-    return new Date(iso).toLocaleString("en-IL", {
+    return new Date(iso).toLocaleString(intlLocale(locale), {
       dateStyle: "medium",
       timeStyle: "short",
       timeZone: "Asia/Jerusalem",
@@ -77,22 +85,20 @@ export function TimeOffSection({ therapistId, timeOffs }: Props) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Time Off</CardTitle>
+        <CardTitle>{t("sectionTitle")}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
         {timeOffs.length === 0 ? (
-          <p className="text-muted-foreground text-sm">
-            No time-off entries.
-          </p>
+          <p className="text-muted-foreground text-sm">{t("empty")}</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b text-left">
-                  <th className="pb-2 font-medium">Start</th>
-                  <th className="pb-2 font-medium">End</th>
-                  <th className="pb-2 font-medium">Reason</th>
-                  <th className="pb-2 font-medium">Actions</th>
+                  <th className="pb-2 font-medium">{t("columns.start")}</th>
+                  <th className="pb-2 font-medium">{t("columns.end")}</th>
+                  <th className="pb-2 font-medium">{t("columns.reason")}</th>
+                  <th className="pb-2 font-medium">{t("columns.actions")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -108,19 +114,19 @@ export function TimeOffSection({ therapistId, timeOffs }: Props) {
                     <td className="py-3">
                       <ConfirmButton
                         size="sm"
-                        title="Delete time-off"
+                        title={t("deleteConfirm.title")}
                         description={
                           <p>
-                            Remove this time-off block (
-                            {formatDateTime(to.start_at)} – {formatDateTime(to.end_at)}
-                            )? The therapist becomes bookable again in this
-                            window.
+                            {t("deleteConfirm.body", {
+                              start: formatDateTime(to.start_at),
+                              end: formatDateTime(to.end_at),
+                            })}
                           </p>
                         }
-                        confirmLabel="Delete"
+                        confirmLabel={t("deleteConfirm.cta")}
                         onConfirm={() => handleDelete(to.id)}
                       >
-                        Delete
+                        {t("deleteConfirm.actionLabel")}
                       </ConfirmButton>
                     </td>
                   </tr>
@@ -131,29 +137,29 @@ export function TimeOffSection({ therapistId, timeOffs }: Props) {
         )}
 
         <div className="border-t pt-4">
-          <h4 className="mb-3 text-sm font-medium">Add Time Off</h4>
+          <h4 className="mb-3 text-sm font-medium">{t("addHeading")}</h4>
           <form action={handleAdd} className="space-y-4">
             <FormErrors errors={errors} />
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <div className="space-y-2">
-                <Label>Start</Label>
+                <Label>{t("labels.start")}</Label>
                 <DateTimePicker name="start_at" required />
               </div>
 
               <div className="space-y-2">
-                <Label>End</Label>
+                <Label>{t("labels.end")}</Label>
                 <DateTimePicker name="end_at" required />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="reason">Reason</Label>
+                <Label htmlFor="reason">{t("labels.reason")}</Label>
                 <Input id="reason" name="reason" />
               </div>
             </div>
 
             <Button type="submit" disabled={submitting}>
-              {submitting ? "Adding..." : "Add Time Off"}
+              {submitting ? t("addingButton") : t("addButton")}
             </Button>
           </form>
         </div>

@@ -3,14 +3,28 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Calendar, Clock, CalendarOff, LogOut } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { LocaleSwitcher } from "@/components/locale-switcher";
 
 const navItems = [
-  { href: "/therapist", label: "My Bookings", icon: Calendar, exact: true },
-  { href: "/therapist/availability", label: "Availability", icon: Clock },
-  { href: "/therapist/time-off", label: "Time Off", icon: CalendarOff },
+  {
+    href: "/therapist",
+    labelKey: "therapist.nav.myBookings",
+    icon: Calendar,
+    exact: true,
+  },
+  {
+    href: "/therapist/availability",
+    labelKey: "therapist.nav.availability",
+    icon: Clock,
+  },
+  {
+    href: "/therapist/time-off",
+    labelKey: "therapist.nav.timeOff",
+    icon: CalendarOff,
+  },
 ];
 
 export default function TherapistLayout({
@@ -20,6 +34,7 @@ export default function TherapistLayout({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const t = useTranslations();
 
   async function handleSignOut() {
     const supabase = createClient();
@@ -36,14 +51,14 @@ export default function TherapistLayout({
             href="/therapist"
             className="text-lg font-semibold text-foreground"
           >
-            SpaMe
+            {t("therapist.brand")}
           </Link>
           <span className="ml-2 rounded bg-secondary px-1.5 py-0.5 text-xs text-muted-foreground">
-            Therapist
+            {t("therapist.badge")}
           </span>
         </div>
         <nav className="flex-1 space-y-1 px-2 py-3">
-          {navItems.map(({ href, label, icon: Icon, exact }) => {
+          {navItems.map(({ href, labelKey, icon: Icon, exact }) => {
             const isActive = exact
               ? pathname === href
               : pathname.startsWith(href);
@@ -59,7 +74,7 @@ export default function TherapistLayout({
                 )}
               >
                 <Icon className="h-4 w-4" />
-                {label}
+                {t(labelKey)}
               </Link>
             );
           })}
@@ -71,7 +86,7 @@ export default function TherapistLayout({
             className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
           >
             <LogOut className="h-4 w-4" />
-            Sign out
+            {t("common.signOut")}
           </button>
         </div>
       </aside>
