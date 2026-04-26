@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import {
   Card,
   CardHeader,
@@ -41,6 +42,7 @@ const SKU_PATTERN = /^[A-Z0-9][A-Z0-9_\-./]{0,63}$/;
  * that a redeemed voucher matches the expected service.
  */
 export function VoucherMappingsSection({ serviceId }: Props) {
+  const t = useTranslations();
   const [rows, setRows] = useState<VoucherMappingRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [pending, start] = useTransition();
@@ -67,13 +69,11 @@ export function VoucherMappingsSection({ serviceId }: Props) {
     e.preventDefault();
     const trimmed = sku.trim().toUpperCase();
     if (!trimmed) {
-      setError("SKU is required");
+      setError(t("admin.services.voucherMappings.errors.required"));
       return;
     }
     if (!SKU_PATTERN.test(trimmed)) {
-      setError(
-        "SKUs use uppercase A–Z, 0–9, and the punctuation `_`, `-`, `.`, `/` (max 64 chars, must start with letter or digit)."
-      );
+      setError(t("admin.services.voucherMappings.errors.invalid"));
       return;
     }
     // Client-side duplicate check — PK in DB is (service_id, provider, sku)
@@ -84,7 +84,12 @@ export function VoucherMappingsSection({ serviceId }: Props) {
         (r) => r.provider === provider && r.provider_sku === trimmed
       )
     ) {
-      setError(`${provider.toUpperCase()} / ${trimmed} is already mapped.`);
+      setError(
+        t("admin.services.voucherMappings.errors.duplicate", {
+          provider: provider.toUpperCase(),
+          sku: trimmed,
+        })
+      );
       return;
     }
     setError(null);
@@ -97,12 +102,17 @@ export function VoucherMappingsSection({ serviceId }: Props) {
       if ("error" in result && result.error) {
         const msg =
           Object.values(result.error).flat().filter(Boolean)[0] ??
-          "Failed to add mapping";
+          t("admin.services.voucherMappings.errors.addFailed");
         setError(msg);
         toast.error(msg);
         return;
       }
-      toast.success(`Mapped ${provider.toUpperCase()} / ${trimmed}.`);
+      toast.success(
+        t("admin.services.voucherMappings.toasts.added", {
+          provider: provider.toUpperCase(),
+          sku: trimmed,
+        })
+      );
       setSku("");
       reload();
     });
@@ -118,11 +128,14 @@ export function VoucherMappingsSection({ serviceId }: Props) {
     if ("error" in result && result.error) {
       const msg =
         Object.values(result.error).flat().filter(Boolean)[0] ??
-        "Failed to remove mapping";
+        t("admin.services.voucherMappings.errors.removeFailed");
       throw new Error(msg);
     }
     toast.success(
-      `Removed ${row.provider.toUpperCase()} / ${row.provider_sku}.`
+      t("admin.services.voucherMappings.toasts.removed", {
+        provider: row.provider.toUpperCase(),
+        sku: row.provider_sku,
+      })
     );
     reload();
   }
@@ -130,14 +143,11 @@ export function VoucherMappingsSection({ serviceId }: Props) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Voucher SKU Mappings</CardTitle>
+        <CardTitle>{t("admin.services.voucherMappings.cardTitle")}</CardTitle>
       </CardHeader>
       <CardContent>
         <p className="mb-4 text-sm text-muted-foreground">
-          Map this service to one or more voucher SKUs so providers (DTS
-          benefit vouchers, VPay stored-value cards) know this service
-          can be redeemed under those codes. Not required for credit-card
-          payments.
+          {t("admin.services.voucherMappings.intro")}
         </p>
 
         {error && (
@@ -147,12 +157,12 @@ export function VoucherMappingsSection({ serviceId }: Props) {
         )}
 
         {loading ? (
-          <p className="text-sm text-muted-foreground">Loading…</p>
+          <p className="text-sm text-muted-foreground">
+            {t("admin.services.voucherMappings.loading")}
+          </p>
         ) : rows.length === 0 ? (
           <p className="rounded-md border border-dashed border-gray-300 bg-gray-50 p-3 text-sm text-gray-600">
-            No mappings configured. Customers can still redeem any voucher
-            on the booking; mappings only gate which SKUs the engine
-            considers canonical for this service.
+            {t("admin.services.voucherMappings.empty")}
           </p>
         ) : (
           <ul className="mb-4 divide-y divide-gray-200 rounded-md border border-gray-200">
@@ -170,22 +180,22 @@ export function VoucherMappingsSection({ serviceId }: Props) {
                 <ConfirmButton
                   variant="ghost"
                   size="sm"
-                  title="Remove voucher mapping"
+                  title={t("admin.services.voucherMappings.removeTitle")}
                   description={
                     <p>
-                      Remove the{" "}
-                      <span className="font-mono">
-                        {row.provider.toUpperCase()} / {row.provider_sku}
-                      </span>{" "}
-                      mapping? The service stays — only this SKU-to-service
-                      link is deleted.
+                      {t("admin.services.voucherMappings.removeDescription", {
+                        provider: row.provider.toUpperCase(),
+                        sku: row.provider_sku,
+                      })}
                     </p>
                   }
-                  confirmLabel="Remove mapping"
+                  confirmLabel={t(
+                    "admin.services.voucherMappings.removeConfirmLabel"
+                  )}
                   onConfirm={() => handleDelete(row)}
                   disabled={pending}
                 >
-                  Remove
+                  {t("admin.services.voucherMappings.remove")}
                 </ConfirmButton>
               </li>
             ))}
@@ -194,7 +204,9 @@ export function VoucherMappingsSection({ serviceId }: Props) {
 
         <form onSubmit={handleAdd} className="grid gap-3 sm:grid-cols-[9rem_1fr_auto]">
           <div className="space-y-1">
-            <Label htmlFor="vm_provider">Provider</Label>
+            <Label htmlFor="vm_provider">
+              {t("admin.services.voucherMappings.provider")}
+            </Label>
             <Select
               id="vm_provider"
               value={provider}
@@ -207,24 +219,26 @@ export function VoucherMappingsSection({ serviceId }: Props) {
             </Select>
           </div>
           <div className="space-y-1">
-            <Label htmlFor="vm_sku">SKU / FullBarCode</Label>
+            <Label htmlFor="vm_sku">
+              {t("admin.services.voucherMappings.sku")}
+            </Label>
             <Input
               id="vm_sku"
               value={sku}
               onChange={(e) => setSku(e.target.value.toUpperCase())}
-              placeholder="DTS-SWEDISH-60 or VPay SKU"
+              placeholder={t("admin.services.voucherMappings.skuPlaceholder")}
               maxLength={64}
               pattern="[A-Z0-9][A-Z0-9_\-./]{0,63}"
             />
             <p className="text-xs text-muted-foreground">
-              Uppercase only. Letters, digits, and{" "}
-              <span className="font-mono">_ - . /</span>. Duplicates under
-              the same provider are rejected.
+              {t("admin.services.voucherMappings.skuHelper")}
             </p>
           </div>
           <div className="flex items-end">
             <Button type="submit" disabled={pending}>
-              {pending ? "…" : "Add"}
+              {pending
+                ? t("admin.services.voucherMappings.adding")
+                : t("admin.services.voucherMappings.add")}
             </Button>
           </div>
         </form>

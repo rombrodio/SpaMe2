@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import { createRoom } from "@/lib/actions/rooms";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -20,6 +21,7 @@ import { FormErrors } from "@/components/admin/form-message";
 
 export default function NewRoomPage() {
   const router = useRouter();
+  const t = useTranslations();
   const [errors, setErrors] = useState<Record<string, string[]> | undefined>();
   const [submitting, setSubmitting] = useState(false);
 
@@ -32,33 +34,35 @@ export default function NewRoomPage() {
     if (result && 'error' in result) {
       setErrors(result.error);
       setSubmitting(false);
-      toast.error("Couldn't create room.");
+      toast.error(t("admin.rooms.new.toastCreateError"));
       return;
     }
 
-    toast.success("Room created.");
+    toast.success(t("admin.rooms.new.toastCreated"));
     router.push("/admin/rooms");
   }
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      <h1 className="text-2xl font-bold">New Room</h1>
+      <h1 className="text-2xl font-bold">{t("admin.rooms.new.title")}</h1>
 
       <Card>
         <CardHeader>
-          <CardTitle>Room Details</CardTitle>
+          <CardTitle>{t("admin.rooms.new.cardTitle")}</CardTitle>
         </CardHeader>
         <CardContent>
           <form action={handleSubmit} className="space-y-4">
             <FormErrors errors={errors} />
 
             <div className="space-y-2">
-              <Label htmlFor="name">Name</Label>
+              <Label htmlFor="name">{t("admin.rooms.fields.name")}</Label>
               <Input id="name" name="name" required />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
+              <Label htmlFor="description">
+                {t("admin.rooms.fields.description")}
+              </Label>
               <Textarea id="description" name="description" rows={3} />
             </div>
 
@@ -70,14 +74,23 @@ export default function NewRoomPage() {
                 defaultChecked
                 className="h-4 w-4 rounded border-gray-300"
               />
-              <Label htmlFor="is_active">Active</Label>
+              <Label htmlFor="is_active">
+                {t("admin.rooms.fields.active")}
+              </Label>
             </div>
 
             <div className="flex gap-3 pt-2">
               <Button type="submit" disabled={submitting}>
-                {submitting ? "Creating..." : "Create Room"}
+                {submitting
+                  ? t("admin.rooms.new.creating")
+                  : t("admin.rooms.new.createButton")}
               </Button>
-              <Link href="/admin/rooms" className={cn(buttonVariants({ variant: "outline" }))}>Cancel</Link>
+              <Link
+                href="/admin/rooms"
+                className={cn(buttonVariants({ variant: "outline" }))}
+              >
+                {t("admin.rooms.new.cancel")}
+              </Link>
             </div>
           </form>
         </CardContent>

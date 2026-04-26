@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import {
   getRoom,
   getRoomServices,
@@ -24,10 +25,11 @@ export default async function RoomDetailPage({ params }: Props) {
     notFound();
   }
 
-  const [roomServices, allServices, blocks] = await Promise.all([
+  const [roomServices, allServices, blocks, t] = await Promise.all([
     getRoomServices(id),
     getServices(),
     getRoomBlocks(id),
+    getTranslations(),
   ]);
 
   const assignedServiceIds = (
@@ -38,7 +40,7 @@ export default async function RoomDetailPage({ params }: Props) {
     <div className="mx-auto max-w-3xl space-y-6">
       <Breadcrumbs
         items={[
-          { label: "Rooms", href: "/admin/rooms" },
+          { label: t("admin.rooms.crumb"), href: "/admin/rooms" },
           { label: room.name },
         ]}
       />

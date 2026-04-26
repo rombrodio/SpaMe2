@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ChevronRight } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 type Scalar = string | number | boolean | null;
 type JsonValue = Scalar | Scalar[] | Record<string, unknown>;
@@ -24,6 +25,7 @@ interface DiffViewProps {
  * as one line per attribute.
  */
 export function DiffView({ before, after }: DiffViewProps) {
+  const t = useTranslations();
   const [showUnchanged, setShowUnchanged] = useState(false);
 
   if (!before && !after) {
@@ -62,7 +64,9 @@ export function DiffView({ before, after }: DiffViewProps) {
   return (
     <div className="space-y-1 text-xs">
       {changedEntries.length === 0 ? (
-        <p className="text-muted-foreground">No field changes recorded.</p>
+        <p className="text-muted-foreground">
+          {t("admin.auditLog.diff.noneChanged")}
+        </p>
       ) : (
         <dl className="grid grid-cols-[min-content_1fr] gap-x-2">
           {changedEntries.map((entry) => (
@@ -80,8 +84,13 @@ export function DiffView({ before, after }: DiffViewProps) {
           <ChevronRight
             className={`h-3 w-3 transition-transform ${showUnchanged ? "rotate-90" : ""}`}
           />
-          {showUnchanged ? "Hide" : "Show"} {sameEntries.length} unchanged{" "}
-          field{sameEntries.length === 1 ? "" : "s"}
+          {showUnchanged
+            ? t("admin.auditLog.diff.hideUnchanged", {
+                count: sameEntries.length,
+              })
+            : t("admin.auditLog.diff.showUnchanged", {
+                count: sameEntries.length,
+              })}
         </button>
       )}
 

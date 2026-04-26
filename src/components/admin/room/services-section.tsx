@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import { setRoomServices } from "@/lib/actions/rooms";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,6 +25,7 @@ export function RoomServicesSection({
   assignedServiceIds,
 }: RoomServicesSectionProps) {
   const router = useRouter();
+  const t = useTranslations();
   const [selected, setSelected] = useState<Set<string>>(
     new Set(assignedServiceIds)
   );
@@ -51,28 +53,28 @@ export function RoomServicesSection({
     if (result && 'error' in result) {
       const msg =
         (result.error as Record<string, string[]>)._form?.[0] ??
-        "Failed to save services.";
+        t("admin.rooms.services.saveError");
       setMessage(msg);
       setSaving(false);
       toast.error(msg);
       return;
     }
 
-    setMessage("Services updated.");
+    setMessage(t("admin.rooms.services.saved"));
     setSaving(false);
-    toast.success("Compatible services updated.");
+    toast.success(t("admin.rooms.services.toastSaved"));
     router.refresh();
   }
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Compatible Services</CardTitle>
+        <CardTitle>{t("admin.rooms.services.cardTitle")}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {allServices.length === 0 ? (
           <p className="text-muted-foreground text-sm">
-            No services exist yet. Create a service first.
+            {t("admin.rooms.services.empty")}
           </p>
         ) : (
           <div className="grid grid-cols-2 gap-2">
@@ -98,7 +100,9 @@ export function RoomServicesSection({
         )}
 
         <Button onClick={handleSave} disabled={saving || allServices.length === 0}>
-          {saving ? "Saving..." : "Save Services"}
+          {saving
+            ? t("admin.rooms.services.saving")
+            : t("admin.rooms.services.save")}
         </Button>
       </CardContent>
     </Card>

@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import { updateRoom, deleteRoom } from "@/lib/actions/rooms";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { ConfirmButton } from "@/components/ui/confirm-button";
@@ -34,6 +35,7 @@ interface RoomEditFormProps {
 
 export function RoomEditForm({ room }: RoomEditFormProps) {
   const router = useRouter();
+  const t = useTranslations();
   const [errors, setErrors] = useState<Record<string, string[]> | undefined>();
   const [submitting, setSubmitting] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
@@ -48,11 +50,11 @@ export function RoomEditForm({ room }: RoomEditFormProps) {
     if (result && 'error' in result) {
       setErrors(result.error);
       setSubmitting(false);
-      toast.error("Couldn't save room.");
+      toast.error(t("admin.rooms.edit.toastSaveError"));
       return;
     }
 
-    toast.success("Room saved.");
+    toast.success(t("admin.rooms.edit.toastSaved"));
     resetDirty();
     router.refresh();
     setSubmitting(false);
@@ -63,11 +65,12 @@ export function RoomEditForm({ room }: RoomEditFormProps) {
 
     if (result && 'error' in result) {
       const err = result.error as Record<string, string[]>;
-      const message = err._form?.join(" ") ?? "Couldn't delete room.";
+      const message =
+        err._form?.join(" ") ?? t("admin.rooms.edit.toastDeleteError");
       throw new Error(message);
     }
 
-    toast.success("Room deleted.");
+    toast.success(t("admin.rooms.edit.toastDeleted"));
     router.push("/admin/rooms");
   }
 
@@ -75,19 +78,21 @@ export function RoomEditForm({ room }: RoomEditFormProps) {
     <DirtyFormGuard dirty={dirty && !submitting}>
     <Card>
       <CardHeader>
-        <CardTitle>Room Details</CardTitle>
+        <CardTitle>{t("admin.rooms.edit.cardTitle")}</CardTitle>
       </CardHeader>
       <CardContent>
         <form ref={formRef} action={handleSubmit} className="space-y-4">
           <FormErrors errors={errors} />
 
           <div className="space-y-2">
-            <Label htmlFor="name">Name</Label>
+            <Label htmlFor="name">{t("admin.rooms.fields.name")}</Label>
             <Input id="name" name="name" defaultValue={room.name} required />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
+            <Label htmlFor="description">
+              {t("admin.rooms.fields.description")}
+            </Label>
             <Textarea
               id="description"
               name="description"
@@ -104,28 +109,37 @@ export function RoomEditForm({ room }: RoomEditFormProps) {
               defaultChecked={room.is_active}
               className="h-4 w-4 rounded border-gray-300"
             />
-            <Label htmlFor="is_active">Active</Label>
+            <Label htmlFor="is_active">
+              {t("admin.rooms.fields.active")}
+            </Label>
           </div>
 
           <div className="flex gap-3 pt-2">
             <Button type="submit" disabled={submitting}>
-              {submitting ? "Saving..." : "Save Changes"}
+              {submitting
+                ? t("admin.rooms.edit.saving")
+                : t("admin.rooms.edit.save")}
             </Button>
-            <Link href="/admin/rooms" className={cn(buttonVariants({ variant: "outline" }))}>Back</Link>
+            <Link
+              href="/admin/rooms"
+              className={cn(buttonVariants({ variant: "outline" }))}
+            >
+              {t("admin.rooms.edit.back")}
+            </Link>
             <div className="ml-auto">
               <ConfirmButton
-                title="Delete room"
+                title={t("admin.rooms.edit.deleteTitle")}
                 description={
                   <p>
-                    Delete <strong>{room.name}</strong>? This will remove its
-                    compatibility mapping and any future blocks. Past bookings
-                    that used this room will keep the cached copy.
+                    {t("admin.rooms.edit.deleteDescription", {
+                      name: room.name,
+                    })}
                   </p>
                 }
-                confirmLabel="Delete room"
+                confirmLabel={t("admin.rooms.edit.deleteConfirmLabel")}
                 onConfirm={handleDelete}
               >
-                Delete Room
+                {t("admin.rooms.edit.delete")}
               </ConfirmButton>
             </div>
           </div>

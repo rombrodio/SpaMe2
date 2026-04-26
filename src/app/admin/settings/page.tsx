@@ -1,3 +1,4 @@
+import { getTranslations } from "next-intl/server";
 import { getSpaSettings } from "@/lib/actions/settings";
 import { SettingsForm } from "@/components/admin/settings/settings-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,29 +7,26 @@ import { DEFAULT_SPA_SETTINGS } from "@/lib/schemas/settings";
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
-  const settings = await getSpaSettings();
+  const [settings, t] = await Promise.all([getSpaSettings(), getTranslations()]);
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Settings</h1>
+        <h1 className="text-2xl font-bold">{t("admin.settings.title")}</h1>
         <p className="mt-1 text-muted-foreground">
-          Operational settings editable without a redeploy.
+          {t("admin.settings.subheading")}
         </p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Spa configuration</CardTitle>
+          <CardTitle className="text-base">
+            {t("admin.settings.configCardTitle")}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <p className="mb-4 text-sm text-muted-foreground">
-            The on-call phone number receives SMS and WhatsApp alerts for
-            new unassigned bookings, therapist declines, and bookings
-            close to start time that still need a therapist. Leave blank
-            to disable those alerts. Operating hours and slot granularity
-            control what times appear as bookable on the customer-facing
-            calendar.
+            {t("admin.settings.configIntro")}
           </p>
           <SettingsForm
             initialName={settings?.on_call_manager_name ?? ""}

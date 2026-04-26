@@ -3,6 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import { updateSpaSettings } from "@/lib/actions/settings";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,6 +51,7 @@ export function SettingsForm({
   initialSlotGranularityMinutes,
 }: SettingsFormProps) {
   const router = useRouter();
+  const t = useTranslations();
   const [errors, setErrors] = useState<Record<string, string[]> | undefined>();
   const [saved, setSaved] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -63,11 +65,11 @@ export function SettingsForm({
       const result = await updateSpaSettings(formData);
       if (result && "error" in result) {
         setErrors(result.error);
-        toast.error("Couldn't save settings.");
+        toast.error(t("admin.settings.toastSaveError"));
         return;
       }
       setSaved(true);
-      toast.success("Settings saved.");
+      toast.success(t("admin.settings.toastSaved"));
       resetDirty();
       router.refresh();
     });
@@ -80,67 +82,74 @@ export function SettingsForm({
 
       <section className="space-y-4">
         <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          On-call manager
+          {t("admin.settings.onCallSection")}
         </h3>
 
         <div className="space-y-2">
-          <Label htmlFor="on_call_manager_name">Manager name</Label>
+          <Label htmlFor="on_call_manager_name">
+            {t("admin.settings.managerName")}
+          </Label>
           <Input
             id="on_call_manager_name"
             name="on_call_manager_name"
             defaultValue={initialName}
-            placeholder="Optional — shown in audit logs"
+            placeholder={t("admin.settings.managerNamePlaceholder")}
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="on_call_manager_phone">Manager phone</Label>
+          <Label htmlFor="on_call_manager_phone">
+            {t("admin.settings.managerPhone")}
+          </Label>
           <Input
             id="on_call_manager_phone"
             name="on_call_manager_phone"
             defaultValue={initialPhone}
-            placeholder="e.g. 0521234567"
+            placeholder={t("admin.settings.managerPhonePlaceholder")}
           />
           <p className="text-xs text-muted-foreground">
-            Accepts local (05X) or E.164 (+972) format. Stored as E.164.
+            {t("admin.settings.managerPhoneHelper")}
           </p>
         </div>
       </section>
 
       <section className="space-y-4 border-t pt-6">
         <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          Operating hours
+          {t("admin.settings.hoursSection")}
         </h3>
         <p className="text-sm text-muted-foreground">
-          The outer window the spa is open. Therapist availability rules
-          are clipped to this window when finding bookable slots.
+          {t("admin.settings.hoursIntro")}
         </p>
 
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
-            <Label htmlFor="business_hours_start">Opens at</Label>
+            <Label htmlFor="business_hours_start">
+              {t("admin.settings.opensAt")}
+            </Label>
             <Select
               id="business_hours_start"
               name="business_hours_start"
               defaultValue={initialBusinessHoursStart}
             >
-              {HOUR_OPTIONS.map((t) => (
-                <option key={t} value={t}>
-                  {t}
+              {HOUR_OPTIONS.map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt}
                 </option>
               ))}
             </Select>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="business_hours_end">Closes at</Label>
+            <Label htmlFor="business_hours_end">
+              {t("admin.settings.closesAt")}
+            </Label>
             <Select
               id="business_hours_end"
               name="business_hours_end"
               defaultValue={initialBusinessHoursEnd}
             >
-              {HOUR_OPTIONS.map((t) => (
-                <option key={t} value={t}>
-                  {t}
+              {HOUR_OPTIONS.map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt}
                 </option>
               ))}
             </Select>
@@ -149,32 +158,37 @@ export function SettingsForm({
 
         <div className="space-y-2">
           <Label htmlFor="slot_granularity_minutes">
-            Booking slot granularity
+            {t("admin.settings.slotGranularity")}
           </Label>
           <Select
             id="slot_granularity_minutes"
             name="slot_granularity_minutes"
             defaultValue={String(initialSlotGranularityMinutes)}
           >
-            <option value="60">60 minutes (on the hour only)</option>
-            <option value="30">30 minutes</option>
-            <option value="15">15 minutes</option>
+            <option value="60">
+              {t("admin.settings.slotGranularity60")}
+            </option>
+            <option value="30">
+              {t("admin.settings.slotGranularity30")}
+            </option>
+            <option value="15">
+              {t("admin.settings.slotGranularity15")}
+            </option>
           </Select>
           <p className="text-xs text-muted-foreground">
-            Controls the grid customers can pick from and what the admin
-            can set as availability rule start/end times. The spa&apos;s
-            V2 rule is &quot;all treatments start on the hour&quot; — so
-            default is 60.
+            {t("admin.settings.slotGranularityHelper")}
           </p>
         </div>
       </section>
 
       <div className="flex items-center gap-3 pt-2">
         <Button type="submit" disabled={isPending}>
-          {isPending ? "Saving..." : "Save"}
+          {isPending ? t("admin.settings.saving") : t("admin.settings.save")}
         </Button>
         {saved && !isPending && (
-          <span className="text-sm text-green-600">Saved.</span>
+          <span className="text-sm text-green-600">
+            {t("admin.settings.saved")}
+          </span>
         )}
       </div>
     </form>
