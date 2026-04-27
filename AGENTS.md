@@ -28,7 +28,8 @@ Next.js 16 (App Router) on Vercel, Supabase Postgres + Auth, Tailwind v4, TypeSc
 1. Read [`CLAUDE.md`](./CLAUDE.md) — engineering rules, non-negotiable architecture constraints, business rules, allowed-action list for the AI.
 2. Read [`docs/plans/MASTER-PLAN.md`](./docs/plans/MASTER-PLAN.md) — single source of truth for phase status. Do not rederive it; update it when phases ship.
 3. Read [`docs/DOC-SYNC.md`](./docs/DOC-SYNC.md) — the mandatory pre-commit manifest. Walk it before every commit.
-4. `git log --oneline -10` on `main` + `gh pr list --state merged --limit 5` — confirms what just shipped so you don't duplicate work.
+4. Skim [`docs/qa/defect-retest.md`](./docs/qa/defect-retest.md) if you're about to touch a UI surface — shows every DEF-* the repo has closed and where the fix lives, so you don't accidentally regress it.
+5. `git log --oneline -10` on `main` + `gh pr list --state merged --limit 5` — confirms what just shipped so you don't duplicate work.
 
 ## Hosted services you'll hit
 
