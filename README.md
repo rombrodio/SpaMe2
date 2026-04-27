@@ -16,6 +16,8 @@ earlier "SpaMeV3" split for the conversational layer is dropped.
 - **Auth:** Supabase Auth (email/password)
 - **Styling:** Tailwind CSS v4 + hand-rolled UI primitives under `src/components/ui/` (CVA + Radix: `alert-dialog`, `popover`, `dropdown-menu`, `command`, plus locally-built `button`, `card`, `input`, `select`, `textarea`, `badge`)
 - **Validation:** Zod
+- **Messaging / notifications:** Twilio (SMS + WhatsApp today); Meta WhatsApp Business Cloud API (Phase 8); **email provider TBD** (Resend / Postmark / SES / SendGrid candidate, Phase 7c) — adds the third parallel notification channel for therapist assignment confirmations + the second channel for manager push alerts
+- **Lint:** `eslint-config-next` today; **`eslint-plugin-no-literal-string` scoped to customer + therapist surfaces** lands with Phase 7d (build-time guardrail on literal user-visible strings)
 
 ## Getting Started
 
@@ -101,12 +103,12 @@ supabase/
 
 ## Auth & Roles
 
-- **Super Admin:** Full access to `/admin/*`. Can manage therapists, rooms, services, bookings, calendar, receptionists, settings, audit log. Full visibility into the receptionist inbox.
-- **Receptionist** _(Phase 6)_: Primary surface is `/reception/inbox`. Creates bookings on behalf of customers (may pick a therapist or leave unassigned), submits own on-duty (chat + phone) windows, monitors every active conversation, approves / edits / rejects every AI-drafted reply before it sends. Cannot manage therapists / services / rooms / settings / audit log.
-- **Therapist:** Access to `/therapist/*`. Manages own availability, views own bookings (read-only), confirms deferred-assignment receipts via WhatsApp within a 2-hour SLA.
-- **Customer:** No login. Identified by phone number (E.164). Never sees therapist names.
+- **Super Admin:** Full access to `/admin/*`. Can manage therapists, rooms, services, bookings, calendar, receptionists, settings (including the spa-wide `auto_assign_enabled` toggle, Phase 7c), audit log. Full visibility into the receptionist inbox. **Approves / edits / rejects AI-drafted outbound replies** from the same inbox the receptionist uses. Owns the manager publish action (per-booking immediate + batch). May mute own manager push alerts via profile preferences.
+- **Receptionist** _(Phase 6)_: Primary surface is `/reception/inbox`. Creates bookings on behalf of customers — **may pre-empt the auto-assignment engine by selecting a therapist and/or a room at booking creation** (the booking still flows through manager publish). Submits own on-duty (chat + phone) windows, monitors every active conversation, approves / edits / rejects every AI-drafted reply before it sends. Cannot manage therapists / services / rooms / settings / audit log.
+- **Therapist:** Access to `/therapist/*`. Manages own availability, views own bookings (read-only). **Confirms assignment receipts delivered across the therapist's chosen subset of four parallel channels** — WhatsApp + portal + email + SMS (default: all four enabled, Phase 7c). One confirmation across any enabled channel resolves; 2-hour SLA from publish. The therapist portal is also where the per-channel preferences are managed.
+- **Customer:** No login. Identified by phone number (E.164). Never sees therapist names or specific room identifiers.
 
-Language policy _(Phase 7)_: Hebrew default, first-class English + Russian for every user. Per-user toggle for staff; customer language auto-detected on first inbound message and persisted on the customer record.
+Language policy: Hebrew default. **HE / EN / RU first-class on customer-facing surfaces and the therapist portal** (Phase 7d lands full RU + an ESLint rule making hardcoded literals on those surfaces fail the build). Admin + reception stay HE/EN-validated with RU deep-merge fallback. Per-user toggle for staff on `profiles.language`; customer language auto-detected on first inbound message and persisted on `customers.language`.
 
 ### Production Supabase dashboard settings
 
@@ -158,21 +160,26 @@ Migrations are in `supabase/migrations/` and run in order:
 
 ## Localization
 
-Phase 7a shipped the i18n framework. Phase 7b shipped the content migration across 7 PRs (customer `/book` + `/order`, reception, therapist, admin portal in 4 sub-PRs). Every user-facing surface now renders through the catalog.
+Phase 7a shipped the i18n framework. Phase 7b shipped the content migration across 7 PRs (customer `/book` + `/order`, reception, therapist, admin portal in 4 sub-PRs) — EN + HE validated on every surface. **Phase 7d** (pending) completes the picture: RU becomes first-class on customer-facing surfaces and the therapist portal, and an ESLint rule makes hardcoded literals on those surfaces fail the build.
 
 - **Framework:** [next-intl](https://next-intl.dev/) in cookie-only mode (no `[locale]` URL segment). Locale is resolved per request via `NEXT_LOCALE` cookie → falls back to Hebrew.
-- **Supported locales:** Hebrew (default, RTL), English, Russian. Defined in [`src/i18n/config.ts`](src/i18n/config.ts).
-  - **EN + HE** are the only locales validated in Phase 7b. Every surface has been translated.
-  - **RU** catalog exists (AI-drafted) but has not been walked surface-by-surface. Missing keys deep-merge-fallback to English at render time (see `src/i18n/request.ts`). Validating RU end-to-end is a follow-up.
+- **Supported locales + coverage matrix:**
+  - Hebrew — default, RTL, first-class on every surface.
+  - English — first-class on customer + therapist surfaces; validated on admin + reception.
+  - Russian — **first-class on customer + therapist surfaces after Phase 7d ships (no fallback — a missing RU key on those surfaces is a release blocker)**. Admin + reception remain at EN deep-merge fallback.
+  - Catalog locales defined in [`src/i18n/config.ts`](src/i18n/config.ts).
 - **Catalogs:** one JSON file per locale under [`src/i18n/messages/`](src/i18n/messages/) (`he.json`, `en.json`, `ru.json`). Top-level namespaces: `common.*`, `customer.*`, `admin.*`, `reception.*`, `therapist.*`.
 - **Persistence:** staff preference persists on `profiles.language`; customer preference on `customers.language` (auto-detected on first inbound message starting in Phase 8).
 - **Switcher:** [`src/components/locale-switcher.tsx`](src/components/locale-switcher.tsx), mounted in admin, reception, and therapist sidebars.
 - **RTL:** root layout sets `<html dir>` dynamically based on the active locale. Customer `/book` + `/order` pages no longer carry hardcoded `dir="rtl"` — they inherit from the root layout.
 - **Server-action errors:** still returned as English strings and rendered verbatim by `FormErrors`. Refactoring them to `{key, params}` envelopes was deferred from Phase 7b — a Phase 8+ item.
-- **SMS / email templates:** still English only. Templating them off `customers.language` is deferred to Phase 8 (when the SMS set expands).
-- **ESLint no-literal-strings rule:** not installed. Manual review is the only guardrail against regression. Worth adding if post-merge drift becomes a pattern.
+- **SMS / email templates:** still English / Hebrew only (Twilio + CardCom-receipt paths). Templating them off `customers.language` is deferred to Phase 8 (when the SMS set expands).
+- **ESLint no-literal-strings rule:** not installed yet. **Phase 7d installs it scoped to `src/app/book/**`, `src/app/order/**`, `src/app/therapist/**`, `src/components/book/**`, `src/components/order/**`, `src/components/therapist/**`.** Admin + reception remain exempt while RU stays optional there.
 
-**To add a new user-facing string:** edit `en.json` and `he.json` under the same key path, then call `t('namespace.key')` in the component (use `useTranslations(ns)` in client components, `getTranslations(ns)` in server components). RU can be left empty — it falls back to English automatically.
+**To add a new user-facing string:**
+
+- **Admin / reception / common:** edit `en.json` and `he.json` under the same key path, then call `t('namespace.key')` in the component (use `useTranslations(ns)` in client components, `getTranslations(ns)` in server components). RU can be left empty — it falls back to English automatically.
+- **Customer-facing (`/book`, `/order`) or therapist portal:** edit `en.json`, `he.json`, **and** `ru.json` in the same commit. The ESLint rule (after Phase 7d) will fail the build if the literal is inlined in the component instead of keyed.
 
 ## Scripts
 

@@ -6,30 +6,35 @@
 
 **SpaMe** is a single-venue spa management platform built for a boutique spa in Tel Aviv, replacing Biz-Online. Single repo, single product — the earlier "SpaMeV3" split for the conversational layer is dropped; WhatsApp + AI + receptionist Texter inbox all live here.
 
-Next.js 16 (App Router) on Vercel, Supabase Postgres + Auth, Tailwind v4, TypeScript. In production at **https://spa-me2.vercel.app**. Current scale: ~20 therapists, a few receptionists, hundreds of customers. Hebrew default, English validated surface-by-surface; Russian is AI-drafted with EN deep-merge fallback. Locale is a `NEXT_LOCALE` cookie — no `[locale]` URL segment.
+Next.js 16 (App Router) on Vercel, Supabase Postgres + Auth, Tailwind v4, TypeScript. In production at **https://spa-me2.vercel.app**. Current scale: ~20 therapists, a few receptionists, hundreds of customers. Hebrew default; **HE / EN / RU are first-class on customer-facing surfaces and the therapist portal** (no fallbacks); admin + reception stay HE/EN-validated with RU deep-merge fallback. Locale is a `NEXT_LOCALE` cookie — no `[locale]` URL segment.
 
 ## Roles (Phase 6+)
 
-- **Super Admin** — full CRUD + audit log + reports + full inbox visibility.
-- **Receptionist** (Phase 6) — primary surface `/reception/inbox`; creates bookings (may pick a therapist); submits own on-duty (chat + phone) windows. Cannot manage therapists / services / rooms / settings / audit log; does not receive therapist assignment receipts.
-- **Therapist** — own availability + time-off; read-only bookings; confirms deferred-assignment receipts (2h SLA).
-- **Customer** — phone-identified (E.164), no login, no accounts.
+- **Super Admin** — full CRUD + audit log + reports + full inbox visibility. Can approve / edit / reject AI-drafted outbound replies from the same inbox receptionists use. Owns the `auto_assign_enabled` spa setting and the publish action.
+- **Receptionist** (Phase 6) — primary surface `/reception/inbox`; creates bookings (may pre-empt the auto-assignment engine by picking a therapist **and/or** a room at booking creation); submits own on-duty (chat + phone) windows; may mute own manager push alerts via profile preferences. Cannot manage therapists / services / rooms / settings / audit log; does not receive therapist assignment receipts.
+- **Therapist** — own availability + time-off; read-only bookings; confirms assignment receipts delivered across their **chosen subset of four parallel channels** (WhatsApp + portal + email + SMS — default all four). One confirmation across any enabled channel resolves; 2h SLA from publish.
+- **Customer** — phone-identified (E.164), no login, no accounts. Never sees therapist names or specific room identifiers.
 
 ## Hard invariants (never relaxed)
 
-- AI never writes to the DB directly — only calls Zod-validated server actions.
-- AI never assigns a therapist in V1 — humans only.
-- Every AI-drafted outbound reply is receptionist-approved in V1. No auto-send.
-- Payment webhook is the source of truth for payment success.
-- Therapist identity is anonymous on every customer surface.
+1. The conversational AI agent never writes to the DB directly — only calls Zod-validated server actions.
+2. The conversational AI agent does not pick therapists or rooms — resource selection is the server-side auto-assignment engine's job, post-payment confirmation.
+3. No therapist is notified of a treatment assignment (or the weekly work schedule it rolls up into) until the manager publishes. Default cadence: tomorrow's assignments publish the evening before.
+4. Capacity (therapist + room) is held at engine-selection time — bookings in `auto_suggested` / `auto_assigned` / `published` / `therapist_confirmed` block both resources. `pending_payment` and `cancelled` do not hold capacity.
+5. Every AI-drafted outbound reply to customers is approved by a receptionist OR a super admin. No auto-send in V1.
+6. Payment webhook is the source of truth for payment success.
+7. Therapist identity AND room identity are anonymous on every customer-facing surface.
+8. Three booking paths (web / WhatsApp / receptionist) share one source of truth — same DB, same overlap constraints, same payment pipeline, same assignment lifecycle.
+9. Customer-facing surfaces and the therapist portal render in full HE / EN / RU with no fallbacks; admin + reception may fall back to EN.
 
 ## Before you do anything
 
 1. Read [`CLAUDE.md`](./CLAUDE.md) — engineering rules, non-negotiable architecture constraints, business rules, allowed-action list for the AI.
-2. Read [`docs/plans/MASTER-PLAN.md`](./docs/plans/MASTER-PLAN.md) — single source of truth for phase status. Do not rederive it; update it when phases ship.
-3. Read [`docs/DOC-SYNC.md`](./docs/DOC-SYNC.md) — the mandatory pre-commit manifest. Walk it before every commit.
-4. Skim [`docs/qa/defect-retest.md`](./docs/qa/defect-retest.md) if you're about to touch a UI surface — shows every DEF-* the repo has closed and where the fix lives, so you don't accidentally regress it.
-5. `git log --oneline -10` on `main` + `gh pr list --state merged --limit 5` — confirms what just shipped so you don't duplicate work.
+2. Read [`docs/vision/SpaMe-vision.md`](./docs/vision/SpaMe-vision.md) — canonical product vision (who it serves, booking assignment lifecycle, hard invariants, confirmed decisions).
+3. Read [`docs/plans/MASTER-PLAN.md`](./docs/plans/MASTER-PLAN.md) — single source of truth for phase status. Do not rederive it; update it when phases ship.
+4. Read [`docs/DOC-SYNC.md`](./docs/DOC-SYNC.md) — the mandatory pre-commit manifest. Walk it before every commit.
+5. Skim [`docs/qa/defect-retest.md`](./docs/qa/defect-retest.md) if you're about to touch a UI surface — shows every DEF-* the repo has closed and where the fix lives, so you don't accidentally regress it.
+6. `git log --oneline -10` on `main` + `gh pr list --state merged --limit 5` — confirms what just shipped so you don't duplicate work.
 
 ## Hosted services you'll hit
 
@@ -37,8 +42,9 @@ Next.js 16 (App Router) on Vercel, Supabase Postgres + Auth, Tailwind v4, TypeSc
 - **Vercel** — project `spa-me2` under team `roman-8776's projects` (Pro plan). Production alias `spa-me2.vercel.app`. Auto-deploys on push to `main`; PRs get preview URLs.
 - **CardCom** — payment provider. `PAYMENTS_CARDCOM_PROVIDER=mock` by default; flip to `real` only with valid terminal credentials.
 - **DTS + VPay** — voucher providers. Both default to `mock`. VPay client will live in `services/vpay-proxy/` deployed to Fly.io (mTLS + static IP) — single repo, separate deploy target.
-- **Twilio** — SMS for booking confirmations (Phase 4). Stays in production as fallback when WhatsApp is unavailable.
-- **Meta WhatsApp Business Cloud API** — inbound + outbound conversational channel (Phase 8, not yet wired; build against mock adapter first).
+- **Twilio** — SMS for booking confirmations (Phase 4). Stays in production as fallback when WhatsApp is unavailable; also one of four therapist assignment-notification channels once Phase 7c ships.
+- **Meta WhatsApp Business Cloud API** — inbound + outbound conversational channel (Phase 8, not yet wired; build against mock adapter first). Also carries therapist assignment notifications and manager push alerts once Phase 7c ships.
+- **Email provider** (TBD — Resend / Postmark / SES / SendGrid candidate, Phase 7c) — fourth therapist notification channel + manager push alerts on new auto-assignments. Provider choice + env vars land with Phase 7c; no email is sent today.
 - **LLM provider** (Anthropic Claude candidate, Phase 8) — drafts conversational replies into the approval queue.
 
 ## Minimum env to boot
@@ -68,10 +74,12 @@ See [`docs/plans/MASTER-PLAN.md`](./docs/plans/MASTER-PLAN.md) for the full phas
 
 - **Phase 6 — Receptionist role + portal** — SHIPPED (migrations 00022-00024, `/reception/*` portal, booking provenance)
 - **Phase 7a — i18n foundation** — SHIPPED (next-intl cookie-only mode, migration 00025 `language_code` enum + columns, catalogs in `src/i18n/messages/`, locale switcher, language-detect helper for Phase 8)
-- **Phase 7b — Staff + customer literal swaps** — SHIPPED across 7 PRs (#24 customer flow, #25 reception, #26 therapist, #28–#31 admin portal in 4 sub-PRs). **EN + HE only** per operator decision; RU remains at framework level (AI-drafted, deep-merge fallback to EN at render). Server-action error envelope + SMS/email templating + ESLint no-literal-strings rule all deferred.
+- **Phase 7b — Staff + customer literal swaps** — SHIPPED across 7 PRs (#24 customer flow, #25 reception, #26 therapist, #28–#31 admin portal in 4 sub-PRs). **EN + HE only** per operator decision at the time; Phase 7d upgrades customer + therapist surfaces to first-class RU.
 - **PR #27 — middleware redirect-loop + cookie propagation fix** — SHIPPED (effective-role check + `redirectWithCookies` helper closes `/login ↔ portal` loop for users with broken `profiles.therapist_id`/`receptionist_id` links, and propagates Supabase session cookies through every redirect)
-- **Phase 8 — Conversational platform** — NEXT (WhatsApp + web chat + AI agent + Texter-style receptionist inbox + AI writing-assist + no-show scoring), all in this repo; migration `00026_conversations_extensions.sql`
-- **Phase 9 — Customer profile + Reports** — customer gender + booking history + fixed reports + CSV; migration `00027_customer_gender.sql`
+- **Phase 7c — Auto-assignment engine + publish rail + multi-channel therapist notifications + manager push alerts** — NEXT. Migration `00026_auto_assignment.sql` (assignment_status rewrite `unassigned` / `auto_suggested` / `auto_assigned` / `published` / `therapist_confirmed`, exclusion constraints re-gated on assignment_status for both therapist AND room, `spa_settings.auto_assign_enabled` default ON, `profiles.alert_preferences` JSON, `therapist_notifications` + `manager_alerts` tables). Code: `src/lib/scheduling/assignment/` engine, `src/lib/notifications/` per-channel adapters + publish orchestrator + manager-alert sender, admin publish UI, per-manager mute preference. Email provider chosen here.
+- **Phase 7d — Customer + therapist full RU + ESLint no-literal-strings rule** — RU translation of every `customer.*` + `therapist.*` key; install `eslint-plugin-no-literal-string` (or equivalent) scoped to `src/app/book/**`, `src/app/order/**`, `src/app/therapist/**`, `src/components/book/**`, `src/components/order/**`, `src/components/therapist/**`. Admin + reception remain exempt.
+- **Phase 8 — Conversational platform** — WhatsApp + web chat + AI agent + Texter-style receptionist inbox + AI writing-assist + no-show scoring, all in this repo. Migration `00027_conversations_extensions.sql`.
+- **Phase 9 — Customer profile + Reports** — customer gender + booking history + fixed reports + CSV. Migration `00028_customer_gender.sql`.
 
 ## Something off?
 
