@@ -6,7 +6,7 @@
 
 **SpaMe** is a single-venue spa management platform built for a boutique spa in Tel Aviv, replacing Biz-Online. Single repo, single product — the earlier "SpaMeV3" split for the conversational layer is dropped; WhatsApp + AI + receptionist Texter inbox all live here.
 
-Next.js 16 (App Router) on Vercel, Supabase Postgres + Auth, Tailwind v4, TypeScript. In production at **https://spa-me2.vercel.app**. Current scale: ~20 therapists, a few receptionists, hundreds of customers. Customer-facing `/book` and `/order/<token>` are Hebrew (RTL); full HE / EN / RU localization for every user ships in **Phase 7**.
+Next.js 16 (App Router) on Vercel, Supabase Postgres + Auth, Tailwind v4, TypeScript. In production at **https://spa-me2.vercel.app**. Current scale: ~20 therapists, a few receptionists, hundreds of customers. Hebrew default, English validated surface-by-surface; Russian is AI-drafted with EN deep-merge fallback. Locale is a `NEXT_LOCALE` cookie — no `[locale]` URL segment.
 
 ## Roles (Phase 6+)
 
@@ -63,13 +63,14 @@ Production also needs `CRON_SECRET` + `NEXT_PUBLIC_APP_URL` (covers reset-passwo
 
 ## What's next on the roadmap
 
-See [`docs/plans/MASTER-PLAN.md`](./docs/plans/MASTER-PLAN.md) for the full phase list. In flight or next up:
+See [`docs/plans/MASTER-PLAN.md`](./docs/plans/MASTER-PLAN.md) for the full phase list. Current frontier:
 
 - **Phase 6 — Receptionist role + portal** — SHIPPED (migrations 00022-00024, `/reception/*` portal, booking provenance)
 - **Phase 7a — i18n foundation** — SHIPPED (next-intl cookie-only mode, migration 00025 `language_code` enum + columns, catalogs in `src/i18n/messages/`, locale switcher, language-detect helper for Phase 8)
-- **Phase 7b — Staff + customer literal swaps** — NEXT (migrate admin / therapist / reception / customer components from hardcoded strings to `useTranslations()`; error-envelope refactor; SMS templates; ESLint no-literal-strings rule)
-- **Phase 8 — Conversational platform** (WhatsApp + web chat + AI agent + Texter-style receptionist inbox + AI writing-assist + no-show scoring), all in this repo
-- **Phase 9 — Customer profile (gender), booking history, fixed reports + CSV**
+- **Phase 7b — Staff + customer literal swaps** — SHIPPED across 7 PRs (#24 customer flow, #25 reception, #26 therapist, #28–#31 admin portal in 4 sub-PRs). **EN + HE only** per operator decision; RU remains at framework level (AI-drafted, deep-merge fallback to EN at render). Server-action error envelope + SMS/email templating + ESLint no-literal-strings rule all deferred.
+- **PR #27 — middleware redirect-loop + cookie propagation fix** — SHIPPED (effective-role check + `redirectWithCookies` helper closes `/login ↔ portal` loop for users with broken `profiles.therapist_id`/`receptionist_id` links, and propagates Supabase session cookies through every redirect)
+- **Phase 8 — Conversational platform** — NEXT (WhatsApp + web chat + AI agent + Texter-style receptionist inbox + AI writing-assist + no-show scoring), all in this repo; migration `00026_conversations_extensions.sql`
+- **Phase 9 — Customer profile + Reports** — customer gender + booking history + fixed reports + CSV; migration `00027_customer_gender.sql`
 
 ## Something off?
 

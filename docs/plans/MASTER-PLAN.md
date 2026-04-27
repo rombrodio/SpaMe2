@@ -44,7 +44,7 @@ This plan covers architecture, database schema, folder structure, phased impleme
 - **Buffer time:** Configurable per service (`buffer_minutes` column on `services` table).
 - **Services:** 45 minutes treatment + 15 minutes buffer by default (operator decision, migration 00021).
 - **Business hours:** 09:00–21:00, admin-configurable, with 15/30/60-minute slot granularity (60 default).
-- **UI language:** Hebrew is the default for every surface; English and Russian are first-class for all users (admin, therapist, receptionist, customer). Per-user toggle; customer language auto-detected on first inbound message and persisted. Shipping in **Phase 7**.
+- **UI language:** Hebrew is the default for every surface. English is first-class, validated surface-by-surface across Phase 7b. Russian catalog is AI-drafted — missing keys deep-merge-fallback to English at render time. Per-user toggle persists on `profiles.language`; customer language is auto-detected on first inbound message and persisted on `customers.language` (detection helper shipped in Phase 7a; auto-set wired in Phase 8). **Framework shipped in Phase 7a (#23); content migration shipped in Phase 7b (#24–#31).**
 - **Payment provider:** CardCom (hosted page + webhooks) + DTS benefit vouchers + VPay stored-value vouchers.
 - **Roles:** `super_admin`, `receptionist`, `therapist`. Receptionist role lands in **Phase 6**.
 - **Therapist identity:** anonymous on every customer surface. Customer picks gender preference; server assigns a random eligible therapist at assignment time.
@@ -247,11 +247,14 @@ supabase/migrations/
 ```
 Phase 8 — Conversational platform
   00026_conversations_extensions.sql         (conversation_messages.ai_draft_of,
-                                              approval state enum, translations table)
+                                              approval state enum, translations table,
+                                              conversation_threads.handoff_summary)
 Phase 9 — Customer profile + reports
   00027_customer_gender.sql                  (customers.gender enum, required at
                                               booking time going forward)
 ```
+
+All 25 files in `supabase/migrations/` (`00001_*` through `00025_*`) are applied to the hosted Supabase project `avnsuyiyhcnihsnisgig` as of this writing. Phase 8 and Phase 9 migrations are pending authoring.
 
 ---
 
@@ -265,7 +268,8 @@ src/
 │   ├── globals.css
 │   ├── (auth)/
 │   │   ├── login/page.tsx
-│   │   └── callback/route.ts
+│   │   ├── set-password/page.tsx
+│   │   └── callback/page.tsx              # Client component — handles PKCE, OTP, implicit-hash flows
 │   ├── admin/
 │   │   ├── layout.tsx                      # Sidebar + auth guard
 │   │   ├── page.tsx                        # Dashboard
@@ -308,11 +312,12 @@ src/
 │   │   ├── availability/page.tsx           # Manage own availability rules
 │   │   └── time-off/page.tsx               # Manage own time-off
 │   ├── book/
-│   │   ├── layout.tsx                      # Customer-facing layout
-│   │   ├── page.tsx                        # Service selection
-│   │   ├── slots/page.tsx
-│   │   ├── confirm/page.tsx
-│   │   └── payment-return/page.tsx
+│   │   ├── layout.tsx                      # Customer-facing layout (RTL flips via dynamic <html dir>)
+│   │   └── page.tsx                        # Single-page flow: service → slot → contact, renders BookFlow
+│   ├── order/[token]/                      # Payment finalisation (JWT-gated)
+│   │   ├── layout.tsx page.tsx             # Method picker + summary
+│   │   ├── return/page.tsx                 # Bridge from CardCom redirect
+│   │   └── success/page.tsx                # Confirmation + idempotent SMS dispatch
 │   ├── chat/page.tsx
 │   └── api/
 │       ├── webhooks/
@@ -355,11 +360,9 @@ src/
 │   │   ├── translation.ts                  # inbound + outbound auto-translation
 │   │   ├── summary.ts                      # 2-3 sentence handoff summary
 │   │   └── no-show-scoring.ts              # advisory risk score
-│   ├── i18n/                               # Phase 7
-│   │   ├── config.ts                       # locales list, default, fallback
-│   │   ├── catalogs/he.json
-│   │   ├── catalogs/en.json
-│   │   └── catalogs/ru.json
+│   ├── i18n/                               # Phase 7 — locale-aware formatters
+│   │   ├── format.ts                       # formatIlsFromAgorot, formatDateIL, ...
+│   │   └── detect.ts                       # detectLanguage(text) — HE/RU/EN char-range heuristic
 │   ├── reports/                            # Phase 9
 │   │   ├── queries.ts
 │   │   └── csv.ts
@@ -376,25 +379,39 @@ src/
 │   │   └── audit.ts                        # Audit log helper
 │   └── types/index.ts
 ├── components/
-│   ├── ui/                                 # shadcn/ui (auto-generated)
-│   ├── admin/
+│   ├── ui/                                 # Hand-rolled primitives (CVA + Radix) — button, card, input, select, etc.
+│   ├── admin/                              # Super-admin portal components
 │   │   ├── sidebar.tsx
-│   │   ├── calendar-view.tsx
-│   │   ├── booking-form.tsx
-│   │   └── data-table.tsx
-│   ├── booking/
-│   │   ├── service-picker.tsx
-│   │   ├── slot-picker.tsx
-│   │   └── customer-form.tsx
-│   └── chat/chat-widget.tsx
-├── middleware.ts                            # Auth guard: /admin (super_admin), /reception (receptionist), /therapist (therapist)
+│   │   ├── booking/ bookings/ calendar/ customer/ therapist/ receptionist/
+│   │   ├── service/ room/ assignments/ audit-log/ settings/
+│   │   ├── breadcrumbs.tsx global-search.tsx list-search-bar.tsx row-link.tsx
+│   │   └── form-message.tsx
+│   ├── reception/                          # Receptionist portal — shares many admin components
+│   │   └── sidebar.tsx
+│   ├── therapist/                          # Therapist portal
+│   │   ├── change-password-card.tsx
+│   │   └── pending-confirmations-card.tsx
+│   ├── book/                               # Customer /book flow
+│   │   ├── book-flow.tsx contact-form.tsx service-card.tsx slot-grid.tsx
+│   ├── order/                              # Customer /order/[token]/* flow
+│   │   ├── booking-summary.tsx cardcom-iframe.tsx method-picker.tsx
+│   │   ├── order-page.tsx voucher-dts-form.tsx voucher-vpay-form.tsx
+│   └── locale-switcher.tsx                 # Mounted in all three staff sidebars
+├── i18n/                                   # Phase 7a — next-intl framework
+│   ├── config.ts                           # locales: ['he','en','ru']; defaultLocale 'he'; RTL set
+│   ├── request.ts                          # getRequestConfig — cookie-only locale, deep-merge fallback to EN
+│   └── messages/                           # JSON catalogs per locale
+│       ├── he.json                         # Hebrew (default)
+│       ├── en.json                         # English (canonical key source)
+│       └── ru.json                         # Russian (AI-drafted, deep-merge fallback to EN)
+├── middleware.ts                            # Auth guard + effective-role check + cookie propagation on redirects
 
 services/                                    # Phase 4.5 / 8 — non-Vercel deploys
 └── vpay-proxy/                              # mTLS + static-IP Fly.io proxy (Phase 4.5)
 
 supabase/
 ├── config.toml
-├── migrations/                             # (11 files as listed above)
+├── migrations/                             # 25 files, 00001_* through 00025_*
 └── seed.sql
 
 .env.local.example
@@ -715,41 +732,62 @@ Shipped in one PR:
 - Multi-mode on-duty window (chat vs phone separately) — V1 is one combined window
 - Shift-swap / approval / payroll-adjacent flows
 
-### Phase 7: Localization (HE / EN / RU) — split into 7a + 7b
+### Phase 7: Localization — split into 7a + 7b
 
-Scope of the originally-planned single phase was too large to ship as one reviewable PR once the admin portal string count materialised. Split into:
+Scope of the originally-planned single phase was too large to ship as one reviewable PR once the admin portal string count materialised. Split into 7a (framework) and 7b (content migration).
 
-#### Phase 7a — i18n foundation — SHIPPED
+**Revised scope for 7b** per operator decision on 2026-04-26: **EN + HE only**. Russian dropped at this stage (may return in a follow-up). No server-action error-envelope refactor. No SMS/email template i18n yet (Phase 8+).
+
+#### Phase 7a — i18n foundation — SHIPPED (PR #23)
 
 - [x] `next-intl` installed in **cookie-only** mode (no `[locale]` URL segment); `src/i18n/{config,request}.ts`, `next.config.ts` wrap
 - [x] Migration `00025_language_columns.sql` — `language_code` enum (`he`/`en`/`ru`), `profiles.language NOT NULL DEFAULT 'he'`, `customers.language` nullable (Phase 8 fills on first inbound message), widens `profiles_access` RLS WITH CHECK so non-super-admins can self-update their own language
-- [x] Per-locale JSON catalogs under `src/i18n/messages/{he,en,ru}.json` — full `common.*` + `customer.*` namespaces (Hebrew seeded from the pre-existing `src/lib/i18n/he.ts`, English source authored, Russian AI-drafted)
+- [x] Per-locale JSON catalogs under `src/i18n/messages/{he,en,ru}.json` — scaffold `common.*` + `customer.*` namespaces (Hebrew seeded from the pre-existing `src/lib/i18n/he.ts`, English source authored, Russian AI-drafted)
 - [x] `setLocaleAction` server action (writes `NEXT_LOCALE` cookie + `profiles.language`) + `LocaleSwitcher` component mounted in admin / reception / therapist sidebars
 - [x] `detectLanguage(text)` helper + 15 unit tests (Hebrew / Cyrillic / Latin char-range detection, majority wins, HE tie-break) — ready for Phase 8 to auto-set `customers.language` on first inbound WhatsApp / web-chat message
 - [x] Root layout sets `<html lang dir>` dynamically from active locale; `dir` flips to `rtl` for Hebrew
 - [x] `src/lib/i18n/format.ts` — locale-aware formatters (`formatIlsFromAgorot`, `formatDateIL`, `formatTimeIL`, `formatDateTimeILFull`) extracted from the old `he.ts`
 
-#### Phase 7b — Staff + customer literal swaps — NEXT
+#### Phase 7b — Staff + customer literal swaps — SHIPPED (7 PRs)
 
-The actual content translation work. Deliberately separated so the framework PR stays reviewable and each subsequent surface migration can ship independently.
+Content translation for every user-facing surface. Split across seven independently-merged PRs so review stayed scoped:
 
-- [ ] Customer flow: migrate `/book` + `/order/*` (17 files) from `he.ts` to `useTranslations()`; drop the transitional hardcoded `dir="rtl"` on customer layouts; delete `src/lib/i18n/he.ts`
-- [ ] Reception portal: extract strings, draft HE + RU
-- [ ] Therapist portal: extract strings, draft HE + RU
-- [ ] Admin portal (biggest surface): extract strings in 2-3 commits grouped by sub-area (bookings / people / catalog / reports), draft HE + RU
-- [ ] Server-action error envelope refactor: `{key, params}` instead of English strings; `FormErrors` component calls `t(key, params)`
-- [ ] SMS + email templates read `customers.language` and render from `sms.*` catalog
-- [ ] ESLint `no-literal-user-facing-strings` rule (warning, then error in a follow-up)
-- [ ] Snapshot tests: `/book` and `/admin` rendered in each of HE / EN / RU
-- [ ] Flag low-confidence AI translations with review comments for operator sign-off
+- [x] **PR #24 — Customer flow** — migrated `/book` + `/order/*` (17 files) from the old `he.ts` helpers to `useTranslations()`, dropped the transitional hardcoded `dir="rtl"` on customer layouts, deleted `src/lib/i18n/he.ts` + `he.test.ts`
+- [x] **PR #25 — Reception portal** — `/reception/*` dashboard, availability, booking-new, booking-list, sidebar all on `useTranslations()`; new `reception.*` namespace
+- [x] **PR #26 — Therapist portal** — `/therapist/*` pages + shared availability/time-off sections; new `therapist.*` namespace, shared `AvailabilitySection`/`TimeOffSection` accept `titleKey`/`helperKey` for per-portal override
+- [x] **PR #28 — Admin portal 1/4: chrome + dashboard** — admin sidebar, global search, list-search-bar, pager, row-link, breadcrumbs, `/admin` dashboard; nav config migrated to `labelKey`/`groupLabelKey`
+- [x] **PR #29 — Admin portal 2/4: bookings + calendar + assignments** — biggest subtree (~3,400 LOC): bookings list/detail/new, `BookingForm` + `SlotPicker` + `PaymentPanel`, all four calendar views + `TherapistFilter`, `AssignmentList` + empty states; new `admin.bookings.*`, `admin.calendar.*`, `admin.assignments.*`, `admin.status.*`, `admin.paymentStatus.*`, `admin.source.*` namespaces
+- [x] **PR #30 — Admin portal 3/4: people** — therapists/receptionists/customers list+new+edit, edit-forms + services-section, `CustomerCombobox` + `CreateCustomerDialog` (shared with `/admin/bookings/new` and `/reception/bookings/new`)
+- [x] **PR #31 — Admin portal 4/4: catalog + ops tail** — services (+ `VoucherMappingsSection`), rooms (+ services + blocks sections, locale-aware date formatting), `/admin/audit-log` (with `translateAction`/`translateEntityType` lookup helpers, ICU-plural diff toggles), `/admin/settings`
+
+**What's in scope that did NOT ship** (explicitly deferred, not forgotten):
+
+- Server-action error envelope refactor — `FormErrors` still renders English strings returned by the server; operator called this a Nit
+- SMS + email templates keyed off `customers.language` — Phase 8+ work
+- ESLint `no-literal-user-facing-strings` rule — not installed; manual review is the only guardrail for regressions
+- Snapshot tests of `/book` and `/admin` rendered in each locale — not added
+- Russian — catalog exists (AI-drafted in 7a) but none of the 7b surfaces were validated in RU; `src/i18n/request.ts` deep-merges missing RU keys to English at render time
 
 **Depends on:** Phase 7a (shipped).
+
+### Stabilization: PR #27 — middleware redirect-loop + cookie propagation — SHIPPED
+
+Between Phase 7b PRs (landed with the therapist-portal i18n PR in flight), a subtle auth bug surfaced: users would hit `ERR_TOO_MANY_REDIRECTS` on `/login` after signing in.
+
+**Root cause** — two independent bugs stacked:
+
+1. **Broken profile-link loop.** `profiles.role='therapist'` with `profiles.therapist_id = NULL` (a half-completed invite) is internally inconsistent. Middleware trusted `role` alone and redirected `/login → /therapist`; `getCurrentTherapistId()` saw the null FK and bounced back to `/login`. Same topology existed for receptionists.
+2. **Cookie strip on redirect.** `NextResponse.redirect(url)` creates a fresh response with no `Set-Cookie` headers, so the refreshed Supabase session cookies written by `auth.getUser()` were dropped on every redirect. Latent — would bite the first time a user's access token expired mid-navigation.
+
+**Fix.** Middleware now computes an **effective role** that only trusts `role='therapist'` when `therapist_id` is also set (symmetrically for receptionist). Broken-link users stay on `/login` with a visible `?error=...` banner instead of looping. A new `redirectWithCookies(url)` helper explicitly copies every cookie from `supabaseResponse` onto the redirect before returning it — all five redirect call sites go through it.
+
+Net result: the `/login ↔ /therapist` ping-pong is impossible to reproduce regardless of profile state, and session cookies are propagated through every auth redirect.
 
 ### Phase 8: Conversational platform (WhatsApp + Web Chat + AI) (~30 files)
 
 **Goal:** The Texter-alike WhatsApp Business + web chat platform, fully in-repo. Inbound conversations stream into `/reception/inbox`; the AI drafts replies that a receptionist approves before send; booking actions are reachable from an in-chat booking panel.
 
-- [ ] Migration `00024_conversations_extensions.sql`:
+- [ ] Migration `00026_conversations_extensions.sql`:
   - `conversation_messages.ai_draft_of` (nullable FK — links an approved send back to the AI draft it originated from)
   - `conversation_messages.approval_state` enum (`pending_approval`, `approved`, `edited`, `rejected`, `sent`, `received`)
   - `conversation_messages.translated_from` + `translated_to` for auto-translation records
@@ -784,7 +822,7 @@ The actual content translation work. Deliberately separated so the framework PR 
 
 **Goal:** Close the customer-data gap (gender, booking history) and ship the fixed-report module.
 
-- [ ] Migration `00025_customer_gender.sql` — `customers.gender` enum (`'male' | 'female' | 'other'`), not-null going forward (existing rows back-filled as `'other'` or NULL-tolerant with a one-time prompt)
+- [ ] Migration `00027_customer_gender.sql` — `customers.gender` enum (`'male' | 'female' | 'other'`), not-null going forward (existing rows back-filled as `'other'` or NULL-tolerant with a one-time prompt). Number assumes Phase 8 ships 00026 first; if Phase 9 ships first, becomes 00026.
 - [ ] Update `/book`, `/reception/bookings/new`, `/admin/bookings/new`, and the AI `create_tentative_booking` tool to collect + require `gender`
 - [ ] `src/app/admin/customers/[id]/page.tsx` — booking history (past + upcoming), lifetime value, next appointment, quick-rebook button (SPA-050 / SPA-051)
 - [ ] SPA-091 service-polish remainder — per-service images, room/category grouping on `/book`, richer service detail
@@ -817,7 +855,7 @@ The actual content translation work. Deliberately separated so the framework PR 
 - No real-time calendar until Phase 8 (polling/refresh is fine); Supabase Realtime arrives with the inbox.
 - No custom report builder — only fixed reports with date range + CSV export (Phase 9).
 - No email notifications — WhatsApp is the primary channel, Twilio SMS is the fallback.
-- 162 Vitest tests across 12 files cover scheduling, payments, availability, and the unassigned-booking matcher. CI (`.github/workflows/ci.yml`) runs typecheck + lint + test + build on every push and PR.
+- 208 Vitest tests across 16 files cover scheduling, payments, availability, the unassigned-booking matcher, `allowedOrRedirect` role × portal matrix, `detectLanguage`, receptionist Zod schemas, and Twilio SMS wrapper. CI (`.github/workflows/ci.yml`) runs typecheck + lint + test + build on every push and PR.
 - Single payment provider, no multi-provider routing
 - No job queue — webhook/WhatsApp processing is synchronous in route handlers
 - Price as integer (agorot) not decimal — UI handles display conversion
@@ -838,7 +876,7 @@ The actual content translation work. Deliberately separated so the framework PR 
 - **Buffer time:** Configurable per service (`buffer_minutes` on services table).
 - **Service durations:** 45 min treatment + 15 min buffer by default (migration 00021).
 - **Business hours:** 09:00–21:00, admin-configurable; slot granularity 15/30/60 min, 60 default (migration 00020 + settings form).
-- **Language policy:** Hebrew default, first-class EN + RU for every user. Per-user toggle for staff; customer language auto-detected on first inbound message and persisted. Framework + columns land in Phase 7.
+- **Language policy:** Hebrew default. English is first-class and validated. Russian catalog is AI-drafted — EN fallback at render. Per-user toggle for staff on `profiles.language`; customer language auto-detected on first inbound message and persisted on `customers.language`. Shipped: framework + columns in Phase 7a (#23), content migration in Phase 7b (#24–#31).
 - **Cash-on-arrival:** Secured by CardCom token (CreateTokenOnly with Shva J-validation), NOT a symbolic 1 NIS charge. Penalty captured via LowProfileChargeToken on late cancel / no-show per the 5%-or-100-ILS policy (v1_5pct_or_100ILS_min snapshot).
 - **Therapist identity:** anonymous across customer surfaces (/book, /order, SMS, WhatsApp). Admin + therapist portals retain full identity. Customer picks gender preference (male / female / any); server assigns a random eligible therapist post-payment (deferred-assignment flow).
 - **Role model:** `super_admin` + `receptionist` + `therapist`. Receptionist role is a named Phase 6 workstream, not deferred.
