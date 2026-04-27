@@ -531,6 +531,242 @@
         "toastCreateError": "לא ניתן ליצור לקוח."
       }
     },
+    "services": {
+      "crumb": "טיפולים",
+      "title": "טיפולים",
+      "newButton": "טיפול חדש",
+      "cardTitle": "כל הטיפולים",
+      "empty": "עדיין אין טיפולים. צור אחד כדי להתחיל.",
+      "columns": {
+        "name": "שם",
+        "duration": "משך",
+        "price": "מחיר",
+        "status": "סטטוס",
+        "actions": "פעולות"
+      },
+      "durationMin": "{minutes} דקות",
+      "statuses": {
+        "active": "פעיל",
+        "inactive": "לא פעיל"
+      },
+      "fields": {
+        "name": "שם",
+        "description": "תיאור",
+        "durationMinutes": "משך (דקות)",
+        "bufferMinutes": "חיץ (דקות)",
+        "priceIls": "מחיר (ש\"ח)",
+        "pricePlaceholder": "למשל 280",
+        "priceHelper": "הזן את המחיר בשקלים שלמים (למשל 280 עבור ₪280.00). נשמר פנימית באגורות (1 ₪ = 100).",
+        "active": "פעיל"
+      },
+      "new": {
+        "title": "טיפול חדש",
+        "cardTitle": "פרטי הטיפול",
+        "createButton": "צור טיפול",
+        "creating": "יוצר...",
+        "cancel": "ביטול",
+        "toastCreated": "הטיפול נוצר.",
+        "toastCreateError": "לא ניתן ליצור טיפול."
+      },
+      "edit": {
+        "cardTitle": "פרטי הטיפול",
+        "loading": "טוען...",
+        "notFound": "הטיפול לא נמצא.",
+        "save": "שמור שינויים",
+        "saving": "שומר...",
+        "cancel": "ביטול",
+        "toastSaved": "הטיפול נשמר.",
+        "toastSaveError": "לא ניתן לשמור את הטיפול.",
+        "toastDeleted": "הטיפול נמחק.",
+        "toastDeleteError": "לא ניתן למחוק את הטיפול.",
+        "delete": "מחק",
+        "deleteTitle": "מחק טיפול",
+        "deleteDescriptionBody": "מחיקת {name} היא קבועה ולא ניתנת לביטול. הזמנות קיימות המקושרות לטיפול זה ישמרו עותק מטמון, אך לא תוכל להזמין אותו ללקוחות חדשים.",
+        "deleteConfirmBody": "הקלד DELETE לאישור.",
+        "deleteConfirmLabel": "מחק טיפול"
+      },
+      "voucherMappings": {
+        "cardTitle": "מיפויי SKU של שוברים",
+        "intro": "מפה את הטיפול לאחד או יותר מ-SKU של שוברים כדי שספקים (שוברי הטבות DTS, כרטיסי ערך טעונים VPay) ידעו שהטיפול הזה ניתן למימוש תחת קודים אלה. לא נדרש עבור תשלומי אשראי.",
+        "loading": "טוען…",
+        "empty": "לא הוגדרו מיפויים. לקוחות יכולים לממש כל שובר על ההזמנה; מיפויים רק מסננים אילו SKUs המנוע מתייחס אליהם כקנוניים לטיפול זה.",
+        "provider": "ספק",
+        "sku": "SKU / FullBarCode",
+        "skuPlaceholder": "DTS-SWEDISH-60 או VPay SKU",
+        "skuHelper": "אותיות גדולות בלבד. אותיות, ספרות, ו-_ - . /. כפילויות תחת אותו ספק נדחות.",
+        "add": "הוסף",
+        "adding": "…",
+        "remove": "הסר",
+        "removeTitle": "הסר מיפוי שובר",
+        "removeConfirmLabel": "הסר מיפוי",
+        "removeDescription": "להסיר את המיפוי {provider} / {sku}? הטיפול נשאר — רק קישור ה-SKU-לטיפול נמחק.",
+        "errors": {
+          "required": "SKU נדרש",
+          "invalid": "SKUs משתמשים באותיות A–Z גדולות, 0–9, והפיסוק `_`, `-`, `.`, `/` (מקסימום 64 תווים, חייב להתחיל באות או ספרה).",
+          "duplicate": "{provider} / {sku} כבר ממופה.",
+          "addFailed": "הוספת המיפוי נכשלה",
+          "removeFailed": "הסרת המיפוי נכשלה"
+        },
+        "toasts": {
+          "added": "מופה {provider} / {sku}.",
+          "removed": "הוסר {provider} / {sku}."
+        }
+      }
+    },
+    "rooms": {
+      "crumb": "חדרים",
+      "title": "חדרים",
+      "newButton": "חדר חדש",
+      "cardTitle": "כל החדרים",
+      "empty": "עדיין אין חדרים. צור אחד כדי להתחיל.",
+      "columns": {
+        "name": "שם",
+        "description": "תיאור",
+        "status": "סטטוס",
+        "actions": "פעולות"
+      },
+      "statuses": {
+        "active": "פעיל",
+        "inactive": "לא פעיל"
+      },
+      "fields": {
+        "name": "שם",
+        "description": "תיאור",
+        "active": "פעיל"
+      },
+      "new": {
+        "title": "חדר חדש",
+        "cardTitle": "פרטי החדר",
+        "createButton": "צור חדר",
+        "creating": "יוצר...",
+        "cancel": "ביטול",
+        "toastCreated": "החדר נוצר.",
+        "toastCreateError": "לא ניתן ליצור חדר."
+      },
+      "edit": {
+        "cardTitle": "פרטי החדר",
+        "save": "שמור שינויים",
+        "saving": "שומר...",
+        "back": "חזרה",
+        "toastSaved": "החדר נשמר.",
+        "toastSaveError": "לא ניתן לשמור את החדר.",
+        "toastDeleted": "החדר נמחק.",
+        "toastDeleteError": "לא ניתן למחוק את החדר.",
+        "delete": "מחק חדר",
+        "deleteTitle": "מחק חדר",
+        "deleteDescription": "למחוק את {name}? פעולה זו תסיר את מיפויי התאימות שלו וחסימות עתידיות. הזמנות קודמות שהשתמשו בחדר זה ישמרו את העותק המטמון.",
+        "deleteConfirmLabel": "מחק חדר"
+      },
+      "services": {
+        "cardTitle": "טיפולים תואמים",
+        "empty": "עדיין אין טיפולים. צור טיפול קודם.",
+        "save": "שמור טיפולים",
+        "saving": "שומר...",
+        "saved": "הטיפולים עודכנו.",
+        "saveError": "שמירת הטיפולים נכשלה.",
+        "toastSaved": "הטיפולים התואמים עודכנו."
+      },
+      "blocks": {
+        "cardTitle": "חסימות חדר",
+        "empty": "אין חסימות מתוזמנות.",
+        "columns": {
+          "start": "התחלה",
+          "end": "סיום",
+          "reason": "סיבה",
+          "actions": "פעולות"
+        },
+        "addHeading": "הוסף חסימה",
+        "labels": {
+          "start": "התחלה",
+          "end": "סיום",
+          "reasonOptional": "סיבה (אופציונלי)"
+        },
+        "addButton": "הוסף חסימה",
+        "adding": "מוסיף...",
+        "deleteTitle": "מחק חסימת חדר",
+        "deleteDescription": "להסיר חסימה זו ({start} – {end})? החדר יהיה שוב זמין להזמנה בחלון זה.",
+        "deleteConfirmLabel": "מחק",
+        "delete": "מחק",
+        "toasts": {
+          "added": "החסימה נוספה.",
+          "addError": "לא ניתן להוסיף חסימה.",
+          "removed": "החסימה הוסרה.",
+          "deleteError": "לא ניתן למחוק את החסימה."
+        }
+      }
+    },
+    "auditLog": {
+      "crumb": "יומן פעולות",
+      "title": "יומן פעולות",
+      "summary": "{total} רשומות סה״כ. מציג עמוד {page} מתוך {totalPages}.",
+      "filtersTitle": "מסננים",
+      "entriesTitleEmpty": "רשומות (אין בעמוד זה)",
+      "entriesTitle": "רשומות ({shown} מתוך {total})",
+      "emptyFiltered": "אין רשומות יומן התואמות למסננים הנוכחיים.",
+      "entityType": "סוג ישות",
+      "action": "פעולה",
+      "all": "הכל",
+      "apply": "החל",
+      "clear": "נקה",
+      "system": "מערכת",
+      "columns": {
+        "when": "מתי",
+        "user": "משתמש",
+        "action": "פעולה",
+        "entity": "ישות",
+        "diff": "שינוי"
+      },
+      "pageOf": "עמוד {page} מתוך {totalPages}",
+      "previous": "הקודם",
+      "next": "הבא",
+      "entityTypes": {
+        "therapist": "מטפל",
+        "room": "חדר",
+        "service": "טיפול",
+        "customer": "לקוח",
+        "booking": "הזמנה",
+        "payment": "תשלום"
+      },
+      "actions": {
+        "create": "יצירה",
+        "update": "עדכון",
+        "delete": "מחיקה",
+        "status_change": "שינוי סטטוס",
+        "payment_webhook": "webhook תשלום"
+      },
+      "diff": {
+        "noneChanged": "לא נרשמו שינויי שדות.",
+        "showUnchanged": "הצג {count, plural, one {# שדה שלא השתנה} other {# שדות שלא השתנו}}",
+        "hideUnchanged": "הסתר {count, plural, one {# שדה שלא השתנה} other {# שדות שלא השתנו}}"
+      }
+    },
+    "settings": {
+      "crumb": "הגדרות",
+      "title": "הגדרות",
+      "subheading": "הגדרות תפעוליות הניתנות לעריכה ללא פריסה מחדש.",
+      "configCardTitle": "תצורת הספא",
+      "configIntro": "מספר הטלפון של התורן מקבל התראות SMS ו-וואטסאפ עבור הזמנות חדשות לא משויכות, סירובי מטפלים, והזמנות הקרובות לשעת התחלה שעדיין זקוקות למטפל. השאר ריק כדי להשבית את ההתראות האלה. שעות פעילות ורזולוציית סלוטים שולטים במה יופיע כניתן להזמנה ביומן הפונה ללקוח.",
+      "onCallSection": "מנהל תורן",
+      "managerName": "שם המנהל",
+      "managerNamePlaceholder": "אופציונלי — מוצג ביומן הפעולות",
+      "managerPhone": "טלפון המנהל",
+      "managerPhonePlaceholder": "למשל 0521234567",
+      "managerPhoneHelper": "מקבל פורמט מקומי (05X) או E.164 (972+). נשמר כ-E.164.",
+      "hoursSection": "שעות פעילות",
+      "hoursIntro": "החלון החיצוני שבו הספא פתוח. כללי הזמינות של המטפלים נחתכים לחלון זה בעת חיפוש סלוטים להזמנה.",
+      "opensAt": "נפתח ב-",
+      "closesAt": "נסגר ב-",
+      "slotGranularity": "רזולוציית סלוטים",
+      "slotGranularity60": "60 דקות (בשעה עגולה בלבד)",
+      "slotGranularity30": "30 דקות",
+      "slotGranularity15": "15 דקות",
+      "slotGranularityHelper": "שולט ברשת שלקוחות יכולים לבחור ממנה ובמה שהמנהל יכול להגדיר כשעות התחלה/סיום של כללי זמינות. הכלל V2 של הספא הוא \"כל הטיפולים מתחילים בשעה עגולה\" — לכן ברירת המחדל היא 60.",
+      "save": "שמור",
+      "saving": "שומר...",
+      "saved": "נשמר.",
+      "toastSaved": "ההגדרות נשמרו.",
+      "toastSaveError": "לא ניתן לשמור את ההגדרות."
+    },
     "assignments": {
       "title": "שיוכי מטפלים",
       "crumb": "שיוכים",

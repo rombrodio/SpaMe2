@@ -531,6 +531,242 @@
         "toastCreateError": "Couldn't create customer."
       }
     },
+    "services": {
+      "crumb": "Services",
+      "title": "Services",
+      "newButton": "New Service",
+      "cardTitle": "All Services",
+      "empty": "No services yet. Create one to get started.",
+      "columns": {
+        "name": "Name",
+        "duration": "Duration",
+        "price": "Price",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "durationMin": "{minutes} min",
+      "statuses": {
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "fields": {
+        "name": "Name",
+        "description": "Description",
+        "durationMinutes": "Duration (minutes)",
+        "bufferMinutes": "Buffer (minutes)",
+        "priceIls": "Price (ILS)",
+        "pricePlaceholder": "e.g. 280",
+        "priceHelper": "Enter the price in whole shekels (e.g. 280 for ₪280.00). Stored internally as agorot (1 ₪ = 100).",
+        "active": "Active"
+      },
+      "new": {
+        "title": "New Service",
+        "cardTitle": "Service Details",
+        "createButton": "Create Service",
+        "creating": "Creating...",
+        "cancel": "Cancel",
+        "toastCreated": "Service created.",
+        "toastCreateError": "Couldn't create service."
+      },
+      "edit": {
+        "cardTitle": "Service Details",
+        "loading": "Loading...",
+        "notFound": "Service not found.",
+        "save": "Save Changes",
+        "saving": "Saving...",
+        "cancel": "Cancel",
+        "toastSaved": "Service saved.",
+        "toastSaveError": "Couldn't save service.",
+        "toastDeleted": "Service deleted.",
+        "toastDeleteError": "Couldn't delete service.",
+        "delete": "Delete",
+        "deleteTitle": "Delete service",
+        "deleteDescriptionBody": "Deleting {name} is permanent and cannot be undone. Existing bookings that reference this service will keep the cached copy but you won't be able to book it for new customers.",
+        "deleteConfirmBody": "Type DELETE to confirm.",
+        "deleteConfirmLabel": "Delete service"
+      },
+      "voucherMappings": {
+        "cardTitle": "Voucher SKU Mappings",
+        "intro": "Map this service to one or more voucher SKUs so providers (DTS benefit vouchers, VPay stored-value cards) know this service can be redeemed under those codes. Not required for credit-card payments.",
+        "loading": "Loading…",
+        "empty": "No mappings configured. Customers can still redeem any voucher on the booking; mappings only gate which SKUs the engine considers canonical for this service.",
+        "provider": "Provider",
+        "sku": "SKU / FullBarCode",
+        "skuPlaceholder": "DTS-SWEDISH-60 or VPay SKU",
+        "skuHelper": "Uppercase only. Letters, digits, and _ - . /. Duplicates under the same provider are rejected.",
+        "add": "Add",
+        "adding": "…",
+        "remove": "Remove",
+        "removeTitle": "Remove voucher mapping",
+        "removeConfirmLabel": "Remove mapping",
+        "removeDescription": "Remove the {provider} / {sku} mapping? The service stays — only this SKU-to-service link is deleted.",
+        "errors": {
+          "required": "SKU is required",
+          "invalid": "SKUs use uppercase A–Z, 0–9, and the punctuation `_`, `-`, `.`, `/` (max 64 chars, must start with letter or digit).",
+          "duplicate": "{provider} / {sku} is already mapped.",
+          "addFailed": "Failed to add mapping",
+          "removeFailed": "Failed to remove mapping"
+        },
+        "toasts": {
+          "added": "Mapped {provider} / {sku}.",
+          "removed": "Removed {provider} / {sku}."
+        }
+      }
+    },
+    "rooms": {
+      "crumb": "Rooms",
+      "title": "Rooms",
+      "newButton": "New Room",
+      "cardTitle": "All Rooms",
+      "empty": "No rooms yet. Create one to get started.",
+      "columns": {
+        "name": "Name",
+        "description": "Description",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "statuses": {
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "fields": {
+        "name": "Name",
+        "description": "Description",
+        "active": "Active"
+      },
+      "new": {
+        "title": "New Room",
+        "cardTitle": "Room Details",
+        "createButton": "Create Room",
+        "creating": "Creating...",
+        "cancel": "Cancel",
+        "toastCreated": "Room created.",
+        "toastCreateError": "Couldn't create room."
+      },
+      "edit": {
+        "cardTitle": "Room Details",
+        "save": "Save Changes",
+        "saving": "Saving...",
+        "back": "Back",
+        "toastSaved": "Room saved.",
+        "toastSaveError": "Couldn't save room.",
+        "toastDeleted": "Room deleted.",
+        "toastDeleteError": "Couldn't delete room.",
+        "delete": "Delete Room",
+        "deleteTitle": "Delete room",
+        "deleteDescription": "Delete {name}? This will remove its compatibility mapping and any future blocks. Past bookings that used this room will keep the cached copy.",
+        "deleteConfirmLabel": "Delete room"
+      },
+      "services": {
+        "cardTitle": "Compatible Services",
+        "empty": "No services exist yet. Create a service first.",
+        "save": "Save Services",
+        "saving": "Saving...",
+        "saved": "Services updated.",
+        "saveError": "Failed to save services.",
+        "toastSaved": "Compatible services updated."
+      },
+      "blocks": {
+        "cardTitle": "Room Blocks",
+        "empty": "No blocks scheduled.",
+        "columns": {
+          "start": "Start",
+          "end": "End",
+          "reason": "Reason",
+          "actions": "Actions"
+        },
+        "addHeading": "Add Block",
+        "labels": {
+          "start": "Start",
+          "end": "End",
+          "reasonOptional": "Reason (optional)"
+        },
+        "addButton": "Add Block",
+        "adding": "Adding...",
+        "deleteTitle": "Delete room block",
+        "deleteDescription": "Remove this block ({start} – {end})? The room becomes bookable again during this window.",
+        "deleteConfirmLabel": "Delete",
+        "delete": "Delete",
+        "toasts": {
+          "added": "Room block added.",
+          "addError": "Couldn't add room block.",
+          "removed": "Block removed.",
+          "deleteError": "Couldn't delete block."
+        }
+      }
+    },
+    "auditLog": {
+      "crumb": "Audit Log",
+      "title": "Audit Log",
+      "summary": "{total} total entries. Showing page {page} of {totalPages}.",
+      "filtersTitle": "Filters",
+      "entriesTitleEmpty": "Entries (none on this page)",
+      "entriesTitle": "Entries ({shown} of {total})",
+      "emptyFiltered": "No audit entries match the current filters.",
+      "entityType": "Entity type",
+      "action": "Action",
+      "all": "All",
+      "apply": "Apply",
+      "clear": "Clear",
+      "system": "system",
+      "columns": {
+        "when": "When",
+        "user": "User",
+        "action": "Action",
+        "entity": "Entity",
+        "diff": "Diff"
+      },
+      "pageOf": "Page {page} of {totalPages}",
+      "previous": "Previous",
+      "next": "Next",
+      "entityTypes": {
+        "therapist": "therapist",
+        "room": "room",
+        "service": "service",
+        "customer": "customer",
+        "booking": "booking",
+        "payment": "payment"
+      },
+      "actions": {
+        "create": "create",
+        "update": "update",
+        "delete": "delete",
+        "status_change": "status_change",
+        "payment_webhook": "payment_webhook"
+      },
+      "diff": {
+        "noneChanged": "No field changes recorded.",
+        "showUnchanged": "Show {count, plural, one {# unchanged field} other {# unchanged fields}}",
+        "hideUnchanged": "Hide {count, plural, one {# unchanged field} other {# unchanged fields}}"
+      }
+    },
+    "settings": {
+      "crumb": "Settings",
+      "title": "Settings",
+      "subheading": "Operational settings editable without a redeploy.",
+      "configCardTitle": "Spa configuration",
+      "configIntro": "The on-call phone number receives SMS and WhatsApp alerts for new unassigned bookings, therapist declines, and bookings close to start time that still need a therapist. Leave blank to disable those alerts. Operating hours and slot granularity control what times appear as bookable on the customer-facing calendar.",
+      "onCallSection": "On-call manager",
+      "managerName": "Manager name",
+      "managerNamePlaceholder": "Optional — shown in audit logs",
+      "managerPhone": "Manager phone",
+      "managerPhonePlaceholder": "e.g. 0521234567",
+      "managerPhoneHelper": "Accepts local (05X) or E.164 (+972) format. Stored as E.164.",
+      "hoursSection": "Operating hours",
+      "hoursIntro": "The outer window the spa is open. Therapist availability rules are clipped to this window when finding bookable slots.",
+      "opensAt": "Opens at",
+      "closesAt": "Closes at",
+      "slotGranularity": "Booking slot granularity",
+      "slotGranularity60": "60 minutes (on the hour only)",
+      "slotGranularity30": "30 minutes",
+      "slotGranularity15": "15 minutes",
+      "slotGranularityHelper": "Controls the grid customers can pick from and what the admin can set as availability rule start/end times. The spa's V2 rule is \"all treatments start on the hour\" — so default is 60.",
+      "save": "Save",
+      "saving": "Saving...",
+      "saved": "Saved.",
+      "toastSaved": "Settings saved.",
+      "toastSaveError": "Couldn't save settings."
+    },
     "assignments": {
       "title": "Therapist Assignments",
       "crumb": "Assignments",

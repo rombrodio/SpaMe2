@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import { getAuditLogs } from "@/lib/actions/audit";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
@@ -30,6 +31,7 @@ export default async function AuditLogPage({
   searchParams: Promise<SearchParams>;
 }) {
   const params = await searchParams;
+  const t = await getTranslations();
   const entity_type = params.entity_type || undefined;
   const action = params.action || undefined;
   const page = Math.max(1, Number(params.page ?? "1") || 1);
@@ -54,14 +56,16 @@ export default async function AuditLogPage({
 
   return (
     <div>
-      <h1 className="text-2xl font-bold">Audit Log</h1>
+      <h1 className="text-2xl font-bold">{t("admin.auditLog.title")}</h1>
       <p className="mt-1 text-muted-foreground">
-        {total} total entries. Showing page {page} of {totalPages}.
+        {t("admin.auditLog.summary", { total, page, totalPages })}
       </p>
 
       <Card className="mt-6">
         <CardHeader>
-          <CardTitle className="text-base">Filters</CardTitle>
+          <CardTitle className="text-base">
+            {t("admin.auditLog.filtersTitle")}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <form className="flex flex-wrap items-end gap-3" method="get">
@@ -70,7 +74,7 @@ export default async function AuditLogPage({
                 htmlFor="entity_type"
                 className="block text-xs font-medium text-muted-foreground"
               >
-                Entity type
+                {t("admin.auditLog.entityType")}
               </label>
               <select
                 id="entity_type"
@@ -78,10 +82,10 @@ export default async function AuditLogPage({
                 defaultValue={entity_type ?? ""}
                 className="mt-1 flex h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
               >
-                <option value="">All</option>
-                {ENTITY_TYPES.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
+                <option value="">{t("admin.auditLog.all")}</option>
+                {ENTITY_TYPES.map((et) => (
+                  <option key={et} value={et}>
+                    {t(`admin.auditLog.entityTypes.${et}` as never)}
                   </option>
                 ))}
               </select>
@@ -91,7 +95,7 @@ export default async function AuditLogPage({
                 htmlFor="action"
                 className="block text-xs font-medium text-muted-foreground"
               >
-                Action
+                {t("admin.auditLog.action")}
               </label>
               <select
                 id="action"
@@ -99,10 +103,10 @@ export default async function AuditLogPage({
                 defaultValue={action ?? ""}
                 className="mt-1 flex h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
               >
-                <option value="">All</option>
+                <option value="">{t("admin.auditLog.all")}</option>
                 {ACTIONS.map((a) => (
                   <option key={a} value={a}>
-                    {a}
+                    {t(`admin.auditLog.actions.${a}` as never)}
                   </option>
                 ))}
               </select>
@@ -111,13 +115,13 @@ export default async function AuditLogPage({
               type="submit"
               className="h-9 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground"
             >
-              Apply
+              {t("admin.auditLog.apply")}
             </button>
             <a
               href="/admin/audit-log"
               className="h-9 rounded-md border border-border px-3 py-2 text-sm"
             >
-              Clear
+              {t("admin.auditLog.clear")}
             </a>
           </form>
         </CardContent>
@@ -126,24 +130,39 @@ export default async function AuditLogPage({
       <Card className="mt-4">
         <CardHeader>
           <CardTitle className="text-base">
-            Entries {logs.length === 0 ? "(none on this page)" : `(${logs.length} of ${total})`}
+            {logs.length === 0
+              ? t("admin.auditLog.entriesTitleEmpty")
+              : t("admin.auditLog.entriesTitle", {
+                  shown: logs.length,
+                  total,
+                })}
           </CardTitle>
         </CardHeader>
         <CardContent>
           {logs.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No audit entries match the current filters.
+              {t("admin.auditLog.emptyFiltered")}
             </p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b text-left">
-                    <th className="pb-2 font-medium">When</th>
-                    <th className="pb-2 font-medium">User</th>
-                    <th className="pb-2 font-medium">Action</th>
-                    <th className="pb-2 font-medium">Entity</th>
-                    <th className="pb-2 font-medium">Diff</th>
+                    <th className="pb-2 font-medium">
+                      {t("admin.auditLog.columns.when")}
+                    </th>
+                    <th className="pb-2 font-medium">
+                      {t("admin.auditLog.columns.user")}
+                    </th>
+                    <th className="pb-2 font-medium">
+                      {t("admin.auditLog.columns.action")}
+                    </th>
+                    <th className="pb-2 font-medium">
+                      {t("admin.auditLog.columns.entity")}
+                    </th>
+                    <th className="pb-2 font-medium">
+                      {t("admin.auditLog.columns.diff")}
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -162,13 +181,13 @@ export default async function AuditLogPage({
                       <td className="py-3 font-mono text-xs text-muted-foreground">
                         {row.user_id
                           ? row.user_id.slice(0, 8)
-                          : "system"}
+                          : t("admin.auditLog.system")}
                       </td>
-                      <td className="py-3">{row.action}</td>
+                      <td className="py-3">{translateAction(t, row.action)}</td>
                       <td className="py-3">
                         <div className="flex flex-col gap-0.5">
                           <span className="text-xs uppercase tracking-wide text-muted-foreground">
-                            {row.entity_type}
+                            {translateEntityType(t, row.entity_type)}
                           </span>
                           {row.entityHref ? (
                             <Link
@@ -212,7 +231,7 @@ export default async function AuditLogPage({
           {totalPages > 1 && (
             <div className="mt-4 flex items-center justify-between text-sm">
               <p className="text-muted-foreground">
-                Page {page} of {totalPages}
+                {t("admin.auditLog.pageOf", { page, totalPages })}
               </p>
               <div className="flex gap-2">
                 <Link
@@ -223,7 +242,7 @@ export default async function AuditLogPage({
                     page <= 1 && "pointer-events-none opacity-50"
                   )}
                 >
-                  Previous
+                  {t("admin.auditLog.previous")}
                 </Link>
                 <Link
                   href={hrefFor(Math.min(totalPages, page + 1))}
@@ -233,7 +252,7 @@ export default async function AuditLogPage({
                     page >= totalPages && "pointer-events-none opacity-50"
                   )}
                 >
-                  Next
+                  {t("admin.auditLog.next")}
                 </Link>
               </div>
             </div>
@@ -242,4 +261,20 @@ export default async function AuditLogPage({
       </Card>
     </div>
   );
+}
+
+type Translator = Awaited<ReturnType<typeof getTranslations>>;
+
+function translateAction(t: Translator, action: string): string {
+  const key = `admin.auditLog.actions.${action}`;
+  const translated = t(key as never);
+  // next-intl returns the raw key when missing. For unknown actions, fall
+  // back to the raw value so debugging still works.
+  return translated === key ? action : translated;
+}
+
+function translateEntityType(t: Translator, entityType: string): string {
+  const key = `admin.auditLog.entityTypes.${entityType}`;
+  const translated = t(key as never);
+  return translated === key ? entityType : translated;
 }

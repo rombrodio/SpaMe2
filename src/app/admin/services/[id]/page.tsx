@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import {
   getService,
   updateService,
@@ -42,6 +43,7 @@ interface ServiceRecord {
 export default function EditServicePage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
+  const t = useTranslations();
   const [service, setService] = useState<ServiceRecord | null>(null);
   const [errors, setErrors] = useState<Record<string, string[]> | undefined>();
   const [submitting, setSubmitting] = useState(false);
@@ -65,11 +67,11 @@ export default function EditServicePage() {
     if (result && 'error' in result) {
       setErrors(result.error);
       setSubmitting(false);
-      toast.error("Couldn't save service.");
+      toast.error(t("admin.services.edit.toastSaveError"));
       return;
     }
 
-    toast.success("Service saved.");
+    toast.success(t("admin.services.edit.toastSaved"));
     resetDirty();
     router.push("/admin/services");
   }
@@ -81,27 +83,27 @@ export default function EditServicePage() {
       const message =
         result.error && "_form" in result.error && Array.isArray(result.error._form)
           ? result.error._form.join(" ")
-          : "Couldn't delete service.";
+          : t("admin.services.edit.toastDeleteError");
       throw new Error(message);
     }
 
-    toast.success("Service deleted.");
+    toast.success(t("admin.services.edit.toastDeleted"));
     router.push("/admin/services");
   }
 
   if (loading) {
-    return <p className="text-muted-foreground">Loading...</p>;
+    return <p className="text-muted-foreground">{t("admin.services.edit.loading")}</p>;
   }
 
   if (!service) {
-    return <p className="text-destructive">Service not found.</p>;
+    return <p className="text-destructive">{t("admin.services.edit.notFound")}</p>;
   }
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <Breadcrumbs
         items={[
-          { label: "Services", href: "/admin/services" },
+          { label: t("admin.services.crumb"), href: "/admin/services" },
           { label: service.name },
         ]}
       />
@@ -110,14 +112,14 @@ export default function EditServicePage() {
       <DirtyFormGuard dirty={dirty && !submitting}>
       <Card>
         <CardHeader>
-          <CardTitle>Service Details</CardTitle>
+          <CardTitle>{t("admin.services.edit.cardTitle")}</CardTitle>
         </CardHeader>
         <CardContent>
           <form ref={formRef} action={handleSubmit} className="space-y-4">
             <FormErrors errors={errors} />
 
             <div className="space-y-2">
-              <Label htmlFor="name">Name</Label>
+              <Label htmlFor="name">{t("admin.services.fields.name")}</Label>
               <Input
                 id="name"
                 name="name"
@@ -127,7 +129,9 @@ export default function EditServicePage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
+              <Label htmlFor="description">
+                {t("admin.services.fields.description")}
+              </Label>
               <Textarea
                 id="description"
                 name="description"
@@ -138,7 +142,9 @@ export default function EditServicePage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="duration_minutes">Duration (minutes)</Label>
+                <Label htmlFor="duration_minutes">
+                  {t("admin.services.fields.durationMinutes")}
+                </Label>
                 <Input
                   id="duration_minutes"
                   name="duration_minutes"
@@ -150,7 +156,9 @@ export default function EditServicePage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="buffer_minutes">Buffer (minutes)</Label>
+                <Label htmlFor="buffer_minutes">
+                  {t("admin.services.fields.bufferMinutes")}
+                </Label>
                 <Input
                   id="buffer_minutes"
                   name="buffer_minutes"
@@ -162,7 +170,9 @@ export default function EditServicePage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="price_ils">Price (ILS)</Label>
+              <Label htmlFor="price_ils">
+                {t("admin.services.fields.priceIls")}
+              </Label>
               <Input
                 id="price_ils"
                 name="price_ils"
@@ -173,8 +183,7 @@ export default function EditServicePage() {
                 required
               />
               <p className="text-xs text-muted-foreground">
-                Enter the price in whole shekels (e.g. 280 for ₪280.00). Stored
-                internally as agorot (1 ₪ = 100).
+                {t("admin.services.fields.priceHelper")}
               </p>
             </div>
 
@@ -186,35 +195,41 @@ export default function EditServicePage() {
                 defaultChecked={service.is_active}
                 className="h-4 w-4 rounded border-gray-300"
               />
-              <Label htmlFor="is_active">Active</Label>
+              <Label htmlFor="is_active">
+                {t("admin.services.fields.active")}
+              </Label>
             </div>
 
             <div className="flex items-center gap-3 pt-2">
               <Button type="submit" disabled={submitting}>
-                {submitting ? "Saving..." : "Save Changes"}
+                {submitting
+                  ? t("admin.services.edit.saving")
+                  : t("admin.services.edit.save")}
               </Button>
-              <Link href="/admin/services" className={cn(buttonVariants({ variant: "outline" }))}>Cancel</Link>
+              <Link
+                href="/admin/services"
+                className={cn(buttonVariants({ variant: "outline" }))}
+              >
+                {t("admin.services.edit.cancel")}
+              </Link>
               <div className="ml-auto">
                 <ConfirmButton
-                  title="Delete service"
+                  title={t("admin.services.edit.deleteTitle")}
                   description={
                     <>
                       <p>
-                        Deleting <strong>{service.name}</strong> is permanent
-                        and cannot be undone. Existing bookings that reference
-                        this service will keep the cached copy but you won&apos;t
-                        be able to book it for new customers.
+                        {t("admin.services.edit.deleteDescriptionBody", {
+                          name: service.name,
+                        })}
                       </p>
-                      <p>
-                        Type <strong>DELETE</strong> to confirm.
-                      </p>
+                      <p>{t("admin.services.edit.deleteConfirmBody")}</p>
                     </>
                   }
                   confirmText="DELETE"
-                  confirmLabel="Delete service"
+                  confirmLabel={t("admin.services.edit.deleteConfirmLabel")}
                   onConfirm={handleDelete}
                 >
-                  Delete
+                  {t("admin.services.edit.delete")}
                 </ConfirmButton>
               </div>
             </div>
