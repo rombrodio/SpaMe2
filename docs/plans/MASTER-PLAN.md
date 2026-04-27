@@ -6,37 +6,37 @@ SpaMe is a custom spa management platform replacing Biz-Online for a boutique Te
 
 This plan covers architecture, database schema, folder structure, phased implementation, risks, and assumptions — all scoped to V1 only.
 
-### Revised vision summary (2026-04-25)
+### Revised vision summary (2026-04-27, VISION_1)
+
+Canonical vision: [`docs/vision/SpaMe-vision.md`](../vision/SpaMe-vision.md). Summary below; the vision doc is the tie-breaker.
 
 **Four roles**
 
-- **Super Admin** — full access: calendar, bookings, all entities, settings, audit log, reports, full Texter inbox visibility.
-- **Receptionist** — primary surface is the Texter-style `/reception/inbox`: live visibility into every active customer conversation (including bot-handled ones), take-over at any moment, AI-assisted writing, quick replies in EN/HE/RU, can create bookings (optionally picking a therapist), submits own on-duty (chat + phone) windows. Does **not** manage therapists / services / rooms / settings / audit log and does **not** receive therapist assignment receipts.
-- **Therapist** (~20, mixed patterns) — submits own availability + time-off, confirms deferred-assignment requests via WhatsApp within a 2-hour SLA, read-only view of own bookings.
-- **Customer** — phone-identified and anonymous. No login, no accounts. Picks language on first interaction; never sees therapist names.
+- **Super Admin** — full access: calendar, bookings, all entities, settings, audit log, reports, full Texter inbox visibility. Approves / edits / rejects AI-drafted outbound replies from the same inbox receptionists use. Owns the `auto_assign_enabled` spa setting and the publish action.
+- **Receptionist** — primary surface is the Texter-style `/reception/inbox`: live visibility into every active customer conversation (including bot-handled ones), take-over at any moment, AI-assisted writing, quick replies in EN/HE/RU. **Creates bookings and may pre-empt the auto-assignment engine by selecting a therapist and/or a room at booking creation** (the booking still flows through manager publish). Submits own on-duty (chat + phone) windows. Does **not** manage therapists / services / rooms / settings / audit log and does **not** receive therapist assignment receipts.
+- **Therapist** (~20, mixed patterns) — submits own availability + time-off. Confirms assignment requests across **the therapist's chosen subset of four parallel channels** (WhatsApp + portal + email + SMS — default all four); one confirmation across any enabled channel resolves; 2h SLA from publish. Read-only view of own bookings.
+- **Customer** — phone-identified and anonymous. No login, no accounts. Picks language on first interaction; **never sees therapist names or specific room identifiers**.
 
 **Customer experience principles**
 
 - Phone (E.164) is the unique identifier; customer record stores information without credentials.
 - Required at booking: phone, full name, **customer gender**, preferred-therapist gender, date/time. Email optional.
-- Therapist anonymity is non-negotiable on every customer surface (`/book`, `/order`, WhatsApp replies, outbound SMS).
-- Customer language wins: three-way (HE / EN / RU) first-class support for every user including customers, auto-detected on first inbound message and persisted on the customer record.
-- Three booking paths (browser `/book`, WhatsApp, receptionist), **one source of truth** (same DB, same overlap constraints, same payment pipeline, same lifecycle).
-- Customer-facing and AI-driven bookings create an **unassigned** booking; a manager assigns a qualified therapist post-payment. Receptionists and super admins creating bookings manually may pick a therapist directly.
+- Therapist anonymity AND room anonymity are non-negotiable on every customer surface (`/book`, `/order`, WhatsApp replies, outbound SMS). Customers never choose room subtypes and never see room identifiers.
+- Customer language wins: HE / EN / RU first-class on customer-facing surfaces and the therapist portal (no fallback). Admin + reception stay HE/EN-validated with RU fallback. Language auto-detected on first inbound message and persisted on the customer record.
+- Three booking paths (browser `/book`, WhatsApp, receptionist), **one source of truth** (same DB, same overlap constraints, same payment pipeline, same assignment lifecycle).
+- **Auto-assignment engine picks `(therapist, room)` as one decision on payment confirmation.** Spa-wide `auto_assign_enabled` (default ON) toggles between commit (`auto_assigned`) and suggest-only (`auto_suggested`) modes. No therapist is notified until the manager publishes (default cadence: the evening before the treatment day).
 - Payment is real. Cash-on-arrival is secured by a CardCom token, not a token charge. Cancellation policy (5% or 100 ILS, whichever greater) is enforced via stored card token. Payment webhooks are the only authoritative confirmation source.
 
 **AI / automation thesis — four layers**
 
-- **Layer 1 — Self-service customer booking** (shipped) — `/book` → `/order/[token]` flow is fully automated. Bookings land in the manager-assignment queue post-payment.
-- **Layer 2 — AI conversational booking** (Phase 8) — AI agent reads inbound WhatsApp / web messages, drafts replies, proposes tool calls from the approved list. Precise escalation thresholds are an open question to be answered by analysing the spa's last 12 months of WhatsApp conversations and iterating.
+- **Layer 1 — Self-service customer booking** (shipped) — `/book` → `/order/[token]` flow is fully automated. Bookings land in the auto-assignment engine post-payment.
+- **Layer 2 — AI conversational booking** (Phase 8) — AI agent reads inbound WhatsApp / web messages, drafts replies, proposes tool calls from the approved list. The agent creates bookings; the engine assigns resources; the manager edits + publishes. Precise escalation thresholds are an open question to be answered by analysing the spa's last 12 months of WhatsApp conversations and iterating.
 - **Layer 3 — Receptionist Texter** (Phase 8) — `/reception/inbox` is the receptionist's primary work surface: live monitoring + takeover + AI handoff summary (2–3 sentences) + in-chat booking panel + AI writing-assist (translate / shorten / soften / draft from bullets) + inbound auto-translation when customer ≠ receptionist language.
-- **Layer 4 — Operational AI (narrow V1 scope)** — predictive no-show scoring as an **advisory** signal (surfaced on booking detail + in-chat booking panel, never blocks). Explicitly **not** in V1: AI assigning therapists, smart auto-assignment scoring, auto-rebook on sick-outs.
+- **Layer 4 — Operational AI (narrow V1 scope)** — predictive no-show scoring as an **advisory** signal (surfaced on booking detail + in-chat booking panel, never blocks). Rule-based auto-assignment engine for `(therapist, room)` pair selection. Manager push alerts (email + WhatsApp) on new auto-assignments with per-manager mute. Explicitly **not** in V1: conversational agent picking therapists or rooms, ML-based assignment scoring, auto-rebook on sick-outs.
 
-**Two hardest invariants (never relaxed)**
+**Hard invariants (never relaxed)**
 
-1. AI never writes to the database directly. It only calls the same Zod-validated server actions the staff use.
-2. AI never assigns a therapist in V1. Therapist assignment is human-only: managers assign, therapists confirm via WhatsApp within 2 hours.
-3. Every AI-drafted outbound reply is **receptionist-approved** in the Texter inbox. Full auto-send mode is not in V1.
+See [`CLAUDE.md`](../../CLAUDE.md#hard-invariants-never-relaxed) for the canonical 9-bullet list. Summary: conversational AI does not write to the DB or pick resources; no therapist notified until publish; capacity held at engine-selection for both resources; every AI draft approved by receptionist OR super admin; webhook is payment truth; therapist AND room anonymous on customer surfaces; three paths one source of truth; customer + therapist surfaces render in full HE/EN/RU.
 
 ### Confirmed Decisions
 
@@ -44,13 +44,37 @@ This plan covers architecture, database schema, folder structure, phased impleme
 - **Buffer time:** Configurable per service (`buffer_minutes` column on `services` table).
 - **Services:** 45 minutes treatment + 15 minutes buffer by default (operator decision, migration 00021).
 - **Business hours:** 09:00–21:00, admin-configurable, with 15/30/60-minute slot granularity (60 default).
-- **UI language:** Hebrew is the default for every surface. English is first-class, validated surface-by-surface across Phase 7b. Russian catalog is AI-drafted — missing keys deep-merge-fallback to English at render time. Per-user toggle persists on `profiles.language`; customer language is auto-detected on first inbound message and persisted on `customers.language` (detection helper shipped in Phase 7a; auto-set wired in Phase 8). **Framework shipped in Phase 7a (#23); content migration shipped in Phase 7b (#24–#31).**
+- **UI language:** Hebrew default. **HE / EN / RU first-class on customer-facing surfaces and the therapist portal — no fallback (a missing RU key on those surfaces is a release blocker).** Admin + reception retain HE/EN-validated with RU deep-merge fallback. Per-user toggle persists on `profiles.language`; customer language is auto-detected on first inbound message and persisted on `customers.language`. Framework shipped in Phase 7a (#23); content migration shipped in Phase 7b (#24–#31); customer + therapist RU completion + ESLint rule land in Phase 7d.
 - **Payment provider:** CardCom (hosted page + webhooks) + DTS benefit vouchers + VPay stored-value vouchers.
 - **Roles:** `super_admin`, `receptionist`, `therapist`. Receptionist role lands in **Phase 6**.
-- **Therapist identity:** anonymous on every customer surface. Customer picks gender preference; server assigns a random eligible therapist at assignment time.
+- **Therapist identity AND room identity:** anonymous on every customer surface. Customer picks gender preference; the auto-assignment engine picks a qualified `(therapist, room)` pair at payment-confirmation time (Phase 7c).
 - **Customer identity:** phone-only (E.164), no login, no accounts, no self-service history page.
 - **Cash-on-arrival:** CardCom token (CreateTokenOnly with Shva J-validation); penalty captured via LowProfileChargeToken per 5%-or-100-ILS policy.
 - **VPay carve-out:** `services/vpay-proxy/` lives in this repo but deploys to Fly.io (mTLS + static IP). Same source of truth, different deploy target.
+
+**Booking assignment + notifications (Phase 7c, authored by VISION_1):**
+
+- **Booking assignment (therapist + room):** auto-assignment engine runs on payment confirmation and selects both a therapist and a room as a single decision. The spa toggles `spa_settings.auto_assign_enabled` to choose between commit (`auto_assigned`) and suggest-only (`auto_suggested`) modes. Rooms move through the same lifecycle but without notification/confirmation/SLA.
+- **`auto_assign_enabled` default: ON.** V1 ships with the engine in commit mode; the spa can flip to OFF in super-admin settings if they prefer the approval gate.
+- **Capacity rule:** both modes hold therapist AND room slots at engine-selection time. Exclusion constraints gate on `assignment_status` IN (`auto_suggested`, `auto_assigned`, `published`, `therapist_confirmed`), covering both resources. `pending_payment` and `cancelled` do NOT hold capacity.
+- **Publish trigger:** manager-button-only. No automatic cutoff in V1.
+- **Publish paths + cadence:** per-booking immediate (manager handles one booking now) and batch publish (default). Default operational cadence is the evening before the treatment day; weekly work-schedule publishes ride the same rail.
+- **Therapist confirmation channels:** WhatsApp + portal + email + SMS. All enabled channels fire in parallel at publish; which channels are enabled is per-therapist preference (default: all four). One confirmation across any enabled channel resolves the request.
+- **Confirmation SLA:** 2 hours from publish, per therapist.
+- **SLA expiry behavior:** manager gets a reminder; system suggests an alternative qualified therapist (and updated room if needed); manager decides whether to reassign or chase.
+- **Manager push notifications on new auto-assignments:** email + WhatsApp only (no SMS, no portal push). Muteable per-manager via `profiles.alert_preferences`.
+- **Room reassignment after publish:** silent. Therapist sees the new room via the portal or on arrival; no follow-up notification, no re-confirmation, no SLA reset.
+- **Receptionist pre-empt:** receptionists may select a therapist and/or a room at booking-creation time, pre-empting the engine for whatever they specify. Capacity is held the same way; booking still goes through publish.
+- **Room visibility to customers:** none. Customers don't see specific room identifiers and don't choose room subtypes.
+- **Draft-approval authority:** receptionist OR super admin approves / edits / rejects any AI-drafted outbound customer reply.
+- **ESLint `no-literal-strings` rule:** installed and enforced in CI (Phase 7d), scoped to `src/app/book/**`, `src/app/order/**`, `src/app/therapist/**`, `src/components/book/**`, `src/components/order/**`, `src/components/therapist/**`. Hardcoded user-visible strings on those surfaces fail the build. Admin + reception exempt.
+
+### Open Questions
+
+Deliberately not decided yet. Each should migrate into "Confirmed Decisions" once chosen.
+
+1. **Cancellation-policy scope.** Does the 5% / 100 ILS cancellation fee apply to all bookings, or only to bookings secured by a card token? Cash-on-arrival has a CardCom token via CreateTokenOnly so it could apply uniformly — confirm.
+2. **Late same-day bookings — default publish behavior.** A booking made at 17:50 today for tomorrow at 09:00 is fine in the end-of-day batch. But what about a booking made at 09:00 today for 14:00 today? In principle the manager should use per-booking immediate publish, but is there a default cutoff (e.g., "any booking starting within 4 hours auto-flags for immediate publish")? Or is it purely the manager's call every time?
 
 ---
 
@@ -68,13 +92,13 @@ Three authenticated user types via Supabase Auth, distinguished by a `role` colu
 2. **Receptionist** (Phase 6) — primary surface is `/reception/inbox`. Can:
    - Monitor every active customer conversation in real time (including bot-handled ones)
    - Take over from the bot at any moment
-   - Create bookings on behalf of customers — may pick a therapist directly or leave unassigned for the manager
+   - Create bookings on behalf of customers — **may pre-empt the auto-assignment engine by selecting a therapist and/or a room at booking creation**; the booking still flows through manager publish.
    - Submit own on-duty (chat + phone) availability windows
    - Use quick-reply templates + AI writing-assist (translate, shorten, soften, draft from bullets) in EN/HE/RU
-   - Approve / edit / reject every AI-drafted outbound reply before it sends
+   - Approve / edit / reject every AI-drafted outbound reply before it sends (receptionist OR super admin may do this)
    
    Explicitly cannot: manage therapists / services / rooms / settings / audit log, receive therapist assignment receipts, do shift-swap or approval work.
-3. **Therapist** — submits own availability rules and time-off, confirms deferred-assignment requests via WhatsApp (2-hour SLA), read-only view of own bookings.
+3. **Therapist** — submits own availability rules and time-off. **Confirms assignment requests across the therapist's chosen subset of four parallel channels** — WhatsApp + portal + email + SMS (default: all four; per-therapist preference, Phase 7c). One confirmation across any enabled channel resolves; 2-hour SLA from publish. Read-only view of own bookings.
 
 Customers are NOT Supabase Auth users — identified by phone number (E.164) only.
 
@@ -145,6 +169,14 @@ CREATE TYPE day_of_week AS ENUM ('sunday','monday','tuesday','wednesday','thursd
 CREATE TYPE conversation_channel AS ENUM ('whatsapp','web');
 CREATE TYPE message_role AS ENUM ('customer','assistant','system','staff');
 CREATE TYPE audit_action AS ENUM ('create','update','delete','status_change','login','payment_webhook');
+
+-- assignment_status exists today as ('unassigned','pending_confirmation','confirmed','declined')
+-- via migration 00018. Phase 7c rewrites it to match VISION_1 (breaking change — old values
+-- remapped via a data migration):
+-- CREATE TYPE assignment_status AS ENUM ('unassigned','auto_suggested','auto_assigned','published','therapist_confirmed');
+
+-- Phase 7c also introduces:
+CREATE TYPE notification_channel AS ENUM ('whatsapp','portal','email','sms');
 ```
 
 ### Tables
@@ -167,9 +199,18 @@ CREATE TYPE audit_action AS ENUM ('create','update','delete','status_change','lo
 
 **room_blocks** — `id`, `room_id`, `start_at`, `end_at`, `reason`, `created_at`. CHECK(start_at < end_at).
 
-**bookings** — `id`, `customer_id`, `therapist_id`, `room_id`, `service_id`, `start_at`, `end_at`, `status`, `price_ils`, `notes`, `created_by` (nullable), `cancelled_at`, `cancel_reason`, `created_at`, `updated_at`. CHECK(start_at < end_at).
+**bookings** — `id`, `customer_id`, `therapist_id`, `room_id`, `service_id`, `start_at`, `end_at`, `status`, `assignment_status` (enum, Phase 7c rewrite — see Extensions & Enums), `published_at` (TIMESTAMPTZ nullable, Phase 7c), `price_ils`, `notes`, `created_by` (nullable), `cancelled_at`, `cancel_reason`, `created_at`, `updated_at`. CHECK(start_at < end_at).
 - **Composite FK** `(therapist_id, service_id) REFERENCES therapist_services` — enforces therapist qualification at DB level
 - **Composite FK** `(room_id, service_id) REFERENCES room_services` — enforces room compatibility at DB level
+- **`therapist_id` is NOT NULL when `assignment_status IN ('auto_suggested','auto_assigned','published','therapist_confirmed')`** (Phase 7c — otherwise Postgres gist exclusion does not block a NULL row from overlapping others). Enforced via a CHECK or by making the column NOT NULL once every `unassigned`-era row is back-filled.
+
+**spa_settings** (Phase 4.6 + Phase 7c) — single row: `id`, `on_call_manager_name`, `on_call_manager_phone`, `business_hours_start`, `business_hours_end`, `slot_granularity_minutes`, `auto_assign_enabled` (BOOLEAN NOT NULL DEFAULT true, **Phase 7c**), `updated_at`.
+
+**profiles** extensions (Phase 7c) — add `alert_preferences` (JSONB NOT NULL DEFAULT `'{}'`), carrying per-manager mute toggles (`push_muted_email`, `push_muted_whatsapp`) and per-therapist notification-channel preferences (`channels_enabled: ['whatsapp','portal','email','sms']`). Defaults documented in migration 00026.
+
+**therapist_notifications** (Phase 7c) — `id`, `booking_id` (FK CASCADE), `channel` (`notification_channel`), `sent_at`, `confirmed_at` (nullable), `confirmation_channel` (`notification_channel`, nullable — set when the THIS row is the one that resolved), `expiry_at` (`sent_at + interval '2 hours'`), `created_at`. UNIQUE `(booking_id, channel)`. Index on `(expiry_at) WHERE confirmed_at IS NULL` for the SLA sweeper.
+
+**manager_alerts** (Phase 7c) — `id`, `booking_id` (FK CASCADE), `sent_at`, `channels` (`notification_channel[]`), `created_at`. Per-booking push-alert log; one row per alert event.
 
 **payments** — `id`, `booking_id`, `amount_ils`, `status`, `provider`, `provider_tx_id`, `payment_page_url`, `webhook_payload` (JSONB), `paid_at`, `created_at`, `updated_at`
 
@@ -181,7 +222,9 @@ CREATE TYPE audit_action AS ENUM ('create','update','delete','status_change','lo
 
 ### Overlap Prevention (Critical)
 
-Postgres exclusion constraints using `btree_gist`:
+Postgres exclusion constraints using `btree_gist`.
+
+**Current (shipped through migration 00013)** — keyed off `booking_status`:
 
 ```sql
 ALTER TABLE bookings ADD CONSTRAINT no_therapist_overlap
@@ -196,6 +239,27 @@ ALTER TABLE bookings ADD CONSTRAINT no_room_overlap
     tstzrange(start_at, end_at) WITH &&
   ) WHERE (status NOT IN ('cancelled'));
 ```
+
+**Phase 7c rewrite** — re-gate both constraints on `assignment_status` so the engine's capacity rule is enforced at the DB layer for BOTH resources. Engaged states (`auto_suggested` / `auto_assigned` / `published` / `therapist_confirmed`) block; `unassigned`, `pending_payment`, and `cancelled` do not:
+
+```sql
+ALTER TABLE bookings DROP CONSTRAINT no_therapist_overlap;
+ALTER TABLE bookings DROP CONSTRAINT no_room_overlap;
+
+ALTER TABLE bookings ADD CONSTRAINT no_therapist_overlap
+  EXCLUDE USING gist (
+    therapist_id WITH =,
+    tstzrange(start_at, end_at) WITH &&
+  ) WHERE (assignment_status IN ('auto_suggested','auto_assigned','published','therapist_confirmed'));
+
+ALTER TABLE bookings ADD CONSTRAINT no_room_overlap
+  EXCLUDE USING gist (
+    room_id WITH =,
+    tstzrange(start_at, end_at) WITH &&
+  ) WHERE (assignment_status IN ('auto_suggested','auto_assigned','published','therapist_confirmed'));
+```
+
+This closes two gaps the old predicate left open: `pending_payment` rows currently hold capacity (they shouldn't — the vision explicitly excludes them), and `auto_suggested` rows don't block anything because the column doesn't exist yet.
 
 Application layer does a pre-check for better error messages. The exclusion constraint is the safety net for concurrent inserts.
 
@@ -245,16 +309,34 @@ supabase/migrations/
 ### Pending migrations (by phase)
 
 ```
+Phase 7c — Auto-assignment engine + publish + multi-channel notifications + manager alerts
+  00026_auto_assignment.sql                  (assignment_status enum rewrite — remap
+                                              pending_confirmation → published,
+                                              confirmed → therapist_confirmed, add
+                                              auto_suggested + auto_assigned;
+                                              notification_channel enum;
+                                              bookings.published_at + CHECK therapist_id
+                                              NOT NULL when assignment_status IN engaged;
+                                              spa_settings.auto_assign_enabled BOOLEAN
+                                              DEFAULT true NOT NULL;
+                                              profiles.alert_preferences JSONB DEFAULT '{}';
+                                              therapist_notifications + manager_alerts
+                                              tables with indexes;
+                                              rewrite no_therapist_overlap +
+                                              no_room_overlap exclusion constraints onto
+                                              assignment_status)
+
 Phase 8 — Conversational platform
-  00026_conversations_extensions.sql         (conversation_messages.ai_draft_of,
+  00027_conversations_extensions.sql         (conversation_messages.ai_draft_of,
                                               approval state enum, translations table,
                                               conversation_threads.handoff_summary)
+
 Phase 9 — Customer profile + reports
-  00027_customer_gender.sql                  (customers.gender enum, required at
+  00028_customer_gender.sql                  (customers.gender enum, required at
                                               booking time going forward)
 ```
 
-All 25 files in `supabase/migrations/` (`00001_*` through `00025_*`) are applied to the hosted Supabase project `avnsuyiyhcnihsnisgig` as of this writing. Phase 8 and Phase 9 migrations are pending authoring.
+All 25 files in `supabase/migrations/` (`00001_*` through `00025_*`) are applied to the hosted Supabase project `avnsuyiyhcnihsnisgig` as of this writing. Phase 7c, Phase 8, and Phase 9 migrations are pending authoring.
 
 ---
 
@@ -351,7 +433,25 @@ src/
 │   │   ├── scheduling.ts                   # Availability + slot finding
 │   │   ├── booking-service.ts              # Create/cancel/reschedule
 │   │   ├── payment-service.ts              # Payment link + webhook processing
-│   │   └── notification-service.ts         # WhatsApp reminders
+│   │   └── notification-service.ts         # WhatsApp reminders (pre-Phase 7c)
+│   ├── scheduling/
+│   │   ├── availability.ts                 # Shipped (Phase 3)
+│   │   ├── booking-engine.ts               # Shipped (Phase 3)
+│   │   ├── matcher.ts                      # Shipped (Phase 5 — deferred-assignment matcher)
+│   │   └── assignment/                     # Phase 7c — auto-assignment engine
+│   │       ├── engine.ts                   # pickTherapistAndRoom() — one decision, both resources
+│   │       ├── candidates.ts               # qualified therapist + room candidate set
+│   │       ├── publish.ts                  # manager publish orchestrator (per-booking + batch)
+│   │       └── sla.ts                      # SLA sweeper + manager reminder
+│   ├── notifications/                      # Phase 7c — replaces messaging/notify.ts
+│   │   ├── types.ts                        # NotificationChannel, TherapistNotificationRow
+│   │   ├── orchestrator.ts                 # publish → fan out to therapist's enabled channels
+│   │   ├── manager-alerts.ts               # manager push-alert sender (email + WhatsApp)
+│   │   └── adapters/                       # one file per channel
+│   │       ├── whatsapp.ts                 # existing Twilio WhatsApp (promoted)
+│   │       ├── portal.ts                   # Supabase Realtime in-app notification
+│   │       ├── email.ts                    # TBD (Resend / Postmark / SES / SendGrid)
+│   │       └── sms.ts                      # existing Twilio SMS (promoted)
 │   ├── conversations/                      # Phase 8 — replaces the old chatbot/ sketch
 │   │   ├── engine.ts                       # processInbound(): history → translate → LLM → draft
 │   │   ├── tools.ts                        # Zod tool schemas → server actions
@@ -403,7 +503,7 @@ src/
 │   └── messages/                           # JSON catalogs per locale
 │       ├── he.json                         # Hebrew (default)
 │       ├── en.json                         # English (canonical key source)
-│       └── ru.json                         # Russian (AI-drafted, deep-merge fallback to EN)
+│       └── ru.json                         # Russian. Phase 7d: first-class on customer.* + therapist.* (no fallback); admin.* + reception.* remain EN deep-merge fallback
 ├── middleware.ts                            # Auth guard + effective-role check + cookie propagation on redirects
 
 services/                                    # Phase 4.5 / 8 — non-Vercel deploys
@@ -783,11 +883,60 @@ Between Phase 7b PRs (landed with the therapist-portal i18n PR in flight), a sub
 
 Net result: the `/login ↔ /therapist` ping-pong is impossible to reproduce regardless of profile state, and session cookies are propagated through every auth redirect.
 
+### Phase 7c: Auto-assignment engine + publish + multi-channel notifications + manager alerts
+
+**Goal:** Implement VISION_1's operational heart — a server-side auto-assignment engine that picks both therapist and room on payment confirmation, a manager-publish rail (per-booking immediate + evening-before batch), a 4-channel therapist confirmation system with per-therapist channel preferences, and manager push alerts on new auto-assignments with per-manager mute. Rewrites the Phase 5 deferred-assignment flow; does not delete history, but retires `pending_confirmation` / `confirmed` / `declined` enum values (remapped via data migration).
+
+- [ ] Migration `00026_auto_assignment.sql`:
+  - `assignment_status` enum rewrite (`unassigned`, `auto_suggested`, `auto_assigned`, `published`, `therapist_confirmed`); data migration for existing rows
+  - `notification_channel` enum (`whatsapp`, `portal`, `email`, `sms`)
+  - `bookings.published_at` TIMESTAMPTZ nullable
+  - `bookings` CHECK: `therapist_id IS NOT NULL` when `assignment_status IN ('auto_suggested','auto_assigned','published','therapist_confirmed')`
+  - `spa_settings.auto_assign_enabled` BOOLEAN NOT NULL DEFAULT true
+  - `profiles.alert_preferences` JSONB NOT NULL DEFAULT `'{}'::jsonb` (per-manager mute + per-therapist channel subset)
+  - `therapist_notifications` table (columns + `UNIQUE (booking_id, channel)` + index on `expiry_at WHERE confirmed_at IS NULL`)
+  - `manager_alerts` table
+  - Drop + recreate `no_therapist_overlap` + `no_room_overlap` exclusion constraints on `assignment_status` membership (engaged states block; `pending_payment` does not)
+- [ ] `src/lib/scheduling/assignment/engine.ts` — `pickTherapistAndRoom(booking)` — one decision, honours service eligibility, service-room compatibility, room blocks, gender preference, availability, existing bookings.
+- [ ] `src/lib/scheduling/assignment/publish.ts` — `publishBooking(id)` + `publishBatch(cutoff)` orchestrators, invoked by admin UI buttons.
+- [ ] `src/lib/scheduling/assignment/sla.ts` + `/api/cron/assignment-sla/route.ts` — sweep `therapist_notifications` past `expiry_at` with `confirmed_at IS NULL`; produce manager reminders + suggested alternatives.
+- [ ] `src/lib/notifications/orchestrator.ts` — called by `publish.ts`; for each affected therapist, fans out to their enabled channels in parallel, writes one `therapist_notifications` row per channel.
+- [ ] `src/lib/notifications/manager-alerts.ts` — fired by the engine on new auto-assignments; email + WhatsApp; respects each manager's `alert_preferences`.
+- [ ] `src/lib/notifications/adapters/{whatsapp,portal,email,sms}.ts` — one adapter per channel. Portal adapter uses Supabase Realtime for in-portal delivery. Email adapter picks a provider (Resend / Postmark / SES / SendGrid — decision captured in this phase) and wires envs.
+- [ ] `src/lib/actions/assignments.ts` — refactored: admin approve / reassign / publish actions replace the old assign-therapist action. `createReceptionistBookingAction` extends to accept therapist_id AND/OR room_id (pre-empt).
+- [ ] Admin UI:
+  - Dashboard card for newly auto-assigned / auto-suggested bookings (real-time via Supabase subscription)
+  - Per-booking publish button + batch "Publish all unpublished assignments" button
+  - `auto_assign_enabled` toggle in super-admin settings
+  - Per-manager mute preferences (email + WhatsApp toggles) on own profile page
+- [ ] Therapist portal:
+  - Pending-confirmations card updated for the new multi-channel schema
+  - Per-therapist channel-preferences panel (default all four)
+- [ ] Vitest coverage: engine picks respecting all constraints, capacity hold on `auto_suggested`, SLA sweeper, per-manager mute, per-therapist channel subset, exclusion-constraint behaviour (paired with a DB integration test).
+
+**Depends on:** Phase 6 (receptionist booking path wires pre-empt), Phase 4 (payment webhook triggers the engine). Gates Phase 8 (`create_tentative_booking` needs the new engine).
+
+**Explicit non-goals:** ML-based assignment scoring, auto-rebook on sick-outs, automatic publish cutoff, fully-autonomous AI replies.
+
+### Phase 7d: Customer + therapist full RU + ESLint no-literal-strings rule
+
+**Goal:** Close the VISION_1 language policy — RU becomes a release blocker on customer-facing surfaces and the therapist portal, and the ESLint rule makes hardcoded literals on those surfaces fail CI.
+
+- [ ] Translate every key in `customer.*` and `therapist.*` namespaces across `src/i18n/messages/ru.json`. Parity check against `en.json` (every leaf key present).
+- [ ] Install `eslint-plugin-no-literal-string` (or `eslint-plugin-react/jsx-no-literals`, whichever is cleaner against our JSX + TS surface); configure with file-glob scoping to `src/app/book/**`, `src/app/order/**`, `src/app/therapist/**`, `src/components/book/**`, `src/components/order/**`, `src/components/therapist/**`. Admin + reception paths are explicitly exempt.
+- [ ] Fix the lint violations surfaced on those surfaces (expect a small number — Phase 7b already migrated most of them).
+- [ ] Add CI gate: `npm run lint` fails if a literal string slips into the scoped dirs.
+- [ ] Docs sync: README localization section, CLAUDE.md language policy, CONTRIBUTING (if added), `docs/DOC-SYNC.md` row for user-facing strings.
+
+**Depends on:** Phase 7b (shipped). Can ship in parallel with Phase 7c; no schema dependency.
+
+**Explicit non-goals:** admin + reception RU validation (kept at EN fallback per VISION_1); no literal-strings rule on admin + reception surfaces.
+
 ### Phase 8: Conversational platform (WhatsApp + Web Chat + AI) (~30 files)
 
 **Goal:** The Texter-alike WhatsApp Business + web chat platform, fully in-repo. Inbound conversations stream into `/reception/inbox`; the AI drafts replies that a receptionist approves before send; booking actions are reachable from an in-chat booking panel.
 
-- [ ] Migration `00026_conversations_extensions.sql`:
+- [ ] Migration `00027_conversations_extensions.sql`:
   - `conversation_messages.ai_draft_of` (nullable FK — links an approved send back to the AI draft it originated from)
   - `conversation_messages.approval_state` enum (`pending_approval`, `approved`, `edited`, `rejected`, `sent`, `received`)
   - `conversation_messages.translated_from` + `translated_to` for auto-translation records
@@ -814,7 +963,7 @@ Net result: the `/login ↔ /therapist` ping-pong is impossible to reproduce reg
 - [ ] `src/app/api/cron/reminders/route.ts` — appointment reminders via WhatsApp (falls back to Twilio SMS if WhatsApp opt-out)
 - [ ] Vitest coverage for engine + tools + approval state machine + no-show scorer
 
-**Depends on:** Phases 6, 7.
+**Depends on:** Phases 6, 7, **7c** (engine must exist before `create_tentative_booking` can drop bookings into it).
 
 **Explicit non-goals:** fully-autonomous AI replies; AI assigning therapists; auto-rebook on sick-outs; smart auto-assignment scoring. All four are deferred past V1.
 
@@ -822,7 +971,7 @@ Net result: the `/login ↔ /therapist` ping-pong is impossible to reproduce reg
 
 **Goal:** Close the customer-data gap (gender, booking history) and ship the fixed-report module.
 
-- [ ] Migration `00027_customer_gender.sql` — `customers.gender` enum (`'male' | 'female' | 'other'`), not-null going forward (existing rows back-filled as `'other'` or NULL-tolerant with a one-time prompt). Number assumes Phase 8 ships 00026 first; if Phase 9 ships first, becomes 00026.
+- [ ] Migration `00028_customer_gender.sql` — `customers.gender` enum (`'male' | 'female' | 'other'`), not-null going forward (existing rows back-filled as `'other'` or NULL-tolerant with a one-time prompt). Number assumes Phase 7c + Phase 8 ship in order; if ordering changes, number shifts.
 - [ ] Update `/book`, `/reception/bookings/new`, `/admin/bookings/new`, and the AI `create_tentative_booking` tool to collect + require `gender`
 - [ ] `src/app/admin/customers/[id]/page.tsx` — booking history (past + upcoming), lifetime value, next appointment, quick-rebook button (SPA-050 / SPA-051)
 - [ ] SPA-091 service-polish remainder — per-service images, room/category grouping on `/book`, richer service detail
@@ -844,11 +993,15 @@ Net result: the `/login ↔ /therapist` ping-pong is impossible to reproduce reg
 | Risk | Impact | Mitigation |
 |------|--------|------------|
 | Exclusion constraint with WHERE clause may not work on Supabase Postgres | Overlap prevention fails | Test in first migration run. Fallback: advisory lock + check-then-insert in transaction |
+| Phase 7c exclusion-constraint rewrite data-migrates existing `pending_confirmation` / `confirmed` / `declined` rows incorrectly | Capacity held where it shouldn't be, or not held where it should | Migration runs in a transaction with a data-migration step that enumerates every row; Vitest has an integration test that asserts post-migration state |
+| `auto_assign_enabled=ON` picks a `(therapist, room)` pair the manager disagrees with often | Manager overrides become the default workflow; engine unused | Per-booking edit-before-publish stays zero-friction; `auto_assign_enabled=OFF` is always the escape hatch; dashboard surfaces every auto-assignment for review |
+| Email provider deliverability (spam filters, rate limits, bounces) | Therapist misses confirmation request | Pick a provider with domain verification + DKIM + delivery logs; log every send; fall back to WhatsApp + SMS + portal (3 other channels remain) |
+| 4-channel race — therapist clicks confirm on two channels near-simultaneously | Double-confirmation write | `confirmed_at` set-once guard in `therapist_notifications` (UNIQUE `booking_id` partial index where `confirmed_at IS NOT NULL`); first write wins, second is a no-op |
 | Israeli payment provider API quirks (Hebrew docs, inconsistent behavior) | Payment flow broken | `PaymentProvider` interface allows swapping. Start with mock adapter |
 | WhatsApp Business API approval delay (days to weeks) | Chatbot blocked | Build with mock adapter. Design flows to work within 24h session window |
 | AI tool call reliability — invalid params, misinterpreted intent | Bad bookings | Zod-validate all tool params. Require customer confirmation. `handoff_to_staff` escape hatch |
 | Israel DST transitions — ambiguous/skipped hours | Wrong slot times | Store all times as TIMESTAMPTZ. Use `date-fns-tz` with `Asia/Jerusalem`. Never use server local time |
-| Concurrent booking race conditions | Double-booking | Exclusion constraint rejects at DB level. App catches constraint error → "slot no longer available" |
+| Concurrent booking race conditions | Double-booking | Exclusion constraint (re-gated on `assignment_status` in Phase 7c) rejects at DB level. App catches constraint error → "slot no longer available" |
 
 ### Acceptable V1 Shortcuts
 
@@ -876,11 +1029,11 @@ Net result: the `/login ↔ /therapist` ping-pong is impossible to reproduce reg
 - **Buffer time:** Configurable per service (`buffer_minutes` on services table).
 - **Service durations:** 45 min treatment + 15 min buffer by default (migration 00021).
 - **Business hours:** 09:00–21:00, admin-configurable; slot granularity 15/30/60 min, 60 default (migration 00020 + settings form).
-- **Language policy:** Hebrew default. English is first-class and validated. Russian catalog is AI-drafted — EN fallback at render. Per-user toggle for staff on `profiles.language`; customer language auto-detected on first inbound message and persisted on `customers.language`. Shipped: framework + columns in Phase 7a (#23), content migration in Phase 7b (#24–#31).
+- **Language policy:** Hebrew default. HE / EN / RU first-class on customer-facing surfaces and the therapist portal — no fallback (a missing RU key on those surfaces is a release blocker once Phase 7d lands the ESLint rule). Admin + reception remain HE/EN-validated with RU deep-merge fallback. Per-user toggle for staff on `profiles.language`; customer language auto-detected on first inbound message and persisted on `customers.language`. Shipped: framework + columns in Phase 7a (#23), content migration in Phase 7b (#24–#31); customer + therapist RU completion + ESLint rule in Phase 7d.
 - **Cash-on-arrival:** Secured by CardCom token (CreateTokenOnly with Shva J-validation), NOT a symbolic 1 NIS charge. Penalty captured via LowProfileChargeToken on late cancel / no-show per the 5%-or-100-ILS policy (v1_5pct_or_100ILS_min snapshot).
-- **Therapist identity:** anonymous across customer surfaces (/book, /order, SMS, WhatsApp). Admin + therapist portals retain full identity. Customer picks gender preference (male / female / any); server assigns a random eligible therapist post-payment (deferred-assignment flow).
+- **Therapist + room identity:** anonymous across customer surfaces (`/book`, `/order`, SMS, WhatsApp). Admin + therapist portals retain full identity. Customer picks gender preference (male / female / any); the **auto-assignment engine picks a qualified `(therapist, room)` pair post-payment** (Phase 7c), respecting service eligibility, service-room compatibility, room blocks, gender preference, and availability.
 - **Role model:** `super_admin` + `receptionist` + `therapist`. Receptionist role is a named Phase 6 workstream, not deferred.
-- **AI invariants:** AI never writes to the DB, AI never assigns a therapist, every AI-drafted outbound reply is receptionist-approved in V1.
+- **AI invariants:** the conversational AI agent never writes to the DB directly, never picks therapists or rooms (that's the engine's job, post-payment), and every AI-drafted outbound reply is approved by a receptionist OR a super admin in V1.
 
 ### Still Assuming (flag if wrong)
 1. **Single location** — no multi-branch logic needed.
@@ -903,6 +1056,8 @@ After each phase, verify:
 - Payment webhook tested with mock adapter in Phase 4
 - Receptionist route-guard verified in Phase 6 (Vitest + manual browser check)
 - Locale snapshot tests per surface in Phase 7
+- Phase 7c: assignment-status exclusion constraint rejects concurrent engaged inserts for the same `(therapist, start, end)` AND the same `(room, start, end)`; SLA sweeper fires at `expiry_at`; per-therapist channel subset routes to the right adapters; manager mute suppresses push without affecting the dashboard
+- Phase 7d: `npm run lint` fails on a deliberately-planted literal string in `src/app/book/page.tsx`; passes after the literal is moved to the catalog; `ru.json` key-count matches `en.json` for `customer.*` + `therapist.*`
 - Chatbot tool calls + approval state machine tested with mock WhatsApp in Phase 8
 - No-show scorer validated against historical bookings in Phase 8
 - Report query correctness verified against seed data in Phase 9
