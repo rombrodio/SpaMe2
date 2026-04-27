@@ -158,16 +158,21 @@ Migrations are in `supabase/migrations/` and run in order:
 
 ## Localization
 
-Phase 7 ships the i18n framework. Current state:
+Phase 7a shipped the i18n framework. Phase 7b shipped the content migration across 7 PRs (customer `/book` + `/order`, reception, therapist, admin portal in 4 sub-PRs). Every user-facing surface now renders through the catalog.
 
 - **Framework:** [next-intl](https://next-intl.dev/) in cookie-only mode (no `[locale]` URL segment). Locale is resolved per request via `NEXT_LOCALE` cookie → falls back to Hebrew.
 - **Supported locales:** Hebrew (default, RTL), English, Russian. Defined in [`src/i18n/config.ts`](src/i18n/config.ts).
-- **Catalogs:** one JSON file per locale under [`src/i18n/messages/`](src/i18n/messages/) (`he.json`, `en.json`, `ru.json`). Namespaced as `common.*`, `customer.*`, plus per-portal namespaces (`admin.*`, `reception.*`, `therapist.*`) added by Phase 7b when staff-portal literals migrate.
+  - **EN + HE** are the only locales validated in Phase 7b. Every surface has been translated.
+  - **RU** catalog exists (AI-drafted) but has not been walked surface-by-surface. Missing keys deep-merge-fallback to English at render time (see `src/i18n/request.ts`). Validating RU end-to-end is a follow-up.
+- **Catalogs:** one JSON file per locale under [`src/i18n/messages/`](src/i18n/messages/) (`he.json`, `en.json`, `ru.json`). Top-level namespaces: `common.*`, `customer.*`, `admin.*`, `reception.*`, `therapist.*`.
 - **Persistence:** staff preference persists on `profiles.language`; customer preference on `customers.language` (auto-detected on first inbound message starting in Phase 8).
 - **Switcher:** [`src/components/locale-switcher.tsx`](src/components/locale-switcher.tsx), mounted in admin, reception, and therapist sidebars.
-- **RTL:** root layout sets `<html dir>` based on active locale. Customer `/book` + `/order` pages retain transitional hardcoded `dir="rtl"` until Phase 7b migrates their content strings to `useTranslations()`.
+- **RTL:** root layout sets `<html dir>` dynamically based on the active locale. Customer `/book` + `/order` pages no longer carry hardcoded `dir="rtl"` — they inherit from the root layout.
+- **Server-action errors:** still returned as English strings and rendered verbatim by `FormErrors`. Refactoring them to `{key, params}` envelopes was deferred from Phase 7b — a Phase 8+ item.
+- **SMS / email templates:** still English only. Templating them off `customers.language` is deferred to Phase 8 (when the SMS set expands).
+- **ESLint no-literal-strings rule:** not installed. Manual review is the only guardrail against regression. Worth adding if post-merge drift becomes a pattern.
 
-**To add a new user-facing string:** edit all three JSON files in `src/i18n/messages/` under the same key path, then call `t('namespace.key')` in the component (use `useTranslations(ns)` in client components, `getTranslations(ns)` in server components).
+**To add a new user-facing string:** edit `en.json` and `he.json` under the same key path, then call `t('namespace.key')` in the component (use `useTranslations(ns)` in client components, `getTranslations(ns)` in server components). RU can be left empty — it falls back to English automatically.
 
 ## Scripts
 
@@ -176,7 +181,7 @@ npm run dev            # Start development server
 npm run build          # Production build
 npm run start          # Start production server
 npm run lint           # Run ESLint
-npm run test           # Vitest one-shot (186 tests across 14 files)
+npm run test           # Vitest one-shot (208 tests across 16 files)
 npm run test:watch     # Vitest in watch mode
 npm run demo:payments  # Seed + exercise payment adapters (tsx)
 ```

@@ -31,7 +31,7 @@ Core surfaces:
 - Server Actions are the only write path — AI and staff call the same actions
 - WhatsApp Business Cloud API (Meta) — Phase 8
 - CardCom + DTS + VPay for payment
-- `next-intl` (or equivalent) for i18n — Phase 7
+- `next-intl` for i18n — cookie-only mode (no URL segment), catalogs in `src/i18n/messages/`
 - Twilio for SMS fallback
 
 ## Hard invariants (never relaxed)
@@ -53,17 +53,31 @@ Core surfaces:
 - **Therapist** — own availability + time-off, read-only bookings, confirms assignment receipts
 - **Customer** — phone-identified (E.164), no login, no accounts
 
-## Language policy (Phase 7)
+## Language policy (Phases 7a + 7b shipped)
 
-Hebrew default. First-class English + Russian for every user (admin, therapist,
-receptionist, customer). Per-user toggle for staff persisted on `profiles.language`.
-Customer language auto-detected on first inbound message and persisted on
-`customers.language`. Every error / toast / email / SMS / PDF receipt translated;
-no literal user-facing strings outside the catalog (enforced via ESLint rule).
+Hebrew default. First-class English for every user. Russian is deep-merge fallback
+to English at render time (catalog exists, not yet validated surface-by-surface).
+
+Per-user toggle for staff persisted on `profiles.language`. Customer language
+auto-detected on first inbound message and persisted on `customers.language`
+(Phase 8 wires the detection).
+
+When adding new user-facing strings, put the canonical key in `en.json` and a
+human translation in `he.json`. RU can be left empty. ESLint does **not** block
+literals — manual review is the guardrail until / unless a `no-literal-user-facing-strings`
+rule is added in a follow-up.
+
+**Still-English surfaces (intentional, deferred):**
+
+- Server-action error envelopes — Zod errors still come back as English strings
+  and `FormErrors` renders them verbatim. Refactor to `{key, params}` is Phase 8+.
+- SMS / email templates — keyed off Hebrew for now. Phase 8 work expands this.
+- Supabase auth error text (`/login?error=...`) — the error message is whatever
+  Supabase returns, English. Not worth intercepting for one or two strings.
 
 ## Core entities
 
-- Customer (+ `language`, `gender` pending Phases 7 and 9)
+- Customer (+ `language` shipped in Phase 7a, `gender` pending Phase 9)
 - Therapist
 - Room
 - Service
@@ -122,7 +136,7 @@ Build in V1:
 - predictive no-show scoring (advisory only)
 - fixed reports with date-range + CSV (Phase 9)
 - audit logs
-- HE / EN / RU localization across every surface (Phase 7)
+- HE / EN / RU localization across every surface (Phase 7a + 7b shipped — HE + EN validated; RU AI-drafted with EN fallback)
 
 Do NOT build in V1:
 
@@ -149,7 +163,7 @@ Do NOT build in V1:
 - Add mock adapters when external credentials are missing
 - Prefer simple, production-sane solutions
 - Keep files modular and readable
-- All user-facing strings come from the i18n catalog (Phase 7+) — no literals in components
+- All user-facing strings come from the i18n catalog. Canonical key source is `en.json`; `he.json` must be kept in sync manually (no ESLint rule yet — reviewer enforces)
 
 ## Current implementation order
 
