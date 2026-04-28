@@ -1,0 +1,36 @@
+---
+description: Payment adapters + webhook — CardCom / DTS / VPay
+globs: src/lib/payments/**
+alwaysApply: false
+---
+
+# Payments
+
+Currency: **ILS, stored as agorot** (integer). UI converts to whole shekels for display; Zod schemas on money inputs use `Math.round(v * 100)` transforms.
+
+## Hard rules
+
+- **Webhook is the source of truth** for payment success (invariant 6). A server action may never flip a booking to `confirmed` without a corresponding `payments` row written by the webhook handler.
+- **Never store raw card data.** CardCom tokenises via `CreateLowProfileDeal` / `CreateTokenOnly`; we reference the token only.
+- **Pull-through verification.** On webhook receipt, call `GetLowProfileIndicator` and match the returned status. Don't trust the webhook payload alone.
+- **Idempotent webhook.** Use the `payment_status` partial unique index (migration 00016) — one in-flight payment per `(booking_id, role)`.
+- **Mock adapter stays in sync with real adapter.** When you add / change a method on `HostedPaymentProvider` / `PosMoneyVoucherProvider` / `PosBenefitVoucherProvider`, update `mock.ts` in the same PR. `npm run demo:payments` must stay green.
+
+## Providers
+
+- **CardCom** (`cardcom.ts`) — SOAP client. Supports `BillOnly` (capture) + `CreateTokenOnly` (cash-on-arrival verification, Shva J-validation). Penalty capture via `LowProfileChargeToken` under the v1_5pct_or_100ILS_min policy.
+- **DTS** (`dts.ts`) — benefit vouchers (Kosher).
+- **VPay** (`vpay.ts`) — stored-value vouchers. Requires mTLS + static IP — the real client lives in `services/vpay-proxy/` on Fly.io (Phase 4.5).
+
+## Provider selection
+
+`src/lib/payments/providers.ts` reads env vars `PAYMENTS_CARDCOM_PROVIDER` / `PAYMENTS_DTS_PROVIDER` / `PAYMENTS_VPAY_PROVIDER` — `mock` by default, `real` when provisioned. The test-mode UX (PR #19) shows a TEST MODE banner and a fake card form when any provider is `mock`.
+
+## Cancellation policy
+
+`policy.ts` encodes `v1_5pct_or_100ILS_min` — penalty = max(5% of booking price, 100 ILS). Captured via stored CardCom token; never recharge the full amount.
+
+## Pitfalls
+
+- `simulateCardcomWebhookAction` is env-gated by `PAYMENTS_CARDCOM_PROVIDER=mock` (not `NODE_ENV`). It works in production as long as the provider env stays mock.
+- Hold-expiry cron (`/api/cron/expire-holds`) does best-effort `RevokeLowProfileDeal` — don't assume success.

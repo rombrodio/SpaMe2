@@ -1,0 +1,56 @@
+# Bugbot config — scoped to high-risk paths. Keeps review signal-to-noise high.
+# See docs/DOC-SYNC.md for the row that requires a PR-description note when this file changes.
+# See CONTRIBUTING.md "Cursor SDLC rail" for rationale on scope decisions.
+
+version: 1
+
+# Paths Bugbot reviews. Narrow on purpose — widen only when a real regression slips through review.
+include:
+  # Scheduling core — overlap invariants, exclusion-constraint gating (rule 20-scheduling-assignment.mdc)
+  - "src/lib/scheduling/**"
+  # Payment adapters — webhook-as-truth, mock/real drift, CardCom/DTS/VPay surface (rule 30-payments.mdc)
+  - "src/lib/payments/**"
+  # Webhook + cron routes — idempotency, signature verification
+  - "src/app/api/webhooks/**"
+  - "src/app/api/cron/**"
+  # Schema — irreversible changes, RLS gaps (rule 50-supabase-migrations.mdc)
+  - "supabase/migrations/**"
+  # Auth perimeter — role × portal matrix, cookie propagation (rule 80-middleware-auth.mdc, PR #27)
+  - "src/middleware.ts"
+  - "src/lib/roles.ts"
+  - "src/lib/auth/**"
+  # Audit log — single source of mutation history
+  - "src/lib/audit.ts"
+  # Phase 7c (not yet landed) — notification fan-out; once `src/lib/notifications/` exists, reviews start automatically.
+  - "src/lib/notifications/**"
+  # Phase 7c (not yet landed) — auto-assignment engine
+  - "src/lib/scheduling/assignment/**"
+  # Phase 8 (not yet landed) — AI conversational engine, tool invariants
+  - "src/lib/conversations/**"
+
+# Explicit exclude — Bugbot has no value here and just slows review.
+exclude:
+  - "src/components/ui/**"         # hand-rolled primitives; styling-only
+  - "src/i18n/messages/**"         # translation content; covered by Cloud Agent + human review
+  - "docs/**"                      # walked via docs/DOC-SYNC.md manifest
+  - "**/*.test.ts"                 # test files reviewed alongside their source
+  - "**/*.test.tsx"
+  - "**/__tests__/**"
+  - "scripts/**"                   # one-shot dev scripts
+  - "public/**"
+  - ".cursor/**"                   # reviewed by humans during onboarding
+
+# Severity routing — Bugbot escalates findings by tag.
+severity:
+  blocker:
+    - "invariant-regression"       # any change that contradicts a rule in 00-project-invariants.mdc
+    - "missing-rls"                # new table or column without RLS policy
+    - "raw-card-data"              # rule 30-payments.mdc: never store raw card data
+    - "service-role-leak"          # rule 90-mcp-safety.mdc: service-role in mcp.json, client code, or prompts
+  must-fix:
+    - "overlap-constraint-drift"   # exclusion-constraint predicate changes
+    - "webhook-trust-bypass"       # booking marked paid without a payments row
+    - "cookie-propagation-missed"  # NextResponse.redirect without redirectWithCookies
+  nit:
+    - "style"
+    - "doc-drift"                  # deferred to docs/DOC-SYNC.md walk

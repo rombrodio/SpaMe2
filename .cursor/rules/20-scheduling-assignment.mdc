@@ -1,0 +1,47 @@
+---
+description: Scheduling + auto-assignment engine rules (Phase 7c)
+globs: src/lib/scheduling/**
+alwaysApply: false
+---
+
+# Scheduling + auto-assignment
+
+All scheduling logic runs on the server. TZ default: `Asia/Jerusalem`. Slot granularity: 60 min default (15 / 30 allowed, admin-configurable via `spa_settings`).
+
+## Exclusion constraint — read before editing
+
+Postgres exclusion constraints on `bookings` gate on **`assignment_status`**, not `booking_status` (Phase 7c rewrite). Engaged states that block capacity for both therapist AND room:
+
+- `auto_suggested`
+- `auto_assigned`
+- `published`
+- `therapist_confirmed`
+
+States that do **not** hold capacity:
+
+- `unassigned`
+- `pending_payment`
+- `cancelled`
+
+`therapist_id` must be NOT NULL when `assignment_status` is engaged (CHECK constraint).
+
+## Engine (Phase 7c — `src/lib/scheduling/assignment/`)
+
+- `pickTherapistAndRoom(booking)` is **one decision**. Honours: service eligibility (composite FK), service-room compatibility (composite FK), room blocks, gender preference, availability, existing bookings.
+- Spa-wide `spa_settings.auto_assign_enabled` toggles commit mode (`auto_assigned`) vs suggest-only (`auto_suggested`). Default ON.
+- **Publish is manager-button-only.** `publishBooking(id)` for per-booking immediate; `publishBatch(cutoff)` for default evening-before batch.
+- No automatic publish cutoff in V1.
+
+## Confirmation rail (Phase 7c)
+
+- Four channels fan out in parallel at publish: `whatsapp`, `portal`, `email`, `sms`.
+- Per-therapist subset via `profiles.alert_preferences.channels_enabled` (default all four).
+- **One confirmation across any enabled channel resolves** — `therapist_notifications` `confirmed_at` set-once guard.
+- SLA: 2h from publish. Sweeper lives in `assignment/sla.ts` + `/api/cron/assignment-sla`.
+- Expiry → manager reminder + suggested alternative (manager decides).
+
+## Pitfalls
+
+- Never fabricate availability. Read from `therapist_availability_rules` + `therapist_time_off` + `room_blocks`.
+- Never use server local time for slot math — use `date-fns-tz` with `Asia/Jerusalem`.
+- Receptionist pre-empt skips `auto_suggested` and goes straight to `auto_assigned` for whichever resource the receptionist specified. Booking still flows through publish.

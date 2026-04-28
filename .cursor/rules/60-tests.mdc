@@ -1,0 +1,40 @@
+---
+description: Vitest conventions
+globs: **/*.test.ts,**/*.test.tsx
+alwaysApply: false
+---
+
+# Vitest
+
+`npm run test` runs the full suite (208 tests across 16 files as of Phase 7b).
+
+## Must do
+
+- **Deterministic seeds.** Never `Math.random()` without seeding; `date-fns-tz` with `Asia/Jerusalem` for any timestamped assertion.
+- **Arrange-Act-Assert** structure. One assertion cluster per `it()` block.
+- **Mock at the boundary.** External calls (CardCom, Twilio, WhatsApp) go through mock adapters already present in `src/lib/payments/mock.ts` / `src/lib/messaging/__tests__/...`. Do not stub `fetch` globally.
+- **Colocation.** Tests live next to the module they cover, under `__tests__/` — e.g. `src/lib/payments/__tests__/cardcom.test.ts`.
+
+## Must not do
+
+- **No network in tests.** Every test runs offline. If a test needs to verify a webhook payload shape, it reads a fixture; it does not call CardCom.
+- **No shared mutable state between tests.** Use `beforeEach` to reset. Vitest isolates files but not `describe` blocks.
+- **No skipped tests without a tracked reason.** `it.skip` needs a `// TODO(DEF-XXX)` or a comment citing the MASTER-PLAN row that unblocks it.
+
+## Shape
+
+```ts
+import { describe, expect, it } from "vitest";
+import { someFn } from "../some-module";
+
+describe("someFn", () => {
+  it("returns X when input is Y", () => {
+    const result = someFn({ y: 1 });
+    expect(result).toEqual({ x: 2 });
+  });
+});
+```
+
+## Database integration tests
+
+Only in Phase 7c's exclusion-constraint verification. Run against the Supabase local DB — `supabase start` must be up. These tests are opt-in via a `@integration` tag; default `npm run test` skips them.

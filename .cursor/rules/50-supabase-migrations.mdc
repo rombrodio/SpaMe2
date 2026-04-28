@@ -1,0 +1,35 @@
+---
+description: Supabase migration conventions
+globs: supabase/migrations/**
+alwaysApply: false
+---
+
+# Supabase migrations
+
+One migration = one reviewable unit. Sequential numbering (`00001_*` → `00025_*` applied today; next slot is `00026_*`).
+
+## Must do
+
+- **Number sequentially.** Check the current highest number via `ls supabase/migrations/` before creating a new one.
+- **Name descriptively.** `00026_auto_assignment.sql` > `00026_migration.sql`.
+- **Same-file data migration** for enum rewrites. If you add/rename a `CREATE TYPE` value, include the `UPDATE` statements that remap existing rows in the same file. Postgres rejects `ALTER TYPE ... ADD VALUE` + using that value in the same transaction for some cases — split across files if needed, but keep both in the same PR.
+- **RLS every new table.** Copy the shape from [00012_rls_policies.sql](../../supabase/migrations/00012_rls_policies.sql). Deny `anon` by default; `super_admin` full CRUD; per-role scoped select/update as appropriate.
+- **Exclusion constraints for overlap prevention** — use `btree_gist` + `tstzrange`. Gate on `assignment_status` (Phase 7c+), not `booking_status`.
+
+## Must do in the same commit
+
+Per [docs/DOC-SYNC.md](../../docs/DOC-SYNC.md):
+
+- Update [README.md](../../README.md) migration list + count.
+- Update [docs/plans/MASTER-PLAN.md](../../docs/plans/MASTER-PLAN.md) migration file list.
+- Mention the migration in the PR description.
+
+## Must not do
+
+- **Never edit a shipped migration.** Applied migrations are append-only. A fix is a new migration, not an edit.
+- **Never drop a column or table** without first writing a `NOT NULL` → nullable step, a back-fill, and then the drop — across two or three migrations.
+- **Never write raw SQL from a Server Action** that reproduces what a migration should do. Schema belongs in `supabase/migrations/`.
+
+## Local verification
+
+`supabase db reset` runs all migrations + `seed.sql` cleanly. If your migration fails `supabase db reset`, it fails CI too. (Note: `supabase db reset` is on the `guard-shell.sh` denylist — it will ask you to approve each time, which is intentional.)

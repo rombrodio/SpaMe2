@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      {
+        "command": "bash .cursor/hooks/session-start.sh",
+        "timeout": 10
+      }
+    ],
+    "beforeShellExecution": [
+      {
+        "command": "bash .cursor/hooks/guard-shell.sh",
+        "failClosed": true,
+        "timeout": 5
+      }
+    ],
+    "beforeSubmitPrompt": [
+      {
+        "command": "bash .cursor/hooks/scan-prompt.sh",
+        "timeout": 5
+      }
+    ],
+    "afterFileEdit": [
+      {
+        "command": "bash .cursor/hooks/format-edit.sh",
+        "matcher": "Write|MultiEdit|Edit|TabWrite",
+        "timeout": 15
+      }
+    ],
+    "stop": [
+      {
+        "command": "bash .cursor/hooks/docs-sync-reminder.sh",
+        "timeout": 5
+      }
+    ]
+  }
+}
