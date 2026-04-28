@@ -1,3 +1,5 @@
+// Single source of mutation history for SpaMe. Every server action that
+// writes to the DB must call writeAuditLog() — see rule 10-server-actions.mdc.
 import { createAdminClient } from "@/lib/supabase/admin";
 
 type AuditAction =
