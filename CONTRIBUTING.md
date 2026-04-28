@@ -98,21 +98,17 @@ Be extra careful with:
 
 ## Cursor SDLC rail
 
-This repo is authored against **Opus 4.7**. The daily rhythm:
+This repo is authored against **Opus 4.7**. Daily session flow: open a
+chat and paste the kickoff template from
+[`docs/SESSION-START.md`](docs/SESSION-START.md). The agent drives plan
+→ implement → local gate → DOC-SYNC walk → draft PR end-to-end; you
+answer scoping questions, confirm the plan, and review the PR URL.
 
-1. **Session start** — Cursor's `sessionStart` hook prints the briefing
-   (branch, last 3 commits, current phase frontier). If ambiguous, stay in
-   Plan mode.
-2. **Plan mode** (default) — scope the change, confirm the plan.
-3. **Agent mode** — implement the confirmed plan. If scope grows, return
-   to Plan.
-4. **Local gate** — `npm run typecheck && npm run lint && npm run test && npm run build`.
-5. **Walk [`docs/DOC-SYNC.md`](docs/DOC-SYNC.md)** — update every doc the
-   manifest lists for your change, in the same commit.
-6. **Open a PR** — tick the `## Docs sync` section of the PR template.
-7. **If the chat gets long** — fill out
-   [`docs/SESSION-HANDOFF.md`](docs/SESSION-HANDOFF.md), open a new chat,
-   paste the handoff as the first message.
+Reference material (what each hook does when it fires, `guard-shell.sh`
+DENY / ASK lists, rule auto-attach scopes, MCP server matrix, eight
+troubleshooting entries) lives in
+[`docs/DEV-SESSION-MANUAL.md`](docs/DEV-SESSION-MANUAL.md). Consult it
+only when something unusual happens mid-session.
 
 ## Recommended Cursor client settings
 

@@ -1,22 +1,10 @@
-# Dev-session manual
+# Dev-session manual — reference
 
-How to run a SpaMe dev session under the Cursor-native SDLC rail that shipped in PR #35 (`.cursor/rules/*.mdc`, `.cursor/hooks/*`, `.cursor/bugbot.yaml`, `.cursor/mcp.json`) alongside the pre-existing `docs/DOC-SYNC.md` and `docs/SESSION-HANDOFF.md` rails.
+On-demand reference for the Cursor-native SDLC rail that shipped in PR #35 (`.cursor/rules/*.mdc`, `.cursor/hooks/*`, `.cursor/bugbot.yaml`, `.cursor/mcp.json`) alongside the pre-existing `docs/DOC-SYNC.md` and `docs/SESSION-HANDOFF.md` rails.
 
-This file is operator-facing. It documents **what to click, what to run, what happens, and what to do when a hook fires.** It does not duplicate the engineering rules — those live in [`CLAUDE.md`](../CLAUDE.md) — and it does not duplicate phase status — that lives in [`docs/plans/MASTER-PLAN.md`](./plans/MASTER-PLAN.md).
+**For the daily session flow, use [`docs/SESSION-START.md`](./SESSION-START.md)** — paste the kickoff template, let the agent drive. You should only reach for this manual when something unusual happens mid-session: a hook denies a command you expected, a script flags a value, a redirect loop, a migration reset failure, or you need to confirm which rule auto-attaches to a path.
 
----
-
-## TL;DR — the loop
-
-1. Open Cursor. The `sessionStart` hook prints a briefing (branch, last 5 commits, current phase frontier). Plan mode is the default Agent mode.
-2. Stay in **Plan mode** until you have a confirmed plan. Switch to **Agent mode** for implementation only.
-3. Implement. `afterFileEdit` runs Prettier on every saved TS / TSX / JSON / MD / MDC.
-4. Before commit: `npm run typecheck && npm run lint && npm run test && npm run build` — all green.
-5. Walk [`docs/DOC-SYNC.md`](./DOC-SYNC.md) top to bottom, update every matching doc **in the same commit**, paste a `Docs-sync:` footer in the commit body.
-6. `git push`, open a PR. Tick the `## Docs sync` section of the PR template.
-7. If the chat gets long (~40 tool calls or the model forgets an invariant): fill [`docs/SESSION-HANDOFF.md`](./SESSION-HANDOFF.md), open a fresh chat, paste the handoff as the first message.
-
-**One feature = one chat. One chat = one PR.**
+This file documents **what each hook / rule / MCP server does, and what to do when one fires unexpectedly.** It does not duplicate the engineering rules — those live in [`CLAUDE.md`](../CLAUDE.md) — and it does not duplicate phase status — that lives in [`docs/plans/MASTER-PLAN.md`](./plans/MASTER-PLAN.md).
 
 ---
 
@@ -77,80 +65,6 @@ Run `/mcp` in the Cursor chat. Three servers should show green:
 - `playwright` — first run downloads a Chromium sandbox; that's normal.
 
 If any are red, check the matching env var from the "Shell environment" block above.
-
----
-
-## The daily rhythm
-
-### 1. Session start
-
-Open a chat. The `sessionStart` hook ([`.cursor/hooks/session-start.sh`](../.cursor/hooks/session-start.sh)) prints:
-
-- current branch + uncommitted-file count
-- last 5 commits
-- reminder to read `docs/plans/MASTER-PLAN.md` for the phase frontier
-- reminder that Plan mode is the default
-- reminder to fill `docs/SESSION-HANDOFF.md` at ~40 tool calls
-
-If `git` or `jq` is unavailable the hook prints a minimal fallback message and exits; it never blocks the session.
-
-### 2. Plan mode (default)
-
-Use Plan mode for anything that touches:
-
-- a migration or schema shape
-- a multi-file refactor
-- an ambiguous ask
-- payment adapters or webhooks
-- middleware / auth / role matrix
-- the auto-assignment engine or publish rail
-
-Plan mode produces a `CreatePlan` artifact under `.cursor/plans/<name>_<id>.plan.md`. Confirm the plan before switching.
-
-### 3. Agent mode
-
-Switch to Agent only after a plan is confirmed. If scope grows mid-implementation, go back to Plan.
-
-While Agent mode writes:
-
-- **`afterFileEdit`** runs Prettier on every saved `.ts` / `.tsx` / `.js` / `.jsx` / `.json` / `.md` / `.mdc` / `.mjs` / `.cjs`. Silent unless Prettier is missing (`npx --no-install prettier` — no install-on-demand).
-- **Glob-scoped rules** auto-attach when Cursor reads a file matching their `globs:` frontmatter. E.g. editing anything under `src/lib/payments/**` auto-attaches [`30-payments.mdc`](../.cursor/rules/30-payments.mdc); editing a migration auto-attaches [`50-supabase-migrations.mdc`](../.cursor/rules/50-supabase-migrations.mdc).
-- **Always-apply rules** ([`00-project-invariants.mdc`](../.cursor/rules/00-project-invariants.mdc), [`90-mcp-safety.mdc`](../.cursor/rules/90-mcp-safety.mdc)) load on every turn.
-
-### 4. Local gate
-
-Before commit, run the full gate:
-
-```bash
-npm run typecheck && npm run lint && npm run test && npm run build
-```
-
-CI runs the same four commands in [`.github/workflows/ci.yml`](../.github/workflows/ci.yml); skipping the local gate just moves the failure to CI.
-
-### 5. Walk `docs/DOC-SYNC.md`
-
-Open [`docs/DOC-SYNC.md`](./DOC-SYNC.md). For each row, ask "does this commit touch the thing in the left column?" If yes, update every file in the right column **in the same commit**. Paste a `Docs-sync:` footer in the commit body, e.g.:
-
-```
-Docs-sync: README migration list, MASTER-PLAN migrations, .env.local.example
-```
-
-If nothing applies, tick `N/A — no docs affected` explicitly in the PR body. Silent N/A forces a reviewer to guess.
-
-The `stop` hook ([`docs-sync-reminder.sh`](../.cursor/hooks/docs-sync-reminder.sh)) surfaces a reminder when your staged / modified / untracked files look like they need a doc update (new migration, new env var, new key in `en.json`, new route under `src/app/`, change to `.cursor/mcp.json` or `.cursor/rules|hooks|bugbot`). It never blocks — it just nudges.
-
-### 6. Commit + push
-
-Conventional commits. No force-push, no amend on someone else's branch (`guard-shell.sh` blocks the destructive patterns — see below).
-
-### 7. Open a PR
-
-Use the PR template at [`.github/pull_request_template.md`](../.github/pull_request_template.md). Tick:
-
-- the matching `## Docs sync` rows (or `N/A`)
-- the four `## Testing` rows
-
-PRs are draft by default. Bugbot ([`.cursor/bugbot.yaml`](../.cursor/bugbot.yaml)) auto-reviews the scoped high-risk paths: `src/lib/scheduling/**`, `src/lib/payments/**`, `src/app/api/webhooks/**`, `src/app/api/cron/**`, `supabase/migrations/**`, `src/middleware.ts`, `src/lib/roles.ts`, `src/lib/auth/**`, `src/lib/audit.ts`, and (once they exist) `src/lib/notifications/**`, `src/lib/scheduling/assignment/**`, `src/lib/conversations/**`. Everything else — UI primitives, i18n content, docs, tests, scripts, public, `.cursor/**` — is explicitly excluded.
 
 ---
 
