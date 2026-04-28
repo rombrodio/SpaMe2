@@ -33,8 +33,9 @@ Next.js 16 (App Router) on Vercel, Supabase Postgres + Auth, Tailwind v4, TypeSc
 2. Read [`docs/vision/SpaMe-vision.md`](./docs/vision/SpaMe-vision.md) — canonical product vision (who it serves, booking assignment lifecycle, hard invariants, confirmed decisions).
 3. Read [`docs/plans/MASTER-PLAN.md`](./docs/plans/MASTER-PLAN.md) — single source of truth for phase status. Do not rederive it; update it when phases ship.
 4. Read [`docs/DOC-SYNC.md`](./docs/DOC-SYNC.md) — the mandatory pre-commit manifest. Walk it before every commit.
-5. Skim [`docs/qa/defect-retest.md`](./docs/qa/defect-retest.md) if you're about to touch a UI surface — shows every DEF-* the repo has closed and where the fix lives, so you don't accidentally regress it.
-6. `git log --oneline -10` on `main` + `gh pr list --state merged --limit 5` — confirms what just shipped so you don't duplicate work.
+5. Skim [`docs/DEV-SESSION-MANUAL.md`](./docs/DEV-SESSION-MANUAL.md) — operator-facing walkthrough of the Cursor SDLC rail (one-time setup, daily rhythm, what each hook does when it fires, troubleshooting). Start here if you haven't run a dev session in this repo before.
+6. Skim [`docs/qa/defect-retest.md`](./docs/qa/defect-retest.md) if you're about to touch a UI surface — shows every DEF-* the repo has closed and where the fix lives, so you don't accidentally regress it.
+7. `git log --oneline -10` on `main` + `gh pr list --state merged --limit 5` — confirms what just shipped so you don't duplicate work.
 
 ## Cursor rhythm
 
