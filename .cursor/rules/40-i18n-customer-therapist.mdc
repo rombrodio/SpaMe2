@@ -1,0 +1,39 @@
+---
+description: Customer + therapist surfaces — HE/EN/RU first-class, no literal strings
+globs: src/app/book/**,src/app/order/**,src/app/therapist/**,src/components/book/**,src/components/order/**,src/components/therapist/**
+alwaysApply: false
+---
+
+# i18n on customer-facing + therapist-portal surfaces
+
+**Invariant 9:** these surfaces render in full HE/EN/RU with **no fallbacks**. A missing RU key is a release blocker once Phase 7d ships the ESLint rule.
+
+## Must do
+
+- **Every user-visible string reaches the UI via `useTranslations(ns)` (client) or `getTranslations(ns)` (server).**
+- **Every new key exists in all three catalogs** in the same commit:
+  - [src/i18n/messages/en.json](../../src/i18n/messages/en.json) (canonical key source)
+  - [src/i18n/messages/he.json](../../src/i18n/messages/he.json)
+  - [src/i18n/messages/ru.json](../../src/i18n/messages/ru.json)
+- **Namespace discipline:** `customer.*` for `/book` + `/order`, `therapist.*` for therapist portal, `common.*` for shared primitives.
+- **Date + money formatting** via [src/lib/i18n/format.ts](../../src/lib/i18n/format.ts) helpers (`formatIlsFromAgorot`, `formatDateIL`, `formatTimeIL`, `formatDateTimeILFull`) — locale-aware.
+
+## Must not do
+
+- **Never inline a literal user-visible string.** After Phase 7d, `eslint-plugin-no-literal-string` fails the build on the scoped globs above.
+- **Never hardcode `dir="rtl"`.** Root layout sets `<html dir>` dynamically from the active locale.
+- **Never reference customer by therapist name or room identifier** on any of these surfaces (invariant 7).
+
+## Cloud Agent convention
+
+When you add a new key to `en.json`, the `i18n-translation-drafter` Cloud Agent auto-opens a PR drafting `he.json` + `ru.json` entries. Review + edit the draft; don't skip the review step. See [CONTRIBUTING.md](../../CONTRIBUTING.md) "Cloud Agents" for setup.
+
+## Locale selection
+
+Cookie-only — `NEXT_LOCALE` cookie, no `[locale]` URL segment. Staff toggle persists on `profiles.language`; customer language auto-detects on first inbound message (Phase 8) and persists on `customers.language`.
+
+## Deferred (intentionally still English)
+
+- Server-action error envelopes (Phase 8+).
+- SMS + email templates (Phase 8+).
+- Supabase auth error text at `/login?error=...`.

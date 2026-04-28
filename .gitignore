@@ -79,4 +79,23 @@ next-env.d.ts
 .zencoder/
 # Top-level `skills/` is also a symlink shortcut into .agents/skills/.
 /skills/
-.cursor/
+
+# Cursor — commit the repo-shared guardrails (rules, hooks, mcp, bugbot)
+# but ignore per-user ephemera (plans, prompts, local state, upstream skill
+# symlink copies). Keep this list in sync with CONTRIBUTING.md "Cursor SDLC rail".
+.cursor/*
+!.cursor/rules/
+!.cursor/rules/**
+!.cursor/hooks/
+!.cursor/hooks/**
+!.cursor/hooks.json
+!.cursor/mcp.json
+!.cursor/bugbot.yaml
+
+# Playwright MCP — browser traces + session snapshots cached here
+.playwright-mcp/
+
+# Top-level screenshots produced by the Playwright MCP smoke tests
+/book-page.png
+/*-page.png
+

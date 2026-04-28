@@ -1,0 +1,49 @@
+---
+description: Server actions + API routes — validation, audit, webhook-as-truth
+globs: src/lib/actions/**,src/app/**/route.ts
+alwaysApply: false
+---
+
+# Server actions
+
+Server Actions are the **only write path**. The AI chatbot (Phase 8) and staff call the same actions.
+
+## Must do
+
+- **Validate every input with Zod.** Schemas live in `src/lib/schemas/`.
+- **Write an audit row** for every mutation via `src/lib/audit.ts`. Include `user_id`, `action`, `entity_type`, `entity_id`, `old_data`, `new_data`.
+- **Use `src/lib/supabase/server.ts`** for cookie-authed calls (honours RLS). Use `src/lib/supabase/admin.ts` only inside webhook routes (bypasses RLS, service-role).
+- **Use the `getAppUrl()` helper** from `src/lib/app-url.ts` for any absolute URL — never `window.location.origin` on the server, never `|| "http://localhost:3000"` fallback.
+- **Check the caller's role** via `src/lib/roles.ts` helpers (`getEffectiveRole`, `allowedOrRedirect`) when the action is admin- or receptionist-scoped.
+
+## Must not do
+
+- **Never mark a booking paid** without a webhook row in `payments`. Webhook is truth (invariant 6).
+- **Never pick a therapist or room in an AI-facing tool.** Resource assignment is the engine's job in `src/lib/scheduling/assignment/` (Phase 7c).
+- **Never store raw card data.** CardCom tokenises; we reference the token only.
+- **Never bypass the overlap exclusion constraint** by running raw SQL instead of going through `booking-engine.ts`.
+
+## Shape
+
+```ts
+"use server";
+import { z } from "zod";
+import { createClient } from "@/lib/supabase/server";
+import { insertAudit } from "@/lib/audit";
+
+const Schema = z.object({ /* ... */ });
+
+export async function myAction(input: unknown) {
+  const parsed = Schema.safeParse(input);
+  if (!parsed.success) return { ok: false, errors: parsed.error.flatten() };
+  const supabase = await createClient();
+  // ... RLS-respecting mutation ...
+  await insertAudit({ action: "update", entity_type: "booking", entity_id, old_data, new_data });
+  return { ok: true };
+}
+```
+
+## Common pitfalls
+
+- Returning English strings from Zod errors is acceptable (FormErrors renders them). Refactoring to `{key, params}` envelopes is Phase 8+.
+- Don't `revalidatePath` inside a webhook route — the webhook does not own the user's navigation.

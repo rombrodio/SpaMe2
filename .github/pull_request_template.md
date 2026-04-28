@@ -36,10 +36,13 @@ Walked [`docs/DOC-SYNC.md`](../docs/DOC-SYNC.md) — tick every row that applies
 - [ ] New dependency → noted in commit body + `README.md` tech stack line if load-bearing
 - [ ] Cron / webhook / secret / hosted integration added → updated `MASTER-PLAN.md` + `AGENTS.md`
 - [ ] Role / RBAC change → updated `MASTER-PLAN.md` Auth & Roles section
+- [ ] New/changed `.cursor/rules/*.mdc`, `.cursor/hooks/*`, `.cursor/bugbot.yaml`, or `.cursor/mcp.json` → followed the matching row in `docs/DOC-SYNC.md` (no service-role key in `mcp.json`, hook `chmod +x` verified)
+- [ ] New key in `src/i18n/messages/en.json` → Cloud Agent auto-drafted `he.json` + `ru.json` OR hand-drafted with note in PR
 - [ ] Manifest itself missed something → added a row to `docs/DOC-SYNC.md`
 
 ## Testing
 
+- [ ] `npm run typecheck` clean
 - [ ] `npm run lint` clean
 - [ ] `npm run test` green
 - [ ] `npm run build` compiles

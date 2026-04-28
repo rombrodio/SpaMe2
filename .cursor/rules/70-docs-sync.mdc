@@ -1,0 +1,36 @@
+---
+description: Docs-sync manifest — walk before every commit
+globs: docs/**,README.md,AGENTS.md,CLAUDE.md,.env.local.example,supabase/migrations/**,src/i18n/messages/**
+alwaysApply: false
+---
+
+# Docs sync (mandatory)
+
+[docs/DOC-SYNC.md](../../docs/DOC-SYNC.md) is the **single rule** that keeps guidance docs honest across sessions. The repo has shipped 20 doc-drift findings in past audits; every one came from a commit that changed code but skipped the matching doc update.
+
+## Before every commit
+
+1. **Walk [docs/DOC-SYNC.md](../../docs/DOC-SYNC.md) top to bottom.** For each row, ask "does this commit touch the thing in the left column?"
+2. **If yes, edit every file in the right column in the same commit** — not a follow-up PR, the same commit.
+3. **Paste a one-line `Docs-sync:` footer** in the commit body (e.g. `Docs-sync: README migration list, MASTER-PLAN migrations, .env.local.example`).
+4. **In the PR description, tick every matching row** in the `## Docs sync` section of the PR template.
+
+## If nothing applies
+
+Tick `N/A — no docs affected by this change` explicitly. "I didn't forget, nothing applied" is the whole point of the manifest — silent N/A makes a reviewer guess.
+
+## If the manifest itself is wrong
+
+If you hit a drift case the manifest doesn't cover, add the row to [docs/DOC-SYNC.md](../../docs/DOC-SYNC.md) in the same PR. One line there saves hours of archaeology later.
+
+## Canonical doc hierarchy
+
+When two docs disagree, the order of authority is:
+
+1. [docs/vision/SpaMe-vision.md](../../docs/vision/SpaMe-vision.md) — product vision (tie-breaker)
+2. [docs/plans/MASTER-PLAN.md](../../docs/plans/MASTER-PLAN.md) — phase status
+3. [CLAUDE.md](../../CLAUDE.md) — engineering rules
+4. [AGENTS.md](../../AGENTS.md) — 30-second entrypoint
+5. [README.md](../../README.md) — human README
+
+If the vision changes, `docs/DOC-SYNC.md` has a dedicated row listing every doc that must update.

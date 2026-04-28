@@ -1,0 +1,35 @@
+---
+description: SpaMe hard invariants (never relaxed) + Opus 4.7 default
+alwaysApply: true
+---
+
+# SpaMe hard invariants
+
+This repo is authored against **Opus 4.7**. Set it as the default model in every Cursor mode. Plan mode is the default Agent mode; switch to Agent only after a plan is confirmed.
+
+**Never relax these 9 invariants** (source: [CLAUDE.md](../../CLAUDE.md), [docs/vision/SpaMe-vision.md](../../docs/vision/SpaMe-vision.md)):
+
+1. Conversational AI agent **never writes to the DB directly** — only calls Zod-validated server actions.
+2. Conversational AI agent **does not pick therapists or rooms** — the server-side auto-assignment engine does, post-payment.
+3. **No therapist is notified until the manager publishes.** Auto-assignment, edits, approval are all silent.
+4. **Capacity (therapist + room) is held at engine-selection time.** `auto_suggested` / `auto_assigned` / `published` / `therapist_confirmed` block; `pending_payment` and `cancelled` do not.
+5. **Every AI-drafted outbound reply is approved by a receptionist OR super admin.** No auto-send in V1.
+6. **Payment webhook is the source of truth** for payment success.
+7. **Therapist identity AND room identity are anonymous** on every customer-facing surface.
+8. **Three booking paths (web / WhatsApp / receptionist), one source of truth** — same DB, same overlap constraints, same payment pipeline, same assignment lifecycle.
+9. **Customer + therapist surfaces render in full HE/EN/RU with no fallbacks.** Admin + reception may fall back to EN.
+
+## Working rhythm
+
+- **One feature = one chat.** At ~40 turns or when compaction kicks in, fill [docs/SESSION-HANDOFF.md](../../docs/SESSION-HANDOFF.md), open a fresh chat, paste the handoff.
+- **Plan mode for migrations, schema changes, multi-file refactors, ambiguous asks.** Agent mode only for implementation after a confirmed plan.
+- **Before commit:** walk [docs/DOC-SYNC.md](../../docs/DOC-SYNC.md); run `npm run typecheck && npm run lint && npm run test && npm run build`.
+- **Single source of truth for dangerous commands:** `.cursor/hooks/guard-shell.sh` (not mirrored in Cursor Settings).
+
+## Canonical docs
+
+- [AGENTS.md](../../AGENTS.md) — 30-second entrypoint
+- [CLAUDE.md](../../CLAUDE.md) — engineering rules + business rules + AI allowed actions
+- [docs/plans/MASTER-PLAN.md](../../docs/plans/MASTER-PLAN.md) — phase status (single source of truth)
+- [docs/vision/SpaMe-vision.md](../../docs/vision/SpaMe-vision.md) — canonical product vision
+- [docs/DOC-SYNC.md](../../docs/DOC-SYNC.md) — pre-commit manifest

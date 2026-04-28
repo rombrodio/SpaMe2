@@ -1,0 +1,27 @@
+---
+description: Admin + reception surfaces — HE/EN validated, RU deep-merge fallback OK
+globs: src/app/admin/**,src/app/reception/**,src/components/admin/**,src/components/reception/**
+alwaysApply: false
+---
+
+# i18n on admin + reception surfaces
+
+These surfaces are **first-class in HE**, **validated in EN**, and **tolerant of missing RU keys** (deep-merge fallback to EN at render). Phase 7b migrated every literal off; new strings follow the same pattern.
+
+## Must do
+
+- **New user-visible strings reach the UI via `useTranslations(ns)` / `getTranslations(ns)`.**
+- **Every new key exists in `en.json` and `he.json`** in the same commit:
+  - [src/i18n/messages/en.json](../../src/i18n/messages/en.json)
+  - [src/i18n/messages/he.json](../../src/i18n/messages/he.json)
+- **`ru.json` is optional here.** The Cloud Agent `i18n-translation-drafter` will still open a draft PR for RU; you may merge or discard it. Leaving RU empty is not a release blocker on these surfaces.
+- **Namespace discipline:** `admin.*` for admin portal, `reception.*` for reception portal, `common.*` for shared primitives (buttons, status labels, dates).
+
+## Must not do
+
+- **Never inline a literal user-visible string.** The ESLint `no-literal-strings` rule does **not** apply to these globs (Phase 7d explicitly scopes it to customer + therapist surfaces), but manual review should still catch it.
+- **Don't create a new top-level namespace.** Keep strings under `admin.*` / `reception.*` / `common.*`.
+
+## Canonical-status helpers
+
+When the string is a status label (`booking_status`, `payment_status`, `assignment_status`, `booking_source`, `audit_action`, `entity_type`), use the existing translator helpers rather than hand-keying — e.g. `translateStatus` in [src/components/admin/calendar/booking-card.tsx](../../src/components/admin/calendar/booking-card.tsx), `translateAction` + `translateEntityType` in the audit log path. Centralised translation prevents `"pending payment"` vs `"Pending Payment"` drift (DEF-032).

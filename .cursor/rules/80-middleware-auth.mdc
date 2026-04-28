@@ -1,0 +1,40 @@
+---
+description: Auth middleware + role matrix (PR #27 stabilisation)
+globs: src/middleware.ts,src/lib/roles.ts,src/lib/auth/**
+alwaysApply: false
+---
+
+# Middleware + auth
+
+Three-role auth (PR #21 added receptionist; PR #27 fixed redirect loops + cookie propagation).
+
+## Effective role, not raw role
+
+`profiles.role='therapist'` with `profiles.therapist_id = NULL` is an **internally inconsistent state** — typically a half-completed invite. Middleware must compute the **effective role** via [src/lib/roles.ts](../../src/lib/roles.ts) helpers:
+
+- `getEffectiveRole(profile)` — returns `'therapist'` only when `therapist_id` is also set. Symmetric for receptionist.
+- `allowedOrRedirect(effectiveRole, pathname)` — returns `portal | null`. When `null`, the route is allowed; otherwise redirect.
+- `portalForRole(effectiveRole)` — `/admin` / `/reception` / `/therapist` / `/login` (no effective role).
+
+Broken-link users stay on `/login` with a `?error=...` banner; they do **not** get redirected into a portal they can't serve.
+
+## Cookie propagation — mandatory
+
+`NextResponse.redirect(url)` creates a fresh response with no `Set-Cookie` headers. If you redirect inside `middleware.ts`, the refreshed Supabase session cookies written by `auth.getUser()` are dropped — and the user's next request will fail auth and bounce back. Use the `redirectWithCookies(url)` helper at every redirect site; it explicitly copies every cookie from `supabaseResponse` onto the redirect before returning.
+
+## Role × portal matrix
+
+Enforced at middleware + covered by [src/lib/__tests__/roles.test.ts](../../src/lib/__tests__/roles.test.ts):
+
+| Role | /admin | /reception | /therapist |
+|---|---|---|---|
+| `super_admin` | allow | allow (full inbox visibility) | deny → /admin |
+| `receptionist` | deny → /reception | allow | deny → /reception |
+| `therapist` | deny → /therapist | deny → /therapist | allow |
+| unauthenticated | deny → /login | deny → /login | deny → /login |
+
+## Pitfalls
+
+- Don't bypass `getEffectiveRole` by reading `profile.role` directly — you'll reintroduce the loop.
+- Don't add a new redirect site without routing it through `redirectWithCookies`.
+- The five redirect sites in [src/middleware.ts](../../src/middleware.ts) all go through the helper (lines ~43-94). Grep for `redirectWithCookies` before adding a new one.

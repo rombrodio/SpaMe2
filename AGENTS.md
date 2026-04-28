@@ -36,6 +36,26 @@ Next.js 16 (App Router) on Vercel, Supabase Postgres + Auth, Tailwind v4, TypeSc
 5. Skim [`docs/qa/defect-retest.md`](./docs/qa/defect-retest.md) if you're about to touch a UI surface — shows every DEF-* the repo has closed and where the fix lives, so you don't accidentally regress it.
 6. `git log --oneline -10` on `main` + `gh pr list --state merged --limit 5` — confirms what just shipped so you don't duplicate work.
 
+## Cursor rhythm
+
+This repo is authored against Opus 4.7. The Cursor-native rail lives in `.cursor/`:
+
+- [`.cursor/rules/`](./.cursor/rules) — scoped guardrails auto-attached by glob. Always-apply rules: `00-project-invariants.mdc` (9 hard invariants) and `90-mcp-safety.mdc` (MCP safety — never service-role, never prod project ref). Glob-scoped rules cover server-actions, scheduling, payments, i18n, migrations, tests, middleware, and docs-sync.
+- [`.cursor/hooks.json`](./.cursor/hooks.json) + `.cursor/hooks/*.sh` — project hooks. `sessionStart` prints a briefing; `beforeShellExecution` blocks destructive commands (force-push, `rm -rf`, `supabase db reset`, etc. — single source of truth, not mirrored in Cursor Settings); `beforeSubmitPrompt` secret-scans outgoing prompts; `afterFileEdit` runs Prettier; `stop` reminds about DOC-SYNC on staged migrations / env changes / new i18n keys.
+- [`.cursor/bugbot.yaml`](./.cursor/bugbot.yaml) — automated review scoped to payments, scheduling, migrations, middleware, and (future) notifications + conversations.
+- [`.cursor/mcp.json`](./.cursor/mcp.json) — three MCP servers: Supabase (read-only, dev project, anon key only — never service-role), GitHub, Playwright. Credentials via env vars, never literal.
+
+**Mode discipline:**
+
+- **Plan mode** is the default. Use it for anything touching a migration, schema shape, multi-file refactor, or an ambiguous ask.
+- **Agent mode** is for implementation after a plan is confirmed.
+- **Debug mode** fires when investigation is needed.
+- **Subagents:** `explore` for read-only research, `shell` for git operations.
+
+**One feature = one chat.** When a chat reaches ~40 turns or the model starts forgetting an invariant it clearly read earlier, stop, fill out [`docs/SESSION-HANDOFF.md`](./docs/SESSION-HANDOFF.md), open a fresh chat, paste the handoff as the first message. Do not let compaction decide what gets forgotten.
+
+**Session-end checklist:** `npm run typecheck && npm run lint && npm run test && npm run build` all green, `docs/DOC-SYNC.md` walked, PR body ticked.
+
 ## Hosted services you'll hit
 
 - **Supabase** — project `avnsuyiyhcnihsnisgig`. Migrations in `supabase/migrations/` are the source of truth; `00001_*` through `00025_*` are applied.

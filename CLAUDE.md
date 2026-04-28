@@ -224,6 +224,48 @@ See [`docs/plans/MASTER-PLAN.md`](docs/plans/MASTER-PLAN.md) — single source o
 - Feature branches are ephemeral (`main`-only flow, squash-merged, auto-
   deleted on merge). Don't assume a phase matches the branch name.
 
+## Working with Cursor + Opus 4.7
+
+This repo is authored against **Opus 4.7**. Set it as your default model in
+Cursor Settings → Models for Plan / Agent / Debug / Ask. Override only with
+explicit user direction (e.g. a faster model for a one-shot formatting pass).
+
+**Mode discipline:**
+
+- **Plan mode is the default.** Settings → Agents → Default Mode = Plan.
+  Use it for anything touching a migration, schema shape, multi-file
+  refactor, or an ambiguous ask. The plan mode forces a think-first moment
+  and a `CreatePlan` artifact before any code change.
+- **Agent mode** is only for implementing an already-confirmed plan. If
+  mid-implementation the scope grows, return to Plan mode.
+- **Debug mode** fires when investigation is needed — an error, an
+  unexpected test failure, or behaviour that does not match the plan.
+- **Subagents:** prefer `explore` (read-only) for research passes on big
+  subtrees; prefer `shell` for git operations so the main thread stays in
+  code context.
+
+**One feature = one chat.** When a chat reaches roughly 40 tool calls or
+the model starts forgetting an invariant it clearly read earlier, stop,
+fill out [`docs/SESSION-HANDOFF.md`](docs/SESSION-HANDOFF.md), open a fresh
+chat, paste the handoff as the first message. Do not let context
+compaction decide what gets forgotten.
+
+**The Cursor-native rail is in `.cursor/`:**
+
+- `.cursor/rules/*.mdc` — auto-attached by glob; the always-apply rules
+  (`00-project-invariants.mdc` + `90-mcp-safety.mdc`) load every session.
+- `.cursor/hooks.json` + `.cursor/hooks/*.sh` — dangerous-command blocker
+  (`guard-shell.sh`, the single source of truth — not mirrored in Cursor
+  Settings), secret scanner, Prettier-on-save, DOC-SYNC reminder.
+- `.cursor/bugbot.yaml` — review bot scoped to the high-risk paths.
+- `.cursor/mcp.json` — Supabase (read-only, dev only, **never**
+  service-role), GitHub, Playwright. Credentials live in environment
+  variables, never in the file.
+
+Operator-side setup (Cursor Settings defaults, statusline install, Cloud
+Agent setup) is documented in [`CONTRIBUTING.md`](CONTRIBUTING.md)
+"Cursor SDLC rail" sections.
+
 ## Docs sync (MANDATORY)
 
 **Before every commit** that introduces a new migration, env var, route,
@@ -242,7 +284,7 @@ Before opening a PR:
 
 1. Summarize what shipped in the PR description (paste the commits,
    mention which SPA-* / DEF-* items it closes).
-2. Confirm CI is green locally: `npm run lint && npm run test && npm run build`.
+2. Confirm CI is green locally: `npm run typecheck && npm run lint && npm run test && npm run build`.
 3. Walk `docs/DOC-SYNC.md` and tick the `## Docs sync` section in the PR
    body per the manifest.
 

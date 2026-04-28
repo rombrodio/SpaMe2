@@ -1,0 +1,40 @@
+---
+description: MCP safety — never service-role, read-only Supabase, no literal refs or secrets committed
+alwaysApply: true
+---
+
+# MCP safety
+
+[.cursor/mcp.json](../mcp.json) wires three MCP servers into the agent: `supabase-dev` (read-only), `github`, `playwright`. **These rules are non-negotiable.**
+
+## Supabase MCP — hard rules
+
+- **The `supabase-dev` server is read-only.** The `--read-only` flag in `.cursor/mcp.json` is mandatory. Removing it is a blocker.
+- **Project ref is an env-var reference, never a literal.** `--project-ref ${SUPABASE_DEV_PROJECT_REF}` is the only acceptable form. The actual project ref lives in the operator's `~/.zshrc` (or equivalent shell profile) and never in a committed file. Today the env var points at the one hosted Supabase project; when a separate production project is created later, its ref stays out of `.cursor/mcp.json` entirely (no `supabase-prod` entry — see next bullet).
+- **Access token is a scoped Supabase access token** from a human operator. **Never** `SUPABASE_SERVICE_ROLE_KEY`. Service-role bypasses RLS and would let the agent read + write any row in any project.
+- **Only one Supabase MCP server: `supabase-dev`.** No second entry, ever. If a real production Supabase project exists in the future, it stays out of MCP — operator runs scoped queries from the Supabase dashboard themselves.
+
+## GitHub MCP
+
+- **Fine-grained PAT only.** Scoped to this repo. Minimum permissions: `contents: write`, `pull_requests: write`, `issues: write`. No org-admin, no repo-admin, no `delete` scopes.
+- **Never commit the token.** Lives in `${GITHUB_MCP_PAT}` environment variable only.
+
+## Playwright MCP
+
+- **Sandboxed Chromium.** No file-system access outside the tmp dir.
+- **Primary use case:** drive `/book` + `/order/[token]` in Hebrew (RTL) to visually validate flows. Not for scraping third-party sites.
+
+## Reviewer signals (block the PR)
+
+If any of these appear in a diff against `.cursor/mcp.json`:
+
+- Literal value for `SUPABASE_ACCESS_TOKEN`, `SUPABASE_SERVICE_ROLE_KEY`, or `GITHUB_PERSONAL_ACCESS_TOKEN` (anything not `${ENV_VAR}` form).
+- Removal of `--read-only` from the supabase args.
+- A new `mcpServers` entry with `supabase` in the name that isn't `supabase-dev`.
+- Any literal Supabase project ref hard-coded in the file (even one that looks like a "dev" ref). Refs belong in env vars.
+
+Any of these is a must-fix, not a nit.
+
+## Credential setup
+
+See [CONTRIBUTING.md](../../CONTRIBUTING.md) "MCP server setup" for the operator-side env var list.
