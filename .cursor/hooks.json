@@ -4,7 +4,7 @@
     "sessionStart": [
       {
         "command": "bash .cursor/hooks/session-start.sh",
-        "timeout": 10
+        "timeout": 15
       }
     ],
     "beforeShellExecution": [
