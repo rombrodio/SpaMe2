@@ -33,8 +33,10 @@ Next.js 16 (App Router) on Vercel, Supabase Postgres + Auth, Tailwind v4, TypeSc
 2. Read [`docs/vision/SpaMe-vision.md`](./docs/vision/SpaMe-vision.md) — canonical product vision (who it serves, booking assignment lifecycle, hard invariants, confirmed decisions).
 3. Read [`docs/plans/MASTER-PLAN.md`](./docs/plans/MASTER-PLAN.md) — single source of truth for phase status. Do not rederive it; update it when phases ship.
 4. Read [`docs/DOC-SYNC.md`](./docs/DOC-SYNC.md) — the mandatory pre-commit manifest. Walk it before every commit.
-5. Skim [`docs/qa/defect-retest.md`](./docs/qa/defect-retest.md) if you're about to touch a UI surface — shows every DEF-* the repo has closed and where the fix lives, so you don't accidentally regress it.
-6. `git log --oneline -10` on `main` + `gh pr list --state merged --limit 5` — confirms what just shipped so you don't duplicate work.
+5. Read [`docs/SESSION-START.md`](./docs/SESSION-START.md) — the kickoff template the operator pastes to hand off a session. Expect to see it as the first message of most chats; when you see it, drive the session end-to-end per its instructions.
+6. Keep [`docs/DEV-SESSION-MANUAL.md`](./docs/DEV-SESSION-MANUAL.md) handy as on-demand reference (per-hook / per-rule / per-MCP-server behaviour, eight troubleshooting entries). Consult only when something unusual happens mid-session.
+7. Skim [`docs/qa/defect-retest.md`](./docs/qa/defect-retest.md) if you're about to touch a UI surface — shows every DEF-* the repo has closed and where the fix lives, so you don't accidentally regress it.
+8. `git log --oneline -10` on `main` + `gh pr list --state merged --limit 5` — confirms what just shipped so you don't duplicate work.
 
 ## Cursor rhythm
 
@@ -45,16 +47,7 @@ This repo is authored against Opus 4.7. The Cursor-native rail lives in `.cursor
 - [`.cursor/bugbot.yaml`](./.cursor/bugbot.yaml) — automated review scoped to payments, scheduling, migrations, middleware, and (future) notifications + conversations.
 - [`.cursor/mcp.json`](./.cursor/mcp.json) — three MCP servers: Supabase (read-only, dev project, anon key only — never service-role), GitHub, Playwright. Credentials via env vars, never literal.
 
-**Mode discipline:**
-
-- **Plan mode** is the default. Use it for anything touching a migration, schema shape, multi-file refactor, or an ambiguous ask.
-- **Agent mode** is for implementation after a plan is confirmed.
-- **Debug mode** fires when investigation is needed.
-- **Subagents:** `explore` for read-only research, `shell` for git operations.
-
-**One feature = one chat.** When a chat reaches ~40 turns or the model starts forgetting an invariant it clearly read earlier, stop, fill out [`docs/SESSION-HANDOFF.md`](./docs/SESSION-HANDOFF.md), open a fresh chat, paste the handoff as the first message. Do not let compaction decide what gets forgotten.
-
-**Session-end checklist:** `npm run typecheck && npm run lint && npm run test && npm run build` all green, `docs/DOC-SYNC.md` walked, PR body ticked.
+**Session flow:** the operator pastes the kickoff template from [`docs/SESSION-START.md`](./docs/SESSION-START.md). The template enforces mode discipline (Plan default → confirmed plan → Agent), the local gate (`typecheck && lint && test && build`), the `docs/DOC-SYNC.md` walk, and the draft-PR hand-off. One feature = one chat; at ~40 tool calls the template tells you to stop and hand off via [`docs/SESSION-HANDOFF.md`](./docs/SESSION-HANDOFF.md). Debug mode fires when investigation is needed; `explore` + `shell` subagents for read-only research and git operations.
 
 ## Hosted services you'll hit
 

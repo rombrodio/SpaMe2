@@ -226,29 +226,13 @@ See [`docs/plans/MASTER-PLAN.md`](docs/plans/MASTER-PLAN.md) — single source o
 
 ## Working with Cursor + Opus 4.7
 
-This repo is authored against **Opus 4.7**. Set it as your default model in
-Cursor Settings → Models for Plan / Agent / Debug / Ask. Override only with
-explicit user direction (e.g. a faster model for a one-shot formatting pass).
-
-**Mode discipline:**
-
-- **Plan mode is the default.** Settings → Agents → Default Mode = Plan.
-  Use it for anything touching a migration, schema shape, multi-file
-  refactor, or an ambiguous ask. The plan mode forces a think-first moment
-  and a `CreatePlan` artifact before any code change.
-- **Agent mode** is only for implementing an already-confirmed plan. If
-  mid-implementation the scope grows, return to Plan mode.
-- **Debug mode** fires when investigation is needed — an error, an
-  unexpected test failure, or behaviour that does not match the plan.
-- **Subagents:** prefer `explore` (read-only) for research passes on big
-  subtrees; prefer `shell` for git operations so the main thread stays in
-  code context.
-
-**One feature = one chat.** When a chat reaches roughly 40 tool calls or
-the model starts forgetting an invariant it clearly read earlier, stop,
-fill out [`docs/SESSION-HANDOFF.md`](docs/SESSION-HANDOFF.md), open a fresh
-chat, paste the handoff as the first message. Do not let context
-compaction decide what gets forgotten.
+This repo is authored against **Opus 4.7**. Daily session flow: paste the
+kickoff template from [`docs/SESSION-START.md`](docs/SESSION-START.md).
+The template itself enforces mode discipline (Plan default → confirmed
+plan → Agent), the local gate, the DOC-SYNC walk, and the draft-PR
+hand-off. Debug mode fires when investigation is needed. One feature =
+one chat; the template tells the agent to stop and hand off via
+[`docs/SESSION-HANDOFF.md`](docs/SESSION-HANDOFF.md) at ~40 tool calls.
 
 **The Cursor-native rail is in `.cursor/`:**
 
@@ -262,9 +246,11 @@ compaction decide what gets forgotten.
   service-role), GitHub, Playwright. Credentials live in environment
   variables, never in the file.
 
-Operator-side setup (Cursor Settings defaults, statusline install, Cloud
-Agent setup) is documented in [`CONTRIBUTING.md`](CONTRIBUTING.md)
-"Cursor SDLC rail" sections.
+Per-hook / per-rule / per-MCP-server reference lives in
+[`docs/DEV-SESSION-MANUAL.md`](docs/DEV-SESSION-MANUAL.md) — consult it
+only when something unusual happens mid-session. Operator-side setup
+(Cursor Settings defaults, statusline install, Cloud Agent setup) is
+documented in [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ## Docs sync (MANDATORY)
 
