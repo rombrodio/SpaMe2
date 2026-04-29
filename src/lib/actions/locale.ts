@@ -51,10 +51,14 @@ export async function setLocaleAction(
     data: { user },
   } = await supabase.auth.getUser();
   if (user) {
-    await supabase
-      .from("profiles")
-      .update({ language: locale })
-      .eq("id", user.id);
+    // Persist the staff member's preference via the SECURITY DEFINER
+    // `set_own_language` RPC. Direct UPDATE on `profiles` would be
+    // blocked by RLS after migration 00026 closed the privilege-
+    // escalation hole from 00025 (any authenticated user could
+    // self-promote to super_admin through a permissive WITH CHECK).
+    // The RPC writes ONLY the `language` column for the caller's
+    // own row.
+    await supabase.rpc("set_own_language", { lang: locale });
   }
 
   // Revalidate every route so server components pick up the new locale.

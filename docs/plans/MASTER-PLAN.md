@@ -302,8 +302,12 @@ supabase/migrations/
 │                                              + RLS extended for the receptionist role)
 ├── 00024_booking_source.sql                 (bookings.source: customer_web | admin_manual |
 │                                              receptionist_manual | chatbot)
-└── 00025_language_columns.sql               (language_code enum + profiles.language +
-                                              customers.language — Phase 7a i18n foundation)
+├── 00025_language_columns.sql               (language_code enum + profiles.language +
+│                                              customers.language — Phase 7a i18n foundation)
+└── 00026_profiles_rls_language_privilege_fix.sql
+                                             (SECURITY: close privilege-escalation hole from 00025 —
+                                              restore profiles WITH CHECK to super_admin-only,
+                                              add set_own_language SECURITY DEFINER RPC)
 ```
 
 ### Pending migrations (by phase)
@@ -841,7 +845,8 @@ Scope of the originally-planned single phase was too large to ship as one review
 #### Phase 7a — i18n foundation — SHIPPED (PR #23)
 
 - [x] `next-intl` installed in **cookie-only** mode (no `[locale]` URL segment); `src/i18n/{config,request}.ts`, `next.config.ts` wrap
-- [x] Migration `00025_language_columns.sql` — `language_code` enum (`he`/`en`/`ru`), `profiles.language NOT NULL DEFAULT 'he'`, `customers.language` nullable (Phase 8 fills on first inbound message), widens `profiles_access` RLS WITH CHECK so non-super-admins can self-update their own language
+- [x] Migration `00025_language_columns.sql` — `language_code` enum (`he`/`en`/`ru`), `profiles.language NOT NULL DEFAULT 'he'`, `customers.language` nullable (Phase 8 fills on first inbound message). (The WITH CHECK widening shipped in 00025 was reverted by 00026 — see security follow-up below.)
+- [x] Migration `00026_profiles_rls_language_privilege_fix.sql` — SECURITY fix. 00025's widened WITH CHECK let any authenticated user UPDATE arbitrary columns on their own profiles row (including `role` → `super_admin`, `therapist_id`, `receptionist_id`). 00026 restores WITH CHECK to super_admin-only and introduces `set_own_language(lang)` SECURITY DEFINER RPC that writes only the `language` column. `setLocaleAction` now calls the RPC.
 - [x] Per-locale JSON catalogs under `src/i18n/messages/{he,en,ru}.json` — scaffold `common.*` + `customer.*` namespaces (Hebrew seeded from the pre-existing `src/lib/i18n/he.ts`, English source authored, Russian AI-drafted)
 - [x] `setLocaleAction` server action (writes `NEXT_LOCALE` cookie + `profiles.language`) + `LocaleSwitcher` component mounted in admin / reception / therapist sidebars
 - [x] `detectLanguage(text)` helper + 15 unit tests (Hebrew / Cyrillic / Latin char-range detection, majority wins, HE tie-break) — ready for Phase 8 to auto-set `customers.language` on first inbound WhatsApp / web-chat message

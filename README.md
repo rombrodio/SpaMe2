@@ -97,7 +97,7 @@ services/              # Same-repo, separate-deploy workstreams
 └── vpay-proxy/        # Fly.io mTLS + static-IP proxy (Phase 4.5)
 
 supabase/
-├── migrations/       # SQL migration files (00001-00025)
+├── migrations/       # SQL migration files (00001-00026)
 └── seed.sql          # Demo data for local development
 ```
 
