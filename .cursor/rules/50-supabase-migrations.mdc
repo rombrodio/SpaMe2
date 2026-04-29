@@ -11,7 +11,7 @@ One migration = one reviewable unit. Sequential numbering (`00001_*` → `00025_
 ## Must do
 
 - **Number sequentially.** Check the current highest number via `ls supabase/migrations/` before creating a new one.
-- **Name descriptively.** `00026_auto_assignment.sql` > `00026_migration.sql`.
+- **Name descriptively.** `00027_auto_assignment.sql` > `00027_migration.sql`.
 - **Same-file data migration** for enum rewrites. If you add/rename a `CREATE TYPE` value, include the `UPDATE` statements that remap existing rows in the same file. Postgres rejects `ALTER TYPE ... ADD VALUE` + using that value in the same transaction for some cases — split across files if needed, but keep both in the same PR.
 - **RLS every new table.** Copy the shape from [00012_rls_policies.sql](../../supabase/migrations/00012_rls_policies.sql). Deny `anon` by default; `super_admin` full CRUD; per-role scoped select/update as appropriate.
 - **Exclusion constraints for overlap prevention** — use `btree_gist` + `tstzrange`. Gate on `assignment_status` (Phase 7c+), not `booking_status`.

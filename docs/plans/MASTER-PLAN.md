@@ -206,7 +206,7 @@ CREATE TYPE notification_channel AS ENUM ('whatsapp','portal','email','sms');
 
 **spa_settings** (Phase 4.6 + Phase 7c) — single row: `id`, `on_call_manager_name`, `on_call_manager_phone`, `business_hours_start`, `business_hours_end`, `slot_granularity_minutes`, `auto_assign_enabled` (BOOLEAN NOT NULL DEFAULT true, **Phase 7c**), `updated_at`.
 
-**profiles** extensions (Phase 7c) — add `alert_preferences` (JSONB NOT NULL DEFAULT `'{}'`), carrying per-manager mute toggles (`push_muted_email`, `push_muted_whatsapp`) and per-therapist notification-channel preferences (`channels_enabled: ['whatsapp','portal','email','sms']`). Defaults documented in migration 00026.
+**profiles** extensions (Phase 7c) — add `alert_preferences` (JSONB NOT NULL DEFAULT `'{}'`), carrying per-manager mute toggles (`push_muted_email`, `push_muted_whatsapp`) and per-therapist notification-channel preferences (`channels_enabled: ['whatsapp','portal','email','sms']`). Defaults documented in migration 00027.
 
 **therapist_notifications** (Phase 7c) — `id`, `booking_id` (FK CASCADE), `channel` (`notification_channel`), `sent_at`, `confirmed_at` (nullable), `confirmation_channel` (`notification_channel`, nullable — set when the THIS row is the one that resolved), `expiry_at` (`sent_at + interval '2 hours'`), `created_at`. UNIQUE `(booking_id, channel)`. Index on `(expiry_at) WHERE confirmed_at IS NULL` for the SLA sweeper.
 
@@ -314,7 +314,7 @@ supabase/migrations/
 
 ```
 Phase 7c — Auto-assignment engine + publish + multi-channel notifications + manager alerts
-  00026_auto_assignment.sql                  (assignment_status enum rewrite — remap
+  00027_auto_assignment.sql                  (assignment_status enum rewrite — remap
                                               pending_confirmation → published,
                                               confirmed → therapist_confirmed, add
                                               auto_suggested + auto_assigned;
@@ -331,12 +331,12 @@ Phase 7c — Auto-assignment engine + publish + multi-channel notifications + ma
                                               assignment_status)
 
 Phase 8 — Conversational platform
-  00027_conversations_extensions.sql         (conversation_messages.ai_draft_of,
+  00028_conversations_extensions.sql         (conversation_messages.ai_draft_of,
                                               approval state enum, translations table,
                                               conversation_threads.handoff_summary)
 
 Phase 9 — Customer profile + reports
-  00028_customer_gender.sql                  (customers.gender enum, required at
+  00029_customer_gender.sql                  (customers.gender enum, required at
                                               booking time going forward)
 ```
 
@@ -892,7 +892,7 @@ Net result: the `/login ↔ /therapist` ping-pong is impossible to reproduce reg
 
 **Goal:** Implement VISION_1's operational heart — a server-side auto-assignment engine that picks both therapist and room on payment confirmation, a manager-publish rail (per-booking immediate + evening-before batch), a 4-channel therapist confirmation system with per-therapist channel preferences, and manager push alerts on new auto-assignments with per-manager mute. Rewrites the Phase 5 deferred-assignment flow; does not delete history, but retires `pending_confirmation` / `confirmed` / `declined` enum values (remapped via data migration).
 
-- [ ] Migration `00026_auto_assignment.sql`:
+- [ ] Migration `00027_auto_assignment.sql`:
   - `assignment_status` enum rewrite (`unassigned`, `auto_suggested`, `auto_assigned`, `published`, `therapist_confirmed`); data migration for existing rows
   - `notification_channel` enum (`whatsapp`, `portal`, `email`, `sms`)
   - `bookings.published_at` TIMESTAMPTZ nullable
@@ -941,7 +941,7 @@ Net result: the `/login ↔ /therapist` ping-pong is impossible to reproduce reg
 
 **Goal:** The Texter-alike WhatsApp Business + web chat platform, fully in-repo. Inbound conversations stream into `/reception/inbox`; the AI drafts replies that a receptionist approves before send; booking actions are reachable from an in-chat booking panel.
 
-- [ ] Migration `00027_conversations_extensions.sql`:
+- [ ] Migration `00028_conversations_extensions.sql`:
   - `conversation_messages.ai_draft_of` (nullable FK — links an approved send back to the AI draft it originated from)
   - `conversation_messages.approval_state` enum (`pending_approval`, `approved`, `edited`, `rejected`, `sent`, `received`)
   - `conversation_messages.translated_from` + `translated_to` for auto-translation records
@@ -976,7 +976,7 @@ Net result: the `/login ↔ /therapist` ping-pong is impossible to reproduce reg
 
 **Goal:** Close the customer-data gap (gender, booking history) and ship the fixed-report module.
 
-- [ ] Migration `00028_customer_gender.sql` — `customers.gender` enum (`'male' | 'female' | 'other'`), not-null going forward (existing rows back-filled as `'other'` or NULL-tolerant with a one-time prompt). Number assumes Phase 7c + Phase 8 ship in order; if ordering changes, number shifts.
+- [ ] Migration `00029_customer_gender.sql` — `customers.gender` enum (`'male' | 'female' | 'other'`), not-null going forward (existing rows back-filled as `'other'` or NULL-tolerant with a one-time prompt). Number assumes Phase 7c + Phase 8 ship in order; if ordering changes, number shifts.
 - [ ] Update `/book`, `/reception/bookings/new`, `/admin/bookings/new`, and the AI `create_tentative_booking` tool to collect + require `gender`
 - [ ] `src/app/admin/customers/[id]/page.tsx` — booking history (past + upcoming), lifetime value, next appointment, quick-rebook button (SPA-050 / SPA-051)
 - [ ] SPA-091 service-polish remainder — per-service images, room/category grouping on `/book`, richer service detail
