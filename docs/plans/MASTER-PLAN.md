@@ -904,7 +904,7 @@ Rolling home for small admin-facing UX fixes that don't fit any numbered phase. 
 
 **Shipped:**
 
-- **DEF-034 (PR #TBD)** — Create Therapist page gained a service multi-select (sourced from the live `getServices()` catalog) so admins can assign services at creation time instead of saving + navigating to the detail page. Page is now a server component wrapping the new [`TherapistCreateForm`](../../src/components/admin/therapist/create-form.tsx) client component. Double-click defense: `handleSubmit` guarded with a synchronous `useRef<boolean>(false)` (Layer 1) so a second click lands before React's async `submitting` state can't fire a second `createTherapist`. `createTherapist` accepts `service_ids` and routes through `setTherapistServices` for consistent audit + revalidation. See [DEF-034 retest entry](../qa/defect-retest.md).
+- **DEF-034 (PR #42)** — Create Therapist page gained a service multi-select (sourced from the live `getServices()` catalog) so admins can assign services at creation time instead of saving + navigating to the detail page. Page is now a server component wrapping the new [`TherapistCreateForm`](../../src/components/admin/therapist/create-form.tsx) client component. Double-click defense: `handleSubmit` guarded with a synchronous `useRef<boolean>(false)` (Layer 1) so a second click lands before React's async `submitting` state can't fire a second `createTherapist`. `createTherapist` accepts `service_ids` and routes through `setTherapistServices` for consistent audit + revalidation. See [DEF-034 retest entry](../qa/defect-retest.md).
 
 **Roadmap (deferred to the design pass):**
 
