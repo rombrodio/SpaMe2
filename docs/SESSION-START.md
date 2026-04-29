@@ -1,6 +1,6 @@
 # Session start — the one thing you paste
 
-Open a Cursor chat. The `sessionStart` hook prints a briefing automatically (branch, last 5 commits, reminder to read `docs/plans/MASTER-PLAN.md` for the phase frontier, reminder that Plan mode is default). You read nothing else to begin.
+Open a Cursor chat. The `sessionStart` hook prints a briefing automatically — it runs `git fetch --prune` against `origin` first, then reports branch, sync status (up-to-date / N commits behind origin/main / offline), last 5 commits, a reminder to read `docs/plans/MASTER-PLAN.md` for the phase frontier, and a reminder that Plan mode is default. You read nothing else to begin. If the sync line says "N commits behind", run `git checkout main && git pull --ff-only` before starting.
 
 Then paste the template below, fill in the `<FEATURE>` blank, and send. The agent drives the rest of the session end-to-end.
 

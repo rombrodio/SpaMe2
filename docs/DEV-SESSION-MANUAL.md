@@ -74,7 +74,7 @@ Source of truth: [`.cursor/hooks.json`](../.cursor/hooks.json) + the scripts und
 
 | Event | Script | Fail mode | What it does | What you do when it fires |
 |---|---|---|---|---|
-| `sessionStart` | `session-start.sh` | fail-open | Prints branch + last 5 commits + phase-frontier reminder | Read it. Acknowledge the frontier. Don't fight the default. |
+| `sessionStart` | `session-start.sh` | fail-open | Runs `git fetch --prune` against `origin` (so the briefing reflects github.com — including PRs merged in the browser since your last session), then prints branch + sync status (up-to-date / N commits behind origin/main / offline) + last 5 commits + phase-frontier reminder | Read it. If the sync line says "N commits behind", run `git checkout main && git pull --ff-only` before starting. If it says "skipped (offline or slow)", reopen the chat when back online. Acknowledge the frontier. Don't fight the default. |
 | `beforeShellExecution` | `guard-shell.sh` | **fail-closed** | DENY destructive patterns; ASK on prod-adjacent patterns | If DENY: do not retry the command in Cursor. Run it in a separate terminal outside Cursor if you're sure. If ASK: review the command, approve only if you understand what it touches. |
 | `beforeSubmitPrompt` | `scan-prompt.sh` | fail-open | ASK if the outgoing prompt contains secret-shaped strings (`SUPABASE_SERVICE_ROLE_KEY=...`, `sk-…`, `ghp_…`, JWTs, etc.) | If flagged: redact before sending. If it's a deliberate test fixture (e.g. a known-bad shape), approve explicitly. |
 | `afterFileEdit` | `format-edit.sh` | fail-open | `npx --no-install prettier --write` on TS / TSX / JSON / MD / MDC | Silent when Prettier runs. If formatting is off, check that Prettier is resolvable via `npx --no-install`. |
