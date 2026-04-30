@@ -99,3 +99,6 @@ next-env.d.ts
 /book-page.png
 /*-page.png
 
+# gitleaks (secret-scanner) output — generated locally, never committed
+gitleaks-report.json
+

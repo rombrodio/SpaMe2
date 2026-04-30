@@ -355,7 +355,12 @@
         "creating": "Creating...",
         "toastCreated": "Therapist created.",
         "toastCreateError": "Couldn't create therapist.",
-        "toastCreatedWithWarning": "Therapist created with a warning."
+        "toastCreatedWithWarning": "Therapist created with a warning.",
+        "services": {
+          "label": "Assigned Services",
+          "helper": "Check any services this therapist can perform. Leave blank to assign later from the therapist's detail page.",
+          "empty": "No services exist yet. Create services first, then assign them here or from the therapist's detail page."
+        }
       },
       "edit": {
         "cardTitle": "Therapist Details",

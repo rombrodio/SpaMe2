@@ -898,6 +898,18 @@ Updating a therapist's assigned services (or a room's compatible services) was f
 
 **Invariants preserved.** The pre-check blocks on **any** booking — cancelled, completed, or active — mirroring the DB FK's status-blind semantics. Bookings history stays immutable; soft-retiring `therapist_services` rows is a Phase 9+ schema change if friction emerges. See [DEF-033 retest entry](../qa/defect-retest.md).
 
+### Phase 6.x — Admin UX polish
+
+Rolling home for small admin-facing UX fixes that don't fit any numbered phase. Shipped list grows as items land; defer the broader `useFormStatus` refactor to the design pass.
+
+**Shipped:**
+
+- **DEF-034 (PR #43)** — Create Therapist page gained a service multi-select (sourced from the live `getServices()` catalog) so admins can assign services at creation time instead of saving + navigating to the detail page. Page is now a server component wrapping the new [`TherapistCreateForm`](../../src/components/admin/therapist/create-form.tsx) client component. Double-click defense: `handleSubmit` guarded with a synchronous `useRef<boolean>(false)` (Layer 1) so a second click lands before React's async `submitting` state can't fire a second `createTherapist`. `createTherapist` accepts `service_ids` and routes through `setTherapistServices` for consistent audit + revalidation. See [DEF-034 retest entry](../qa/defect-retest.md).
+
+**Roadmap (deferred to the design pass):**
+
+- Extract a shared `<SubmitButton />` primitive that reads [`useFormStatus()`](https://react.dev/reference/react-dom/hooks/useFormStatus) and auto-disables during form submission. Migrate every admin `/new` form (therapists, rooms, services, customers, availability, time-off, room-blocks) off the local `submitting` state + `useRef` guard shim landed in DEF-034. No functional change — just cleaner primitives consistent with Next.js 16 App Router idioms.
+
 ### Phase 7c: Auto-assignment engine + publish + multi-channel notifications + manager alerts
 
 **Goal:** Implement VISION_1's operational heart — a server-side auto-assignment engine that picks both therapist and room on payment confirmation, a manager-publish rail (per-booking immediate + evening-before batch), a 4-channel therapist confirmation system with per-therapist channel preferences, and manager push alerts on new auto-assignments with per-manager mute. Rewrites the Phase 5 deferred-assignment flow; does not delete history, but retires `pending_confirmation` / `confirmed` / `declined` enum values (remapped via data migration).

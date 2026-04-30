@@ -10,7 +10,7 @@ Retest methodology: for every defect, locate the fix in code (`DEF-*` comment or
 
 Reopen a defect by adding a `REGRESSED` status row below the original with the date and the PR that regressed it, keeping the original row for history.
 
-Last retested: **2026-04-29** against `main` @ commit `21d5fdf` (post PR #40 — session hook auto-fetch). DEF-033 added this session.
+Last retested: **2026-04-29** against `main` @ commit `21d5fdf` (post PR #40 — session hook auto-fetch). DEF-033 + DEF-034 added this session.
 
 ---
 
@@ -81,6 +81,7 @@ Items reported during admin play sessions after Phase 7b closed. New DEF-* IDs a
 | ID | Sev | Summary | Status | Fix PR | Evidence on current `main` |
 |----|-----|---------|--------|--------|----------------------------|
 | DEF-033 | S2 | Updating a therapist's (or room's) assigned services fails with Postgres FK error `update or delete on table "therapist_services" violates foreign key constraint "fk_therapist_service" on table "bookings"` whenever any booking references one of the existing pairs — even when the admin is only adding a new service | **FIXED** | #41 | [`setTherapistServices`](../../src/lib/actions/therapists.ts) and [`setRoomServices`](../../src/lib/actions/rooms.ts) rewritten as diff-based: snapshot current junction, compute `toInsert`/`toRemove`, pre-check `bookings` for any `(therapist_id, service_id)` or `(room_id, service_id)` pair in `toRemove`, return translated `admin.therapists.services.cantRemoveHasBookings` / `admin.rooms.services.cantRemoveHasBookings` error listing blocked service names + count. Delete-all anti-pattern replaced; audit log added on every mutation. |
+| DEF-034 | S3 | Create Therapist page has no service selector (admin must save first, then navigate to detail page), AND the Create button is easy to double-click, producing two therapists from a single form before the async `submitting` state takes effect | **FIXED** | #43 | New "Assigned Services" checkbox list on [`/admin/therapists/new`](../../src/app/admin/therapists/new/page.tsx), sourced from the live `getServices()` catalog; page now a server component that passes services into [`TherapistCreateForm`](../../src/components/admin/therapist/create-form.tsx). Form wraps `handleSubmit` with a `useRef<boolean>(false)` synchronous guard (Layer 1) — blocks re-entry before React re-renders, resets on every early-return path so admin can retry. `createTherapist` now accepts `service_ids` via `formData.getAll()` and routes through the PR #41 `setTherapistServices` to keep audit + revalidation consistent. Layer 2 (`useFormStatus` refactor across every admin `/new` form) deferred — see MASTER-PLAN Phase 6.x. |
 
 ---
 
@@ -105,7 +106,7 @@ Known still-English surfaces (documented in [`README.md`](../../README.md#locali
 
 | Status | Count | Items |
 |--------|-------|-------|
-| FIXED (code evidence) | **30** | DEF-001, 002, 003, 004, 006, 007, 008, 009, 010, 011, 012, 013, 017, 018, 020, 022, 023, 024, 026, 029, 030, 031, 032, 033 + 6 newer user-reports |
+| FIXED (code evidence) | **31** | DEF-001, 002, 003, 004, 006, 007, 008, 009, 010, 011, 012, 013, 017, 018, 020, 022, 023, 024, 026, 029, 030, 031, 032, 033, 034 + 6 newer user-reports |
 | NO-OP (data hygiene / misreport / absorbed) | **8** | DEF-005, 014, 015, 016, 019, 025, 027, 028 |
 | DEFERRED | **1** | DEF-021 (Settings expansion) |
 | OPEN | **0** | — |

@@ -176,16 +176,38 @@ export async function createTherapist(formData: FormData) {
     newData: inserted,
   });
 
-  let warning: string | undefined;
+  const warnings: string[] = [];
+
+  // Apply the initial service selection, if the admin picked any on the create
+  // form. Brand-new therapists have zero bookings so the FK pre-check inside
+  // setTherapistServices is always a no-op here, but we route through the
+  // shared action so audit logs and revalidation stay consistent.
+  const rawServiceIds = formData.getAll("service_ids");
+  const serviceIds = rawServiceIds
+    .filter((v): v is string => typeof v === "string" && v.length > 0);
+  if (serviceIds.length > 0) {
+    const serviceResult = await setTherapistServices(inserted.id, serviceIds);
+    if (serviceResult && "error" in serviceResult) {
+      const msg =
+        (serviceResult.error as Record<string, string[]>)._form?.[0] ??
+        "Failed to save services";
+      warnings.push(`Therapist created but services not saved: ${msg}`);
+    }
+  }
+
   if (sendInvite && parsed.data.email) {
     const result = await sendTherapistInvite(inserted.id, parsed.data.email);
     if (!result.ok) {
-      warning = `Therapist created but invite failed: ${result.message}`;
+      warnings.push(`Therapist created but invite failed: ${result.message}`);
     }
   }
 
   revalidatePath("/admin/therapists");
-  return { success: true, data: inserted, warning };
+  return {
+    success: true,
+    data: inserted,
+    warning: warnings.length > 0 ? warnings.join(" ") : undefined,
+  };
 }
 
 /**
