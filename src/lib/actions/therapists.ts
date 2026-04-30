@@ -8,6 +8,7 @@ import {
   timeOffSchema,
 } from "@/lib/schemas/therapist";
 import { revalidatePath } from "next/cache";
+import { getTranslations } from "next-intl/server";
 import { writeAuditLog } from "@/lib/audit";
 import { getAppUrl } from "@/lib/app-url";
 
@@ -373,22 +374,81 @@ export async function getTherapistServices(therapistId: string) {
   return data;
 }
 
+/**
+ * Replace the therapist's set of qualified services.
+ *
+ * We diff the selection against the current rows instead of delete-all-then-
+ * reinsert, because `bookings.fk_therapist_service` (migration 00007) is a
+ * composite FK on `(therapist_id, service_id)` — any booking that references
+ * a pair we're about to delete blocks the whole transaction (DEF-033). Before
+ * deleting, we check for referencing bookings and return a clear translated
+ * error listing the blocked service names; the admin must cancel/reassign
+ * those bookings first.
+ */
 export async function setTherapistServices(
   therapistId: string,
   serviceIds: string[]
 ) {
   const supabase = await createClient();
+  const t = await getTranslations();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  // Remove existing
-  const { error: delError } = await supabase
+  const { data: currentRows, error: currentError } = await supabase
     .from("therapist_services")
-    .delete()
+    .select("service_id")
     .eq("therapist_id", therapistId);
-  if (delError) return { error: { _form: [delError.message] } };
+  if (currentError) return { error: { _form: [currentError.message] } };
 
-  // Insert new
-  if (serviceIds.length > 0) {
-    const rows = serviceIds.map((service_id) => ({
+  const currentSet = new Set(
+    (currentRows ?? []).map((r: { service_id: string }) => r.service_id)
+  );
+  const selectedSet = new Set(serviceIds);
+  const toInsert = [...selectedSet].filter((id) => !currentSet.has(id));
+  const toRemove = [...currentSet].filter((id) => !selectedSet.has(id));
+
+  if (toRemove.length > 0) {
+    const { data: blocking, error: blockingError } = await supabase
+      .from("bookings")
+      .select("service_id")
+      .eq("therapist_id", therapistId)
+      .in("service_id", toRemove);
+    if (blockingError) return { error: { _form: [blockingError.message] } };
+
+    if (blocking && blocking.length > 0) {
+      const blockedIds = Array.from(
+        new Set(blocking.map((r: { service_id: string }) => r.service_id))
+      );
+      const { data: svcRows } = await supabase
+        .from("services")
+        .select("name")
+        .in("id", blockedIds);
+      const names = (svcRows ?? [])
+        .map((s: { name: string }) => s.name)
+        .join(", ");
+      return {
+        error: {
+          _form: [
+            t("admin.therapists.services.cantRemoveHasBookings", {
+              names,
+              count: blocking.length,
+            }),
+          ],
+        },
+      };
+    }
+
+    const { error: delError } = await supabase
+      .from("therapist_services")
+      .delete()
+      .eq("therapist_id", therapistId)
+      .in("service_id", toRemove);
+    if (delError) return { error: { _form: [delError.message] } };
+  }
+
+  if (toInsert.length > 0) {
+    const rows = toInsert.map((service_id) => ({
       therapist_id: therapistId,
       service_id,
     }));
@@ -396,6 +456,17 @@ export async function setTherapistServices(
       .from("therapist_services")
       .insert(rows);
     if (insError) return { error: { _form: [insError.message] } };
+  }
+
+  if (toInsert.length > 0 || toRemove.length > 0) {
+    writeAuditLog({
+      userId: user?.id,
+      action: "update",
+      entityType: "therapist_services",
+      entityId: therapistId,
+      oldData: { service_ids: Array.from(currentSet).sort() },
+      newData: { service_ids: Array.from(selectedSet).sort() },
+    });
   }
 
   revalidatePath(`/admin/therapists/${therapistId}`);

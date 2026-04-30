@@ -383,7 +383,8 @@
         "save": "Save Services",
         "saving": "Saving...",
         "saved": "Services updated.",
-        "saveError": "Failed to save services"
+        "saveError": "Failed to save services",
+        "cantRemoveHasBookings": "Can't remove {names}: this therapist has {count, plural, one {# booking} other {# bookings}} referencing {count, plural, one {this service} other {these services}}. Cancel or reassign those bookings first."
       },
       "fields": {
         "fullName": "Full Name",
@@ -664,7 +665,8 @@
         "saving": "Saving...",
         "saved": "Services updated.",
         "saveError": "Failed to save services.",
-        "toastSaved": "Compatible services updated."
+        "toastSaved": "Compatible services updated.",
+        "cantRemoveHasBookings": "Can't remove {names}: this room has {count, plural, one {# booking} other {# bookings}} referencing {count, plural, one {this service} other {these services}}. Cancel or reassign those bookings first."
       },
       "blocks": {
         "cardTitle": "Room Blocks",

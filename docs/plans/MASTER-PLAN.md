@@ -888,6 +888,16 @@ Between Phase 7b PRs (landed with the therapist-portal i18n PR in flight), a sub
 
 Net result: the `/login ↔ /therapist` ping-pong is impossible to reproduce regardless of profile state, and session cookies are propagated through every auth redirect.
 
+### Stabilization: therapist/room services composite-FK safety (DEF-033) — SHIPPED
+
+Updating a therapist's assigned services (or a room's compatible services) was failing outright whenever any booking referenced one of the therapist's or room's existing `(resource_id, service_id)` pairs — even when the admin only wanted to **add** a service.
+
+**Root cause.** [`setTherapistServices`](../../src/lib/actions/therapists.ts) and [`setRoomServices`](../../src/lib/actions/rooms.ts) used a delete-all-then-reinsert pattern, but [`bookings.fk_therapist_service` + `fk_room_service`](../../supabase/migrations/00007_bookings.sql) are composite FKs on `(therapist_id, service_id)` and `(room_id, service_id)`. The blanket DELETE aborted on any referencing booking.
+
+**Fix.** Both actions rewritten as diff-based: snapshot current junction rows, compute `toInsert`/`toRemove`, pre-check `bookings` for any pair in `toRemove`, and return a translated `admin.{therapists,rooms}.services.cantRemoveHasBookings` error listing the blocked service names + booking count so the admin can cancel or reassign first. Only `toInsert` / `toRemove` rows are written. `writeAuditLog` now fires on every mutation with old/new `service_ids`.
+
+**Invariants preserved.** The pre-check blocks on **any** booking — cancelled, completed, or active — mirroring the DB FK's status-blind semantics. Bookings history stays immutable; soft-retiring `therapist_services` rows is a Phase 9+ schema change if friction emerges. See [DEF-033 retest entry](../qa/defect-retest.md).
+
 ### Phase 7c: Auto-assignment engine + publish + multi-channel notifications + manager alerts
 
 **Goal:** Implement VISION_1's operational heart — a server-side auto-assignment engine that picks both therapist and room on payment confirmation, a manager-publish rail (per-booking immediate + evening-before batch), a 4-channel therapist confirmation system with per-therapist channel preferences, and manager push alerts on new auto-assignments with per-manager mute. Rewrites the Phase 5 deferred-assignment flow; does not delete history, but retires `pending_confirmation` / `confirmed` / `declined` enum values (remapped via data migration).

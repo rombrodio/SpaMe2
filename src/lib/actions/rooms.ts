@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { roomSchema, roomBlockSchema } from "@/lib/schemas/room";
 import { revalidatePath } from "next/cache";
+import { getTranslations } from "next-intl/server";
 import { writeAuditLog } from "@/lib/audit";
 
 // ── Room CRUD ──
@@ -145,17 +146,76 @@ export async function getRoomServices(roomId: string) {
   return data;
 }
 
+/**
+ * Replace the room's set of compatible services.
+ *
+ * Diff-based for the same reason as `setTherapistServices`: `bookings.fk_room_service`
+ * (migration 00007) is a composite FK on `(room_id, service_id)` — delete-all
+ * fails whenever any booking references a pair we're about to remove (DEF-033).
+ * We pre-check bookings and surface a translated error listing the blocked
+ * service names; the admin must cancel/reassign first.
+ */
 export async function setRoomServices(roomId: string, serviceIds: string[]) {
   const supabase = await createClient();
+  const t = await getTranslations();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  const { error: delError } = await supabase
+  const { data: currentRows, error: currentError } = await supabase
     .from("room_services")
-    .delete()
+    .select("service_id")
     .eq("room_id", roomId);
-  if (delError) return { error: { _form: [delError.message] } };
+  if (currentError) return { error: { _form: [currentError.message] } };
 
-  if (serviceIds.length > 0) {
-    const rows = serviceIds.map((service_id) => ({
+  const currentSet = new Set(
+    (currentRows ?? []).map((r: { service_id: string }) => r.service_id)
+  );
+  const selectedSet = new Set(serviceIds);
+  const toInsert = [...selectedSet].filter((id) => !currentSet.has(id));
+  const toRemove = [...currentSet].filter((id) => !selectedSet.has(id));
+
+  if (toRemove.length > 0) {
+    const { data: blocking, error: blockingError } = await supabase
+      .from("bookings")
+      .select("service_id")
+      .eq("room_id", roomId)
+      .in("service_id", toRemove);
+    if (blockingError) return { error: { _form: [blockingError.message] } };
+
+    if (blocking && blocking.length > 0) {
+      const blockedIds = Array.from(
+        new Set(blocking.map((r: { service_id: string }) => r.service_id))
+      );
+      const { data: svcRows } = await supabase
+        .from("services")
+        .select("name")
+        .in("id", blockedIds);
+      const names = (svcRows ?? [])
+        .map((s: { name: string }) => s.name)
+        .join(", ");
+      return {
+        error: {
+          _form: [
+            t("admin.rooms.services.cantRemoveHasBookings", {
+              names,
+              count: blocking.length,
+            }),
+          ],
+        },
+      };
+    }
+
+    const { error: delError } = await supabase
+      .from("room_services")
+      .delete()
+      .eq("room_id", roomId)
+      .in("service_id", toRemove);
+    if (delError) return { error: { _form: [delError.message] } };
+  }
+
+  if (toInsert.length > 0) {
+    const rows = toInsert.map((service_id) => ({
       room_id: roomId,
       service_id,
     }));
@@ -163,6 +223,17 @@ export async function setRoomServices(roomId: string, serviceIds: string[]) {
       .from("room_services")
       .insert(rows);
     if (insError) return { error: { _form: [insError.message] } };
+  }
+
+  if (toInsert.length > 0 || toRemove.length > 0) {
+    writeAuditLog({
+      userId: user?.id,
+      action: "update",
+      entityType: "room_services",
+      entityId: roomId,
+      oldData: { service_ids: Array.from(currentSet).sort() },
+      newData: { service_ids: Array.from(selectedSet).sort() },
+    });
   }
 
   revalidatePath(`/admin/rooms/${roomId}`);
